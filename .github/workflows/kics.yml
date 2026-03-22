@@ -1,15 +1,11 @@
 name: KICS Scan
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-  workflow_dispatch:
+  workflow_call:
 
 jobs:
   kics:
-    name: Kics Scan
+    name: kics
     runs-on: ubuntu-latest
     permissions:
       contents: read
