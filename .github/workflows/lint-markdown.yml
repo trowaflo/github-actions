@@ -5,7 +5,7 @@ on:
 
 jobs:
   lint-markdown:
-    name: "Code Quality - Markdown (markdownlint)"
+    name: markdownlint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
