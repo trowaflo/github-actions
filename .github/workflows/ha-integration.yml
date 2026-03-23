@@ -14,7 +14,7 @@ on:
 
 jobs:
   test-python:
-    name: "Python Tests & Coverage (80%+)"
+    name: pytest
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,10 +31,15 @@ jobs:
       - name: Run tests
         env:
           COMPONENT_NAME: ${{ inputs.component_name }}
-        run: pytest --cov=custom_components/$COMPONENT_NAME --cov-fail-under=80 tests/ -v
+        run: pytest --cov=custom_components/$COMPONENT_NAME --cov-report=xml --cov-fail-under=80 tests/ -v
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5
+        with:
+          fail_ci_if_error: true
 
   lint-python:
-    name: "Code Quality - Python (ruff)"
+    name: ruff
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
