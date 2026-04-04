@@ -1,0 +1,15 @@
+name: Release Please
+
+# Local workflow — crée automatiquement les tags et CHANGELOG après merge sur main
+# Le premier merge du feat: donnera v0.1.0 — les consumers pinneront ce SHA
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    uses: ./.github/workflows/release.yml
+    with:
+      enable_release_please: true
