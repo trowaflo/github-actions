@@ -1,0 +1,95 @@
+name: Docker
+
+# Reusable workflow — Docker Build & Container Scanning
+# Usage: uses: trowaflo/github-actions/.github/workflows/docker.yml@<sha>
+#
+# Container scanning : enable_trivy et enable_grype sont indépendants.
+# Activez l'un, l'autre, ou les deux pour comparer la couverture dans le temps.
+# Trivy (aquasecurity) et grype (Anchore/Cisco) couvrent le même besoin (CVEs dans images)
+# mais ont des bases de données et heuristiques différentes.
+
+on:
+  workflow_call:
+    inputs:
+      enable_build:
+        description: "Docker build & push via bake"
+        type: boolean
+        default: false
+      enable_trivy:
+        description: "CVE scan via Trivy (aquasecurity) — SHA pinné sur version post-incident TeamPCP"
+        type: boolean
+        default: false
+      enable_grype:
+        description: "CVE scan via grype (Anchore/Cisco) — non impacté TeamPCP"
+        type: boolean
+        default: false
+      registry:
+        description: "Registre Docker cible"
+        type: string
+        default: "ghcr.io"
+      image_name:
+        description: "Nom de l'image (ex: owner/image)"
+        type: string
+        default: ""
+      trivy_severity:
+        description: "Niveaux de sévérité Trivy à remonter"
+        type: string
+        default: "CRITICAL,HIGH"
+    secrets:
+      registry_username:
+        description: "Username registre Docker (optionnel — utilise GITHUB_TOKEN pour ghcr.io)"
+        required: false
+      registry_password:
+        description: "Password registre Docker (optionnel — utilise GITHUB_TOKEN pour ghcr.io)"
+        required: false
+
+jobs:
+  docker-build:
+    if: ${{ inputs.enable_build == true }}
+    name: Docker Build & Push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ secrets.registry_username || github.actor }}
+          password: ${{ secrets.registry_password || secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+      - uses: docker/bake-action@82490499d2e5613fcead7e128237ef0b0ea210f7 # v7.0.0
+        with:
+          push: true
+
+  trivy-scan:
+    if: ${{ inputs.enable_trivy == true }}
+    name: Container Scan (Trivy)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: ${{ inputs.image_name }}
+          format: table
+          severity: ${{ inputs.trivy_severity }}
+          exit-code: "1"
+
+  grype-scan:
+    if: ${{ inputs.enable_grype == true }}
+    name: Container Scan (grype)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        with:
+          image: ${{ inputs.image_name }}
+          fail-build: true
+          severity-cutoff: high

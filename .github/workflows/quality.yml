@@ -1,0 +1,158 @@
+name: Quality
+
+# Reusable workflow — Sécurité + Linting universel
+# Usage: uses: trowaflo/github-actions/.github/workflows/quality.yml@<sha>
+#
+# Defaults security-on : gitleaks, checkov, actionlint = true (opt-out)
+# Defaults domain-specific : tous les autres = false (opt-in)
+
+on:
+  workflow_call:
+    inputs:
+      enable_gitleaks:
+        description: "Secret scanning avec gitleaks"
+        type: boolean
+        default: true
+      enable_checkov:
+        description: "Scan IaC misconfigurations avec Checkov (remplace KICS)"
+        type: boolean
+        default: true
+      enable_actionlint:
+        description: "Lint des fichiers workflow GitHub Actions"
+        type: boolean
+        default: true
+      enable_dependency_review:
+        description: "Revue des dépendances sur PR — nécessite event pull_request"
+        type: boolean
+        default: false
+      enable_markdown_lint:
+        description: "Lint Markdown avec markdownlint-cli2"
+        type: boolean
+        default: false
+      enable_yamllint:
+        description: "Lint YAML avec yamllint (auto-détecte .yamllint.yml)"
+        type: boolean
+        default: false
+      enable_ansible_lint:
+        description: "Lint Ansible avec ansible-lint officiel"
+        type: boolean
+        default: false
+      enable_terraform_validate:
+        description: "Validation Terraform : fmt check + tflint"
+        type: boolean
+        default: false
+      checkov_framework:
+        description: "Framework Checkov : terraform, kubernetes, helm, dockerfile, ou vide pour tout"
+        type: string
+        default: ""
+
+jobs:
+  gitleaks:
+    if: ${{ inputs.enable_gitleaks == true }}
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  checkov:
+    if: ${{ inputs.enable_checkov == true }}
+    name: IaC Scan (Checkov)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: bridgecrewio/checkov-action@0ce65fae06c148e349f955c3c35ad049c11e838c # v12.3092.0
+        with:
+          directory: .
+          framework: ${{ inputs.checkov_framework }}
+          quiet: true
+
+  actionlint:
+    if: ${{ inputs.enable_actionlint == true }}
+    name: Lint Workflows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install actionlint v1.7.12
+        run: |
+          curl -sL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash \
+            | bash -s 1.7.12
+      - name: Run actionlint
+        run: ./actionlint -color
+
+  dependency-review:
+    if: ${{ inputs.enable_dependency_review == true }}
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+
+  markdown-lint:
+    if: ${{ inputs.enable_markdown_lint == true }}
+    name: Lint Markdown
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: DavidAnson/markdownlint-cli2-action@07035fd053f7be764496c0f8d8f9f41f98305101 # v22.0.0
+        with:
+          globs: |
+            **/*.md
+            !.venv/**
+
+  yamllint:
+    if: ${{ inputs.enable_yamllint == true }}
+    name: Lint YAML
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run yamllint
+        run: |
+          pip install --quiet yamllint
+          yamllint .
+
+  ansible-lint:
+    if: ${{ inputs.enable_ansible_lint == true }}
+    name: Lint Ansible
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ansible/ansible-lint@5fac056c45595896c973fbde871f01f6cb14d74c # v26.4.0
+
+  terraform-validate:
+    if: ${{ inputs.enable_terraform_validate == true }}
+    name: Validate Terraform
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+      - uses: terraform-linters/setup-tflint@b480b8fcdaa6f2c577f8e4fa799e89e756bb7c93 # v6.2.2
+      - name: Terraform format check
+        run: terraform fmt -check -recursive
+      - name: TFLint init
+        run: tflint --init
+      - name: TFLint run
+        run: tflint --recursive --format compact
