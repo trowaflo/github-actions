@@ -1,0 +1,8 @@
+# markdownlint configuration
+# https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+
+# Disable line length — documentation uses long lines for readability
+MD013: false
+
+# Allow inline HTML (badges, anchors)
+MD033: false
