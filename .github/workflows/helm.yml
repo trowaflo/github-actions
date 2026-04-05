@@ -8,6 +8,10 @@ name: Helm
 on:
   workflow_call:
     inputs:
+      enable_harden_runner:
+        description: "Monitoring réseau des runners via StepSecurity harden-runner (egress audit)"
+        type: boolean
+        default: false
       enable_release:
         description: "Release des charts via chart-releaser"
         type: boolean
@@ -50,6 +54,11 @@ jobs:
       contents: write
       pages: write
     steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
@@ -67,6 +76,11 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
@@ -88,6 +102,11 @@ jobs:
       contents: read
       checks: write
     steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: azure/setup-helm@1a275c3b7ec2dc2980e7e9f5f06b6c6d9c98df44 # v4.3.1
       - name: Cache helm plugins
@@ -116,6 +135,11 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.head_ref || github.ref_name }}
@@ -151,6 +175,11 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.head_ref || github.ref_name }}
@@ -184,6 +213,11 @@ jobs:
       contents: read
       pull-requests: write
     steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: azure/setup-helm@1a275c3b7ec2dc2980e7e9f5f06b6c6d9c98df44 # v4.3.1
       - name: Package changed charts
@@ -217,6 +251,11 @@ jobs:
     permissions:
       pull-requests: write
     steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |

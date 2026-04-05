@@ -9,6 +9,10 @@ name: Quality
 on:
   workflow_call:
     inputs:
+      enable_harden_runner:
+        description: "Monitoring réseau des runners via StepSecurity harden-runner (egress audit)"
+        type: boolean
+        default: false
       enable_gitleaks:
         description: "Secret scanning avec gitleaks"
         type: boolean
@@ -41,10 +45,22 @@ on:
         description: "Validation Terraform : fmt check + tflint"
         type: boolean
         default: false
+      enable_kics:
+        description: "Scan IaC avec KICS (⚠ checkmarx/kics-github-action impacté TeamPCP 2026-03-23)"
+        type: boolean
+        default: false
+      enable_trivy:
+        description: "Scan IaC/filesystem avec Trivy"
+        type: boolean
+        default: false
       checkov_framework:
         description: "Framework Checkov : terraform, kubernetes, helm, dockerfile, ou vide pour tout"
         type: string
         default: ""
+      trivy_severity:
+        description: "Niveaux de sévérité Trivy : UNKNOWN, LOW, MEDIUM, HIGH, CRITICAL"
+        type: string
+        default: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
 
 jobs:
   gitleaks:
@@ -56,6 +72,11 @@ jobs:
       pull-requests: write
       repository-projects: write
     steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
@@ -70,6 +91,11 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: bridgecrewio/checkov-action@0ce65fae06c148e349f955c3c35ad049c11e838c # v12.3092.0
         with:
@@ -84,16 +110,22 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install actionlint v1.7.12 with checksum verification
         run: |
           set -euo pipefail
           VERSION=1.7.12
           ARCHIVE="actionlint_${VERSION}_linux_amd64.tar.gz"
+          CHECKSUMS="actionlint_${VERSION}_checksums.txt"
           BASE_URL="https://github.com/rhysd/actionlint/releases/download/v${VERSION}"
           curl -fsSLO "${BASE_URL}/${ARCHIVE}"
-          curl -fsSLO "${BASE_URL}/checksums.txt"
-          grep " ${ARCHIVE}$" checksums.txt | sha256sum -c -
+          curl -fsSLO "${BASE_URL}/${CHECKSUMS}"
+          grep " ${ARCHIVE}$" "${CHECKSUMS}" | sha256sum -c -
           tar -xzf "${ARCHIVE}" actionlint
       - name: Run actionlint
         run: ./actionlint -color
@@ -106,6 +138,11 @@ jobs:
       contents: read
       pull-requests: write
     steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
 
@@ -116,6 +153,11 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: DavidAnson/markdownlint-cli2-action@07035fd053f7be764496c0f8d8f9f41f98305101 # v22.0.0
         with:
@@ -130,6 +172,11 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Run yamllint
         run: |
@@ -143,6 +190,11 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ansible/ansible-lint@5fac056c45595896c973fbde871f01f6cb14d74c # v26.4.0
 
@@ -153,6 +205,11 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
       - uses: terraform-linters/setup-tflint@b480b8fcdaa6f2c577f8e4fa799e89e756bb7c93 # v6.2.2
@@ -162,3 +219,53 @@ jobs:
         run: tflint --init
       - name: TFLint run
         run: tflint --recursive --format compact
+
+  kics:
+    if: ${{ inputs.enable_kics == true }}
+    name: IaC Scan (KICS)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run KICS Scan
+        uses: checkmarx/kics-github-action@05aa5eb70eede1355220f4ca5238d96b397e30a6 # v2.1.20
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: "."
+          ignore_on_exit: results
+          enable_annotations: true
+          enable_comments: true
+          enable_jobs_summary: true
+          comments_with_queries: true
+          output_path: ./results
+          output_formats: json
+      - name: Display results
+        run: cat ./results/results.json
+
+  trivy:
+    if: ${{ inputs.enable_trivy == true }}
+    name: IaC Scan (Trivy)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          exit-code: 1
+          severity: ${{ inputs.trivy_severity }}

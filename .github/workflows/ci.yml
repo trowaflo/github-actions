@@ -2,21 +2,28 @@ name: CI
 
 # Self-CI de ce repo — valide les workflows eux-mêmes avant de les distribuer.
 # Tourne uniquement sur pull_request : bloquer avant merge, pas après.
-# KICS est désactivé (supply chain TeamPCP 2026-03-23) — remplacé par checkov (déjà actif).
 
 on:
   pull_request:
+
+permissions:
+  contents: write
+  pull-requests: write
+  repository-projects: write
 
 jobs:
   quality:
     uses: ./.github/workflows/quality.yml
     with:
+      enable_harden_runner: true
       enable_gitleaks: true
       enable_checkov: true
       enable_actionlint: true
       enable_dependency_review: true
       enable_markdown_lint: true
       enable_yamllint: true
+      enable_kics: true
+      enable_trivy: true
 
   sha-check:
     name: SHA Pinning Check
@@ -31,7 +38,7 @@ jobs:
           # Excludes: local workflow references (./.github/workflows/)
           UNPINNED=$(grep -rn '^\s*-\?\s*uses:\s' .github/workflows/ \
             | grep -v '\./.github/workflows/' \
-            | grep -v '@[0-9a-f]\{40\}')
+            | grep -v '@[0-9a-f]\{40\}' || true)
 
           if [ -n "$UNPINNED" ]; then
             echo "ERROR: Found uses: references without SHA pinning:"
