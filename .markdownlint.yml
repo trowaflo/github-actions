@@ -12,3 +12,6 @@ MD012: false
 
 # Allow fenced code blocks without language (file trees, text output)
 MD040: false
+
+# Allow duplicate headings (release-please CHANGELOG has repeated section names per version)
+MD024: false
