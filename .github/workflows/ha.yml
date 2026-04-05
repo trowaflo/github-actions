@@ -32,6 +32,8 @@ on:
         type: string
         default: ""
 
+permissions: {}
+
 jobs:
   hacs:
     if: ${{ inputs.enable_hacs == true }}

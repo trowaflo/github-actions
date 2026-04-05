@@ -61,6 +61,8 @@ on:
         description: "Password registre Docker (optionnel — utilise GITHUB_TOKEN pour ghcr.io)"
         required: false
 
+permissions: {}
+
 jobs:
   docker:
     if: ${{ inputs.enable_build == true }}

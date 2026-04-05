@@ -6,14 +6,15 @@ name: CI
 on:
   pull_request:
 
-permissions:
-  contents: write
-  pull-requests: write
-  repository-projects: write
+permissions: {}
 
 jobs:
   quality:
     uses: ./.github/workflows/quality.yml
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
     with:
       enable_harden_runner: true
       enable_gitleaks: true

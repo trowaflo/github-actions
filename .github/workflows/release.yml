@@ -29,6 +29,8 @@ on:
         description: "PAT pour release-please (optionnel — utilise GITHUB_TOKEN si absent)"
         required: false
 
+permissions: {}
+
 jobs:
   release-please:
     if: ${{ inputs.enable_release_please == true }}

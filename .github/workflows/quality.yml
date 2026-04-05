@@ -62,6 +62,8 @@ on:
         type: string
         default: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
 
+permissions: {}
+
 jobs:
   gitleaks:
     if: ${{ inputs.enable_gitleaks == true }}

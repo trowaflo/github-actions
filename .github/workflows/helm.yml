@@ -45,6 +45,8 @@ on:
         type: string
         default: "charts"
 
+permissions: {}
+
 jobs:
   helm-release:
     if: ${{ inputs.enable_release == true }}
@@ -198,7 +200,7 @@ jobs:
               current=$(grep '^version:' "$chart" | awk '{print $2}')
               bumped=$(semver -i patch "$current")
               sed -i "s/^version: .*/version: $bumped/" "$chart"
-              echo "Bumped $(dirname $chart): $current → $bumped"
+              echo "Bumped $(dirname "$chart"): $current → $bumped"
             fi
           done
           git config user.name "github-actions[bot]"

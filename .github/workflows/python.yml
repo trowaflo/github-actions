@@ -46,6 +46,8 @@ on:
         description: "Token Codecov (optionnel — fonctionne sans pour les repos publics)"
         required: false
 
+permissions: {}
+
 jobs:
   test:
     if: ${{ inputs.enable_test == true }}
@@ -69,6 +71,7 @@ jobs:
         run: |
           pip install pytest pytest-cov
           if [ -n "$EXTRA_PACKAGES" ]; then
+            # shellcheck disable=SC2086
             pip install $EXTRA_PACKAGES
           fi
       - name: Run pytest
