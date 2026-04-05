@@ -26,6 +26,8 @@ on:
         description: "Token OAuth Claude Code"
         required: true
 
+permissions: {}
+
 jobs:
   claude:
     if: |

@@ -8,6 +8,8 @@ on:
     branches:
       - main
 
+permissions: {}
+
 jobs:
   release:
     uses: ./.github/workflows/release.yml

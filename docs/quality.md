@@ -19,7 +19,7 @@ jobs:
 ## Inputs
 
 | Input | Type | Default | Description |
-| --- | --- | --- |--- |
+| --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `false` | Monitoring réseau via StepSecurity harden-runner (egress audit) |
 | `enable_gitleaks` | boolean | `true` | Secret scanning avec gitleaks |
 | `enable_checkov` | boolean | `true` | Scan IaC misconfigurations (remplace KICS) |

@@ -6,3 +6,9 @@ MD013: false
 
 # Allow inline HTML (badges, anchors)
 MD033: false
+
+# Allow multiple consecutive blank lines (release-please CHANGELOG)
+MD012: false
+
+# Allow fenced code blocks without language (file trees, text output)
+MD040: false

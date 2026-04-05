@@ -46,6 +46,8 @@ on:
         description: "Token Codecov (optionnel — fonctionne sans pour les repos publics)"
         required: false
 
+permissions: {}
+
 jobs:
   test:
     if: ${{ inputs.enable_test == true }}

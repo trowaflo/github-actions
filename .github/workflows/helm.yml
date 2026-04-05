@@ -45,6 +45,8 @@ on:
         type: string
         default: "charts"
 
+permissions: {}
+
 jobs:
   helm-release:
     if: ${{ inputs.enable_release == true }}
