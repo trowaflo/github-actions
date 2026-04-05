@@ -120,10 +120,16 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Install helm-docs v1.14.2
+      - name: Install helm-docs v1.14.2 with checksum verification
         run: |
-          curl -sLO "https://github.com/norwoodj/helm-docs/releases/download/v1.14.2/helm-docs_1.14.2_Linux_x86_64.tar.gz"
-          tar -xzf "helm-docs_1.14.2_Linux_x86_64.tar.gz" helm-docs
+          set -euo pipefail
+          VERSION=1.14.2
+          ARCHIVE="helm-docs_${VERSION}_Linux_x86_64.tar.gz"
+          BASE_URL="https://github.com/norwoodj/helm-docs/releases/download/v${VERSION}"
+          curl -fsSLO "${BASE_URL}/${ARCHIVE}"
+          curl -fsSLO "${BASE_URL}/checksums.txt"
+          grep " ${ARCHIVE}$" checksums.txt | sha256sum -c -
+          tar -xzf "${ARCHIVE}" helm-docs
           chmod +x helm-docs
       - name: Generate docs
         env:

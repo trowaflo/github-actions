@@ -13,16 +13,20 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
   # ─── Reusable workflows (call from other repos) ──────────────
   quality.yml          # Security + Linting: gitleaks, checkov, actionlint, dependency-review,
                        #   markdownlint, yamllint, ansible-lint, terraform-validate
-  ha.yml               # Home Assistant: integration (pytest+ruff+codecov), hacs, hassfest, config-check
+  ha.yml               # Home Assistant: hacs, hassfest, config-check
+  python.yml           # Python CI: pytest+ruff+codecov (generic — HA uses extra_packages)
   helm.yml             # Helm: release, lint, unittest, docs, bump, PR charts, PR cleanup
   docker.yml           # Docker: build/push, trivy scan, grype scan
-  release.yml          # Release & Claude: release-please, claude-code, claude-review
+  release.yml          # Release: release-please
+  claude-code.yml      # Claude Code: @claude mentions + /review command
 
   # ─── Self-CI (this repo only) ────────────────────────────────
   ci.yml               # Calls quality.yml locally + sha-check (enforces SHA pinning)
+  claude.yml           # Claude Code — restricted to repository_owner only
+  release-please.yml   # Creates tags and CHANGELOG on main push
 
   # ─── Deprecated (kept for backward compat) ───────────────────
-  ha-integration.yml   # DEPRECATED → migrate to ha.yml — consumer: frigate-event-manager
+  ha-integration.yml   # DEPRECATED → migrate to ha.yml + python.yml — consumer: frigate-event-manager
   lint-markdown.yml    # DEPRECATED → migrate to quality.yml — consumer: frigate-event-manager
 
   # ─── Archived ────────────────────────────────────────────────
@@ -98,13 +102,22 @@ jobs:
 
 | Input | Default | Description |
 | --- | --- | --- |
-| `enable_integration` | `false` | pytest + ruff + codecov (coverage ≥ 80%) |
 | `enable_hacs` | `false` | HACS validation |
 | `enable_hassfest` | `false` | hassfest validation |
 | `enable_config_check` | `false` | HA config check |
-| `python_version` | `"3.13"` | Python version |
-| `component_name` | `""` | Custom component name (required if enable_integration) |
 | `ha_version` | `""` | HA version (required if enable_config_check) |
+
+## python.yml inputs
+
+| Input | Default | Description |
+| --- | --- | --- |
+| `enable_test` | `false` | pytest + codecov |
+| `enable_lint` | `false` | ruff lint |
+| `python_version` | `"3.13"` | Python version |
+| `coverage_threshold` | `"80"` | Minimum coverage % |
+| `test_path` | `"tests/"` | Test directory |
+| `coverage_path` | `"."` | Coverage source path (e.g. `custom_components/my_component`) |
+| `extra_packages` | `""` | Additional pip packages (e.g. `pytest-homeassistant-custom-component==0.13.316`) |
 
 Secret: `codecov_token` (optional)
 
@@ -117,6 +130,6 @@ Secret: `codecov_token` (optional)
 | `enable_grype` | `false` | CVE scan via grype |
 | `registry` | `"ghcr.io"` | Target registry |
 | `image_name` | `""` | Image name |
-| `trivy_severity` | `"CRITICAL,HIGH"` | Trivy severity levels |
+| `trivy_severity` | `""` | Trivy severity levels (empty = all) |
 
 Secrets: `registry_username`, `registry_password` (both optional — defaults to GITHUB_TOKEN for ghcr.io)

@@ -121,6 +121,34 @@ jobs:
         with:
           push: true
 
+      # ── Nettoyage staging tag ──────────────────────────────────────────────
+      # Tourne même si le scan a échoué (always) — le staging a été pushé dans tous les cas.
+      # continue-on-error : la suppression n'est pas critique, la rétention ghcr.io (90j) prend le relais.
+      - name: Delete staging tag
+        if: ${{ always() && (inputs.enable_trivy == true || inputs.enable_grype == true) }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          PACKAGE_NAME: ${{ github.event.repository.name }}
+          TAG_NAME: scan-${{ github.run_id }}
+        run: |
+          VERSION_ID=$(
+            gh api "/orgs/${OWNER}/packages/container/${PACKAGE_NAME}/versions" \
+              --jq ".[] | select(.metadata.container.tags[]? == \"${TAG_NAME}\") | .id" 2>/dev/null \
+            || gh api "/users/${OWNER}/packages/container/${PACKAGE_NAME}/versions" \
+              --jq ".[] | select(.metadata.container.tags[]? == \"${TAG_NAME}\") | .id" 2>/dev/null \
+            || echo ""
+          )
+          if [ -n "$VERSION_ID" ]; then
+            gh api --method DELETE "/orgs/${OWNER}/packages/container/${PACKAGE_NAME}/versions/${VERSION_ID}" 2>/dev/null \
+              || gh api --method DELETE "/users/${OWNER}/packages/container/${PACKAGE_NAME}/versions/${VERSION_ID}" 2>/dev/null \
+              || echo "Delete failed — will expire per ghcr.io retention policy (90 days)"
+            echo "Deleted staging tag: ${TAG_NAME}"
+          else
+            echo "Staging version not found — will expire per ghcr.io retention policy (90 days)"
+          fi
+
   # ── Mode scan-only (enable_build=false) ────────────────────────────────────
   # Tourne sur une image existante dans le registre.
 
