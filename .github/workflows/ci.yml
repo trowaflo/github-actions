@@ -38,7 +38,7 @@ jobs:
           # Excludes: local workflow references (./.github/workflows/)
           UNPINNED=$(grep -rn '^\s*-\?\s*uses:\s' .github/workflows/ \
             | grep -v '\./.github/workflows/' \
-            | grep -v '@[0-9a-f]\{40\}')
+            | grep -v '@[0-9a-f]\{40\}' || true)
 
           if [ -n "$UNPINNED" ]; then
             echo "ERROR: Found uses: references without SHA pinning:"
