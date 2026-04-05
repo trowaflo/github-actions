@@ -2,71 +2,52 @@
 
 Reusable GitHub Actions workflows — source of truth for all `trowaflo/*` repositories.
 
-## Purpose
-
-Centralise action pinning, versioning, and security policies across ~27 sibling repos. Every external `uses:` reference is pinned to a full commit SHA. Renovate manages SHA updates automatically.
+All external `uses:` references are pinned to full commit SHAs. Renovate manages SHA updates automatically via `github>trowaflo/renovate-config`.
 
 ## Workflows
 
-| Workflow | Description | Defaults on |
+| Workflow | Defaults on | Documentation |
 | --- | --- | --- |
-| [`quality.yml`](.github/workflows/quality.yml) | Secret scanning, IaC scan, workflow lint, dependency review, markdown/yaml/ansible/terraform lint | gitleaks, checkov, actionlint |
-| [`ha.yml`](.github/workflows/ha.yml) | Home Assistant: pytest + ruff + codecov, HACS, hassfest, config check | — (all opt-in) |
-| [`helm.yml`](.github/workflows/helm.yml) | Helm: release, lint, unittest, docs, bump, PR chart packages | — (all opt-in) |
-| [`docker.yml`](.github/workflows/docker.yml) | Docker build/push + Trivy + grype container scanning | — (all opt-in) |
-| [`release.yml`](.github/workflows/release.yml) | release-please + Claude Code + Claude Review | — (all opt-in) |
+| [`quality.yml`](.github/workflows/quality.yml) | gitleaks, checkov, actionlint | [docs/quality.md](docs/quality.md) |
+| [`ha.yml`](.github/workflows/ha.yml) | — (all opt-in) | [docs/ha.md](docs/ha.md) |
+| [`python.yml`](.github/workflows/python.yml) | — (all opt-in) | [docs/python.md](docs/python.md) |
+| [`helm.yml`](.github/workflows/helm.yml) | — (all opt-in) | [docs/helm.md](docs/helm.md) |
+| [`docker.yml`](.github/workflows/docker.yml) | — (all opt-in) | [docs/docker.md](docs/docker.md) |
+| [`release.yml`](.github/workflows/release.yml) | — (all opt-in) | [docs/release.md](docs/release.md) |
+| [`claude-code.yml`](.github/workflows/claude-code.yml) | — (all opt-in) | [docs/claude-code.md](docs/claude-code.md) |
 
-## Usage
+## Quick start
 
 Pin to a specific SHA (Renovate updates it automatically):
 
 ```yaml
 # .github/workflows/ci.yml
 name: CI
-on: [pull_request, push]
+on: [pull_request]
 
 jobs:
   quality:
     uses: trowaflo/github-actions/.github/workflows/quality.yml@<sha> # vX.Y.Z
     with:
-      enable_gitleaks: true      # on by default
-      enable_checkov: true       # on by default
-      enable_actionlint: true    # on by default
-      enable_ansible_lint: true  # opt-in
-
-  release:
-    uses: trowaflo/github-actions/.github/workflows/release.yml@<sha> # vX.Y.Z
-    with:
-      enable_release_please: true
-    secrets:
-      release_token: ${{ secrets.RELEASE_TOKEN }}
+      enable_ansible_lint: true  # opt-in extras as needed
 ```
 
 ## Defaults philosophy
 
-- **Security / universal quality** (gitleaks, checkov, actionlint) → `true` by default (opt-out)
-- **Domain-specific** (ansible, terraform, helm, HA, docker) → `false` by default (opt-in)
+- **Security / universal quality** → `true` by default (opt-out): `enable_gitleaks`, `enable_checkov`, `enable_actionlint`
+- **Domain-specific** → `false` by default (opt-in): everything else
 
 ## Security
 
 - All `uses:` are SHA-pinned — never tags (`@v4`) or branches (`@main`)
 - `ci.yml` enforces this with a `sha-check` job on every PR
-- KICS (`kics.yml`) is disabled — compromised by TeamPCP supply chain attack (2026-03-23)
-- Checkov replaces KICS for IaC misconfiguration scanning
-- Trivy and grype are available independently in `docker.yml` for container CVE scanning
+- KICS is disabled — replaced by Checkov (not impacted by TeamPCP supply chain attack, 2026-03-23)
+- Trivy and grype available as independent opt-in flags in `docker.yml`
+- Claude Code (`claude-code.yml`) — **requires access control on public repos**, restrict to `github.repository_owner` (see [docs](docs/claude-code.md))
 
-## Deprecated workflows
+## Deprecated
 
-These are kept for backward compatibility and will be removed after consumers migrate:
-
-| Workflow | Replacement |
-| --- | --- |
-| `ha-integration.yml` | `ha.yml` with `enable_integration: true` |
-| `lint-markdown.yml` | `quality.yml` with `enable_markdown_lint: true` |
-
-## Self-CI
-
-This repo validates itself via `ci.yml`:
-
-- Calls `quality.yml` locally (gitleaks + checkov + actionlint + markdownlint)
-- Runs `sha-check` — fails if any `uses:` is not pinned to a 40-char SHA
+| Workflow | Replacement | Consumer |
+| --- | --- | --- |
+| `ha-integration.yml` | `ha.yml` + `python.yml` | frigate-event-manager |
+| `lint-markdown.yml` | `quality.yml` with `enable_markdown_lint: true` | frigate-event-manager |

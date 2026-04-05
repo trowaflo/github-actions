@@ -1,0 +1,118 @@
+name: Claude Code
+
+# Reusable workflow — Claude Code + Claude Code Review
+# Usage: uses: trowaflo/github-actions/.github/workflows/claude-code.yml@<sha>
+#
+# Le consumer définit les triggers (issue_comment, pull_request_review_comment, etc.)
+# et appelle ce workflow. Les conditions `if:` des jobs filtrent ensuite selon l'event.
+#
+# IMPORTANT sécurité — repos publics :
+# Ajouter une condition sur l'auteur côté consumer pour éviter les déclenchements non autorisés.
+# Exemple :
+#   if: |
+#     github.event.comment.author_association == 'OWNER' ||
+#     github.event.comment.author_association == 'MEMBER' ||
+#     github.event.comment.author_association == 'COLLABORATOR'
+
+on:
+  workflow_call:
+    secrets:
+      claude_code_oauth_token:
+        description: "Token OAuth Claude Code"
+        required: true
+
+jobs:
+  claude:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+      actions: read # Required for Claude to read CI results on PRs
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@1eddb334cfa79fdb21ecbe2180ca1a016e8e7d47 # v1.0.88
+        with:
+          claude_code_oauth_token: ${{ secrets.claude_code_oauth_token }}
+          # This is an optional setting that allows Claude to read CI results on PRs
+          additional_permissions: |
+            actions: read
+          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
+          # prompt: 'Update the pull request description to include a summary of changes.'
+          # Optional: Add claude_args to customize behavior and configuration
+          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          # or https://code.claude.com/docs/en/cli-reference for available options
+          # claude_args: '--allowed-tools Bash(gh pr:*)'
+
+  claude-review:
+    # ORIGINAL AUTO-TRIGGER (à réactiver quand les coûts ne sont plus un problème) :
+    # on:
+    #   pull_request:
+    #     types: [opened, synchronize, ready_for_review, reopened]
+    #     # Optional: Only run on specific file changes
+    #     # paths:
+    #     #   - "src/**/*.ts"
+    #     #   - "src/**/*.tsx"
+    #     #   - "src/**/*.js"
+    #     #   - "src/**/*.jsx"
+    # jobs:
+    #   claude-review:
+    #     # Optional: Filter by PR author
+    #     # if: |
+    #     #   github.event.pull_request.user.login == 'external-contributor' ||
+    #     #   github.event.pull_request.user.login == 'new-developer' ||
+    #     #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    #     runs-on: ubuntu-latest
+    #     permissions:
+    #       contents: read
+    #       pull-requests: read
+    #       issues: read
+    #       id-token: write
+    #     steps:
+    #       - name: Checkout repository
+    #         uses: actions/checkout@v4
+    #         with:
+    #           fetch-depth: 1
+    #       - name: Run Claude Code Review
+    #         id: claude-review
+    #         uses: anthropics/claude-code-action@v1
+    #         with:
+    #           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    #           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+    #           plugins: 'code-review@claude-code-plugins'
+    #           prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+    if: |
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '/review')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@1eddb334cfa79fdb21ecbe2180ca1a016e8e7d47 # v1.0.88
+        with:
+          claude_code_oauth_token: ${{ secrets.claude_code_oauth_token }}
+          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+          plugins: 'code-review@claude-code-plugins'
+          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.issue.number }}'
+          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          # or https://code.claude.com/docs/en/cli-reference for available options

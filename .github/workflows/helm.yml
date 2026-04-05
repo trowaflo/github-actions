@@ -171,7 +171,7 @@ jobs:
           git diff --quiet || (git add "$CHARTS_DIR" && git commit -m "chore: bump chart versions" && git push)
 
   helm-pr-charts:
-    if: ${{ inputs.enable_pr_charts == true }}
+    if: ${{ inputs.enable_pr_charts == true && github.event_name == 'pull_request' }}
     name: PR Chart Packages
     runs-on: ubuntu-latest
     permissions:
@@ -205,7 +205,7 @@ jobs:
             });
 
   helm-pr-cleanup:
-    if: ${{ inputs.enable_pr_cleanup == true }}
+    if: ${{ inputs.enable_pr_cleanup == true && github.event_name == 'pull_request' }}
     name: PR Chart Cleanup
     runs-on: ubuntu-latest
     permissions:

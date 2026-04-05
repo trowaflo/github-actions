@@ -85,15 +85,21 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install actionlint v1.7.12
+      - name: Install actionlint v1.7.12 with checksum verification
         run: |
-          curl -sL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash \
-            | bash -s 1.7.12
+          set -euo pipefail
+          VERSION=1.7.12
+          ARCHIVE="actionlint_${VERSION}_linux_amd64.tar.gz"
+          BASE_URL="https://github.com/rhysd/actionlint/releases/download/v${VERSION}"
+          curl -fsSLO "${BASE_URL}/${ARCHIVE}"
+          curl -fsSLO "${BASE_URL}/checksums.txt"
+          grep " ${ARCHIVE}$" checksums.txt | sha256sum -c -
+          tar -xzf "${ARCHIVE}" actionlint
       - name: Run actionlint
         run: ./actionlint -color
 
   dependency-review:
-    if: ${{ inputs.enable_dependency_review == true }}
+    if: ${{ inputs.enable_dependency_review == true && github.event_name == 'pull_request' }}
     name: Dependency Review
     runs-on: ubuntu-latest
     permissions:

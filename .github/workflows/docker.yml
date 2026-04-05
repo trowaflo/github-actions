@@ -3,10 +3,24 @@ name: Docker
 # Reusable workflow — Docker Build & Container Scanning
 # Usage: uses: trowaflo/github-actions/.github/workflows/docker.yml@<sha>
 #
-# Container scanning : enable_trivy et enable_grype sont indépendants.
-# Activez l'un, l'autre, ou les deux pour comparer la couverture dans le temps.
+# Ordre garanti quand enable_build=true :
+#   1. Build → push staging tag (ex: :scan-{run_id})
+#   2. Scan Trivy et/ou grype sur le staging tag
+#   3. Publish final (bake avec les tags originaux du bake file, depuis le cache)
+# Si un scan échoue, le job échoue → le publish final ne s'exécute pas.
+#
+# Mode scan-only (enable_build=false) : jobs trivy-scan et grype-scan indépendants,
+# tournent sur une image existante dans le registre (image_name ou défaut).
+#
+# Multi-platform : le staging build utilise le cache buildx du runner.
+# Le bake file contrôle les platforms cibles — aucune restriction de ce workflow.
+#
+# Enable_trivy et enable_grype sont indépendants.
+# Activer les deux permet de comparer la couverture dans le temps.
 # Trivy (aquasecurity) et grype (Anchore/Cisco) couvrent le même besoin (CVEs dans images)
 # mais ont des bases de données et heuristiques différentes.
+#
+# image_name : si non fourni, utilise {registry}/{github.repository} par défaut.
 
 on:
   workflow_call:
@@ -16,11 +30,11 @@ on:
         type: boolean
         default: false
       enable_trivy:
-        description: "CVE scan via Trivy (aquasecurity) — SHA pinné sur version post-incident TeamPCP"
+        description: "CVE scan via Trivy (aquasecurity)"
         type: boolean
         default: false
       enable_grype:
-        description: "CVE scan via grype (Anchore/Cisco) — non impacté TeamPCP"
+        description: "CVE scan via grype (Anchore/Cisco)"
         type: boolean
         default: false
       registry:
@@ -28,13 +42,13 @@ on:
         type: string
         default: "ghcr.io"
       image_name:
-        description: "Nom de l'image (ex: owner/image)"
+        description: "Nom de l'image (ex: owner/image) — défaut : {registry}/{github.repository}"
         type: string
         default: ""
       trivy_severity:
-        description: "Niveaux de sévérité Trivy à remonter"
+        description: "Niveaux de sévérité Trivy (vide = tous les niveaux)"
         type: string
-        default: "CRITICAL,HIGH"
+        default: ""
     secrets:
       registry_username:
         description: "Username registre Docker (optionnel — utilise GITHUB_TOKEN pour ghcr.io)"
@@ -44,13 +58,14 @@ on:
         required: false
 
 jobs:
-  docker-build:
+  docker:
     if: ${{ inputs.enable_build == true }}
-    name: Docker Build & Push
+    name: Docker Build → Scan → Publish
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+      security-events: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
@@ -58,13 +73,59 @@ jobs:
           registry: ${{ inputs.registry }}
           username: ${{ secrets.registry_username || github.actor }}
           password: ${{ secrets.registry_password || secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
       - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
-      - uses: docker/bake-action@82490499d2e5613fcead7e128237ef0b0ea210f7 # v7.0.0
+
+      # ── Phase 1 : build staging tag (pour le scan) ─────────────────────────
+      # Skippé si aucun scan activé (on passe directement au publish final)
+      - name: Set staging tag
+        id: staging
+        if: ${{ inputs.enable_trivy == true || inputs.enable_grype == true }}
+        env:
+          REGISTRY: ${{ inputs.registry }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: echo "tag=${REGISTRY}/${REPOSITORY}:scan-${RUN_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Build staging image
+        if: ${{ inputs.enable_trivy == true || inputs.enable_grype == true }}
+        uses: docker/bake-action@82490499d2e5613fcead7e128237ef0b0ea210f7 # v7.0.0
+        with:
+          push: true
+          set: |
+            *.tags=${{ steps.staging.outputs.tag }}
+
+      # ── Phase 2 : scan ─────────────────────────────────────────────────────
+      # Si un scan échoue, le job échoue et la phase 3 (publish) ne s'exécute pas.
+      - name: Trivy scan
+        if: ${{ inputs.enable_trivy == true }}
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: ${{ steps.staging.outputs.tag }}
+          format: table
+          severity: ${{ inputs.trivy_severity }}
+          exit-code: "1"
+
+      - name: Grype scan
+        if: ${{ inputs.enable_grype == true }}
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        with:
+          image: ${{ steps.staging.outputs.tag }}
+          fail-build: true
+          severity-cutoff: negligible
+
+      # ── Phase 3 : publish final ────────────────────────────────────────────
+      # Tags définis par le bake file du consumer. Cache buildx = republication quasi-instantanée.
+      - name: Publish final image
+        uses: docker/bake-action@82490499d2e5613fcead7e128237ef0b0ea210f7 # v7.0.0
         with:
           push: true
 
+  # ── Mode scan-only (enable_build=false) ────────────────────────────────────
+  # Tourne sur une image existante dans le registre.
+
   trivy-scan:
-    if: ${{ inputs.enable_trivy == true }}
+    if: ${{ inputs.enable_trivy == true && inputs.enable_build == false }}
     name: Container Scan (Trivy)
     runs-on: ubuntu-latest
     permissions:
@@ -74,13 +135,13 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
-          image-ref: ${{ inputs.image_name }}
+          image-ref: "${{ inputs.image_name != '' && inputs.image_name || format('{0}/{1}', inputs.registry, github.repository) }}"
           format: table
           severity: ${{ inputs.trivy_severity }}
           exit-code: "1"
 
   grype-scan:
-    if: ${{ inputs.enable_grype == true }}
+    if: ${{ inputs.enable_grype == true && inputs.enable_build == false }}
     name: Container Scan (grype)
     runs-on: ubuntu-latest
     permissions:
@@ -90,6 +151,6 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:
-          image: ${{ inputs.image_name }}
+          image: "${{ inputs.image_name != '' && inputs.image_name || format('{0}/{1}', inputs.registry, github.repository) }}"
           fail-build: true
-          severity-cutoff: high
+          severity-cutoff: negligible
