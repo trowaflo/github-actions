@@ -2,7 +2,6 @@ name: CI
 
 # Self-CI de ce repo — valide les workflows eux-mêmes avant de les distribuer.
 # Tourne uniquement sur pull_request : bloquer avant merge, pas après.
-# KICS est désactivé (supply chain TeamPCP 2026-03-23) — remplacé par checkov (déjà actif).
 
 on:
   pull_request:
@@ -22,6 +21,8 @@ jobs:
       enable_dependency_review: true
       enable_markdown_lint: true
       enable_yamllint: true
+      enable_kics: true
+      enable_trivy: true
 
   sha-check:
     name: SHA Pinning Check

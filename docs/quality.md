@@ -28,6 +28,8 @@ jobs:
 | `enable_yamllint` | boolean | `false` | Lint YAML avec yamllint |
 | `enable_ansible_lint` | boolean | `false` | Lint Ansible avec ansible-lint |
 | `enable_terraform_validate` | boolean | `false` | `terraform fmt` + `tflint` |
+| `enable_kics` | boolean | `false` | Scan IaC avec KICS (⚠ TeamPCP 2026-03-23 — préférer checkov) |
+| `enable_trivy` | boolean | `false` | Scan IaC/filesystem avec Trivy (severity: HIGH,CRITICAL) |
 | `checkov_framework` | string | `""` | Framework Checkov : `terraform`, `kubernetes`, `helm`, `dockerfile`, `""` = tout |
 
 ## Secrets
@@ -38,7 +40,13 @@ Aucun — utilise `GITHUB_TOKEN` implicitement.
 
 ### KICS
 
-KICS (`checkmarx/kics-github-action`) est **définitivement remplacé** par Checkov. Il a été compromis lors de l'attaque supply chain TeamPCP (2026-03-23). Ne pas le réactiver.
+KICS est disponible via `enable_kics: true`. Le fichier `kics.yml` standalone a été supprimé.
+
+> ⚠ `checkmarx/kics-github-action` a été compromis lors de l'attaque supply chain TeamPCP (2026-03-23). **Préférer `enable_checkov`** sauf besoin spécifique.
+
+### Trivy (IaC)
+
+`enable_trivy: true` lance un scan IaC/filesystem via `aquasecurity/trivy-action` avec severity `HIGH,CRITICAL`. Ce scan est indépendant du scan container Trivy dans `docker.yml`.
 
 ### dependency-review
 

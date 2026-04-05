@@ -41,8 +41,8 @@ jobs:
 
 - All `uses:` are SHA-pinned — never tags (`@v4`) or branches (`@main`)
 - `ci.yml` enforces this with a `sha-check` job on every PR
-- KICS is disabled — replaced by Checkov (not impacted by TeamPCP supply chain attack, 2026-03-23)
-- Trivy and grype available as independent opt-in flags in `docker.yml`
+- KICS available in `quality.yml` via `enable_kics` (⚠ TeamPCP supply chain attack, 2026-03-23 — prefer checkov)
+- Trivy IaC scanning available in `quality.yml` via `enable_trivy`; container scanning in `docker.yml`
 - Claude Code (`claude-code.yml`) — **requires access control on public repos**, restrict to `github.repository_owner` (see [docs](docs/claude-code.md))
 
 ## Deprecated

@@ -12,7 +12,7 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
 .github/workflows/
   # ─── Reusable workflows (call from other repos) ──────────────
   quality.yml          # Security + Linting: gitleaks, checkov, actionlint, dependency-review,
-                       #   markdownlint, yamllint, ansible-lint, terraform-validate
+                       #   markdownlint, yamllint, ansible-lint, terraform-validate, kics, trivy
   ha.yml               # Home Assistant: hacs, hassfest, config-check
   python.yml           # Python CI: pytest+ruff+codecov (generic — HA uses extra_packages)
   helm.yml             # Helm: release, lint, unittest, docs, bump, PR charts, PR cleanup
@@ -29,8 +29,6 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
   ha-integration.yml   # DEPRECATED → migrate to ha.yml + python.yml — consumer: frigate-event-manager
   lint-markdown.yml    # DEPRECATED → migrate to quality.yml — consumer: frigate-event-manager
 
-  # ─── Archived ────────────────────────────────────────────────
-  kics.yml             # DISABLED — supply chain attack on checkmarx/kics-github-action (2026-03-23)
 ```
 
 ## Key conventions
@@ -55,9 +53,13 @@ Dependency updates are managed by Renovate using the shared config at `github>tr
 - **Security / quality universelle** (gitleaks, checkov, actionlint) → `true` by default (opt-out)
 - **Domain-specific** (ansible, terraform, helm, HA, docker) → `false` by default (opt-in)
 
-### KICS workflow
+### KICS
 
-The KICS workflow (`kics.yml`) is intentionally disabled due to a supply chain attack on `checkmarx/kics-github-action` detected on 2026-03-23 (TeamPCP campaign). It is **not** re-enabled — `checkov` (Bridgecrew/Prisma Cloud) replaces it in `quality.yml` and was not impacted by TeamPCP.
+KICS is available in `quality.yml` via `enable_kics`. The standalone `kics.yml` was removed. Note: `checkmarx/kics-github-action` was impacted by the TeamPCP supply chain attack (2026-03-23) — `checkov` is the recommended alternative.
+
+### IaC scanning (Trivy)
+
+`quality.yml` provides `enable_trivy` for IaC/filesystem scanning via `aquasecurity/trivy-action` (severity: HIGH,CRITICAL). This is independent from the container Trivy scan in `docker.yml`.
 
 ### Container scanning (Trivy vs grype)
 
@@ -96,6 +98,8 @@ jobs:
 | `enable_yamllint` | `false` | yamllint |
 | `enable_ansible_lint` | `false` | ansible-lint |
 | `enable_terraform_validate` | `false` | terraform fmt + tflint |
+| `enable_kics` | `false` | IaC scan via KICS (⚠ TeamPCP — prefer checkov) |
+| `enable_trivy` | `false` | IaC/filesystem scan via Trivy |
 | `checkov_framework` | `""` | terraform / kubernetes / helm / dockerfile / "" (all) |
 
 ## ha.yml inputs
