@@ -90,10 +90,11 @@ jobs:
           set -euo pipefail
           VERSION=1.7.12
           ARCHIVE="actionlint_${VERSION}_linux_amd64.tar.gz"
+          CHECKSUMS="actionlint_${VERSION}_checksums.txt"
           BASE_URL="https://github.com/rhysd/actionlint/releases/download/v${VERSION}"
           curl -fsSLO "${BASE_URL}/${ARCHIVE}"
-          curl -fsSLO "${BASE_URL}/checksums.txt"
-          grep " ${ARCHIVE}$" checksums.txt | sha256sum -c -
+          curl -fsSLO "${BASE_URL}/${CHECKSUMS}"
+          grep " ${ARCHIVE}$" "${CHECKSUMS}" | sha256sum -c -
           tar -xzf "${ARCHIVE}" actionlint
       - name: Run actionlint
         run: ./actionlint -color
