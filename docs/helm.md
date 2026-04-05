@@ -32,6 +32,7 @@ jobs:
 
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
+| `enable_harden_runner` | boolean | `false` | Monitoring réseau via StepSecurity harden-runner (egress audit) |
 | `enable_release` | boolean | `false` | Release via chart-releaser |
 | `enable_lint` | boolean | `false` | Lint avec `ct lint` |
 | `enable_unittest` | boolean | `false` | Unit tests avec helm-unittest |

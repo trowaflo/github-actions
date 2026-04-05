@@ -41,6 +41,7 @@ jobs:
 
 - All `uses:` are SHA-pinned — never tags (`@v4`) or branches (`@main`)
 - `ci.yml` enforces this with a `sha-check` job on every PR
+- `enable_harden_runner` available on all workflows — [StepSecurity harden-runner](https://github.com/step-security/harden-runner) monitors network egress in audit mode to detect compromised actions
 - KICS available in `quality.yml` via `enable_kics` (⚠ TeamPCP supply chain attack, 2026-03-23 — prefer checkov)
 - Trivy IaC scanning available in `quality.yml` via `enable_trivy`; container scanning in `docker.yml`
 - Claude Code (`claude-code.yml`) — **requires access control on public repos**, restrict to `github.repository_owner` (see [docs](docs/claude-code.md))

@@ -53,13 +53,17 @@ Dependency updates are managed by Renovate using the shared config at `github>tr
 - **Security / quality universelle** (gitleaks, checkov, actionlint) → `true` by default (opt-out)
 - **Domain-specific** (ansible, terraform, helm, HA, docker) → `false` by default (opt-in)
 
+### Harden Runner
+
+All reusable workflows support `enable_harden_runner` (default: `false`). When enabled, [StepSecurity harden-runner](https://github.com/step-security/harden-runner) monitors network egress in audit mode on every job — detects compromised actions phoning home. No blocking, just observability.
+
 ### KICS
 
 KICS is available in `quality.yml` via `enable_kics`. The standalone `kics.yml` was removed. Note: `checkmarx/kics-github-action` was impacted by the TeamPCP supply chain attack (2026-03-23) — `checkov` is the recommended alternative.
 
 ### IaC scanning (Trivy)
 
-`quality.yml` provides `enable_trivy` for IaC/filesystem scanning via `aquasecurity/trivy-action` (severity: HIGH,CRITICAL). This is independent from the container Trivy scan in `docker.yml`.
+`quality.yml` provides `enable_trivy` for IaC/filesystem scanning via `aquasecurity/trivy-action`. Severity is configurable via `trivy_severity` (default: all levels). This is independent from the container Trivy scan in `docker.yml`.
 
 ### Container scanning (Trivy vs grype)
 
@@ -90,6 +94,7 @@ jobs:
 
 | Input | Default | Description |
 | --- | --- | --- |
+| `enable_harden_runner` | `false` | Runtime network monitoring via StepSecurity harden-runner |
 | `enable_gitleaks` | `true` | Secret scanning |
 | `enable_checkov` | `true` | IaC misconfig scan (replaces KICS) |
 | `enable_actionlint` | `true` | Lint GitHub Actions workflow files |
@@ -101,11 +106,13 @@ jobs:
 | `enable_kics` | `false` | IaC scan via KICS (⚠ TeamPCP — prefer checkov) |
 | `enable_trivy` | `false` | IaC/filesystem scan via Trivy |
 | `checkov_framework` | `""` | terraform / kubernetes / helm / dockerfile / "" (all) |
+| `trivy_severity` | `"UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"` | Trivy severity levels |
 
 ## ha.yml inputs
 
 | Input | Default | Description |
 | --- | --- | --- |
+| `enable_harden_runner` | `false` | Runtime network monitoring via StepSecurity harden-runner |
 | `enable_hacs` | `false` | HACS validation |
 | `enable_hassfest` | `false` | hassfest validation |
 | `enable_config_check` | `false` | HA config check |
@@ -115,6 +122,7 @@ jobs:
 
 | Input | Default | Description |
 | --- | --- | --- |
+| `enable_harden_runner` | `false` | Runtime network monitoring via StepSecurity harden-runner |
 | `enable_test` | `false` | pytest + codecov |
 | `enable_lint` | `false` | ruff lint |
 | `python_version` | `"3.13"` | Python version |
@@ -129,6 +137,7 @@ Secret: `codecov_token` (optional)
 
 | Input | Default | Description |
 | --- | --- | --- |
+| `enable_harden_runner` | `false` | Runtime network monitoring via StepSecurity harden-runner |
 | `enable_build` | `false` | Docker build & push via bake |
 | `enable_trivy` | `false` | CVE scan via Trivy |
 | `enable_grype` | `false` | CVE scan via grype |

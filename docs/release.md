@@ -24,6 +24,7 @@ jobs:
 
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
+| `enable_harden_runner` | boolean | `false` | Monitoring réseau via StepSecurity harden-runner (egress audit) |
 | `enable_release_please` | boolean | `false` | Déclencher la création de PR release + tag |
 | `release_config_file` | string | `""` | Chemin vers `release-please-config.json` (défaut : racine du repo) |
 | `release_manifest_file` | string | `""` | Chemin vers `.release-please-manifest.json` (défaut : racine du repo) |

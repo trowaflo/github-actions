@@ -36,6 +36,12 @@ jobs:
       github.event.comment.author_association == 'COLLABORATOR'
 ```
 
+## Inputs
+
+| Input | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enable_harden_runner` | boolean | `false` | Monitoring réseau via StepSecurity harden-runner (egress audit) |
+
 ## Secrets
 
 | Secret | Requis | Description |

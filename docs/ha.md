@@ -31,6 +31,7 @@ jobs:
 
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
+| `enable_harden_runner` | boolean | `false` | Monitoring réseau via StepSecurity harden-runner (egress audit) |
 | `enable_hacs` | boolean | `false` | Validation HACS |
 | `enable_hassfest` | boolean | `false` | Validation hassfest |
 | `enable_config_check` | boolean | `false` | HA config check |

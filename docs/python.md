@@ -37,6 +37,7 @@ jobs:
 
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
+| `enable_harden_runner` | boolean | `false` | Monitoring réseau via StepSecurity harden-runner (egress audit) |
 | `enable_test` | boolean | `false` | Tests pytest + couverture codecov |
 | `enable_lint` | boolean | `false` | Lint ruff |
 | `python_version` | string | `"3.13"` | Version Python |

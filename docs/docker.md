@@ -60,6 +60,7 @@ jobs:
 
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
+| `enable_harden_runner` | boolean | `false` | Monitoring réseau via StepSecurity harden-runner (egress audit) |
 | `enable_build` | boolean | `false` | Docker build & push via bake |
 | `enable_trivy` | boolean | `false` | CVE scan via Trivy (aquasecurity) |
 | `enable_grype` | boolean | `false` | CVE scan via grype (Anchore/Cisco) |

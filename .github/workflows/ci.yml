@@ -15,6 +15,7 @@ jobs:
   quality:
     uses: ./.github/workflows/quality.yml
     with:
+      enable_harden_runner: true
       enable_gitleaks: true
       enable_checkov: true
       enable_actionlint: true
