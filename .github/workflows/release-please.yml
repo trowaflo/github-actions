@@ -15,5 +15,8 @@ permissions:
 jobs:
   release:
     uses: ./.github/workflows/release.yml
+    permissions:
+      contents: write
+      pull-requests: write
     with:
       enable_release_please: true
