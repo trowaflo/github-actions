@@ -1,3 +1,6 @@
+# DEPRECATED — Migrer vers ha.yml (enable_integration: true).
+# Conservé pour rétrocompatibilité (consumer: frigate-event-manager).
+# Sera supprimé après migration de frigate-event-manager vers ha.yml.
 name: HA Python CI
 
 on:

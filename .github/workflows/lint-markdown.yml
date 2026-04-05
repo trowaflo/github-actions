@@ -1,3 +1,6 @@
+# DEPRECATED — Migrer vers quality.yml (enable_markdown_lint: true).
+# Conservé pour rétrocompatibilité (consumer: frigate-event-manager).
+# Sera supprimé après migration de frigate-event-manager vers quality.yml.
 name: Markdown Lint
 
 on:

@@ -1,0 +1,41 @@
+name: Release
+
+# Reusable workflow — Release Management via release-please
+# Usage: uses: trowaflo/github-actions/.github/workflows/release.yml@<sha>
+#
+# Pour Claude Code, utiliser claude-code.yml à la place.
+
+on:
+  workflow_call:
+    inputs:
+      enable_release_please:
+        description: "Automated releases via release-please"
+        type: boolean
+        default: false
+      release_config_file:
+        description: "Chemin vers release-please-config.json"
+        type: string
+        default: ""
+      release_manifest_file:
+        description: "Chemin vers .release-please-manifest.json"
+        type: string
+        default: ""
+    secrets:
+      release_token:
+        description: "PAT pour release-please (optionnel — utilise GITHUB_TOKEN si absent)"
+        required: false
+
+jobs:
+  release-please:
+    if: ${{ inputs.enable_release_please == true }}
+    name: Release Please
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
+        with:
+          token: ${{ secrets.release_token || secrets.GITHUB_TOKEN }}
+          config-file: ${{ inputs.release_config_file || 'release-please-config.json' }}
+          manifest-file: ${{ inputs.release_manifest_file || '.release-please-manifest.json' }}

@@ -1,0 +1,44 @@
+name: CI
+
+# Self-CI de ce repo — valide les workflows eux-mêmes avant de les distribuer.
+# Tourne uniquement sur pull_request : bloquer avant merge, pas après.
+# KICS est désactivé (supply chain TeamPCP 2026-03-23) — remplacé par checkov (déjà actif).
+
+on:
+  pull_request:
+
+jobs:
+  quality:
+    uses: ./.github/workflows/quality.yml
+    with:
+      enable_gitleaks: true
+      enable_checkov: true
+      enable_actionlint: true
+      enable_dependency_review: true
+      enable_markdown_lint: true
+      enable_yamllint: true
+
+  sha-check:
+    name: SHA Pinning Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Verify all external uses are SHA-pinned
+        run: |
+          # Matches both `uses:` and step syntax `- uses:`
+          # Excludes: local workflow references (./.github/workflows/)
+          UNPINNED=$(grep -rn '^\s*-\?\s*uses:\s' .github/workflows/ \
+            | grep -v '\./.github/workflows/' \
+            | grep -v '@[0-9a-f]\{40\}')
+
+          if [ -n "$UNPINNED" ]; then
+            echo "ERROR: Found uses: references without SHA pinning:"
+            echo "$UNPINNED"
+            echo ""
+            echo "All external uses: must be pinned to a full 40-char SHA."
+            echo "Use: uses: owner/action@<40-char-sha> # vX.Y.Z"
+            exit 1
+          fi
+          echo "All external uses: are properly SHA-pinned."

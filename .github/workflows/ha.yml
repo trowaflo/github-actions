@@ -1,0 +1,73 @@
+name: Home Assistant
+
+# Reusable workflow — Home Assistant CI
+# Usage: uses: trowaflo/github-actions/.github/workflows/ha.yml@<sha>
+#
+# Tous les jobs sont domaine-spécifiques → false par défaut (opt-in explicite).
+#
+# Tests Python et lint : utiliser python.yml (workflow dédié, indépendant de HA).
+# Pour un repo HA : appeler python.yml avec extra_packages=pytest-homeassistant-custom-component.
+
+on:
+  workflow_call:
+    inputs:
+      enable_hacs:
+        description: "Validation HACS"
+        type: boolean
+        default: false
+      enable_hassfest:
+        description: "Validation hassfest"
+        type: boolean
+        default: false
+      enable_config_check:
+        description: "HA config check"
+        type: boolean
+        default: false
+      ha_version:
+        description: "Version Home Assistant — requis si enable_config_check"
+        type: string
+        default: ""
+
+jobs:
+  hacs:
+    if: ${{ inputs.enable_hacs == true }}
+    name: HACS Validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: hacs/action@d556e736723344f83838d08488c983a15381059a # 22.5.0
+        with:
+          category: integration
+
+  hassfest:
+    if: ${{ inputs.enable_hassfest == true }}
+    name: Hassfest Validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: home-assistant/actions/hassfest@5752577ea7cc5aefb064b0b21432f18fe4d6ba90 # master
+
+  config-check:
+    if: ${{ inputs.enable_config_check == true }}
+    name: HA Config Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Validate ha_version
+        env:
+          HA_VERSION: ${{ inputs.ha_version }}
+        run: |
+          if [ -z "$HA_VERSION" ]; then
+            echo "ERROR: ha_version is required when enable_config_check is true"
+            exit 1
+          fi
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: frenck/action-home-assistant@941d5d917f4c1c7a7e7d4087526daf90d53f4437 # v1.4.1
+        with:
+          path: .
+          ha_version: ${{ inputs.ha_version }}
