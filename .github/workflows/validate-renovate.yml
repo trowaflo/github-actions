@@ -61,7 +61,7 @@ jobs:
           if [ -n "$CONFIG_FILES" ]; then
             files="$CONFIG_FILES"
           else
-            files=$(ls ./*.json ./*.json5 2>/dev/null | grep -i 'renovate' || true)
+            files=$(find . -maxdepth 1 -name '*renovate*' \( -name '*.json' -o -name '*.json5' \) 2>/dev/null || true)
           fi
           for f in $files; do
             if [ -f "$f" ]; then
