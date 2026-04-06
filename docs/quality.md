@@ -29,6 +29,7 @@ jobs:
 | `enable_yamllint` | boolean | `false` | Lint YAML avec yamllint |
 | `enable_ansible_lint` | boolean | `false` | Lint Ansible avec ansible-lint |
 | `enable_terraform_validate` | boolean | `false` | `terraform fmt` + `tflint` |
+| `enable_json_lint` | boolean | `false` | Validation syntaxe JSON et JSON5 |
 | `enable_kics` | boolean | `false` | Scan IaC avec KICS (⚠ TeamPCP 2026-03-23 — préférer checkov) |
 | `enable_trivy` | boolean | `false` | Scan IaC/filesystem avec Trivy |
 | `checkov_framework` | string | `""` | Framework Checkov : `terraform`, `kubernetes`, `helm`, `dockerfile`, `""` = tout |

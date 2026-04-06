@@ -45,6 +45,10 @@ on:
         description: "Validation Terraform : fmt check + tflint"
         type: boolean
         default: false
+      enable_json_lint:
+        description: "Validation syntaxe JSON et JSON5"
+        type: boolean
+        default: false
       enable_kics:
         description: "Scan IaC avec KICS (⚠ checkmarx/kics-github-action impacté TeamPCP 2026-03-23)"
         type: boolean
@@ -221,6 +225,39 @@ jobs:
         run: tflint --init
       - name: TFLint run
         run: tflint --recursive --format compact
+
+  json-lint:
+    if: ${{ inputs.enable_json_lint == true }}
+    name: Lint JSON
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Validate JSON and JSON5 files
+        run: |
+          pip install --quiet json5
+          exit_code=0
+          for f in $(find . -name '*.json' -not -path './.git/*' -not -path './node_modules/*'); do
+            if ! python3 -c "import json; json.load(open('$f'))"; then
+              echo "❌ Invalid JSON: $f"; exit_code=1
+            else
+              echo "✅ $f"
+            fi
+          done
+          for f in $(find . -name '*.json5' -not -path './.git/*' -not -path './node_modules/*'); do
+            if ! python3 -c "import json5; json5.load(open('$f'))"; then
+              echo "❌ Invalid JSON5: $f"; exit_code=1
+            else
+              echo "✅ $f"
+            fi
+          done
+          exit $exit_code
 
   kics:
     if: ${{ inputs.enable_kics == true }}
