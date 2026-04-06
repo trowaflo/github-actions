@@ -17,15 +17,10 @@ jobs:
       security-events: write
     with:
       enable_harden_runner: true
-      enable_gitleaks: true
-      enable_checkov: true
-      enable_actionlint: true
       enable_dependency_review: true
       enable_markdown_lint: true
       enable_yamllint: true
       enable_json_lint: true
-      enable_kics: true
-      enable_trivy: true
 
   validate-renovate:
     uses: ./.github/workflows/validate-renovate.yml

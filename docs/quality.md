@@ -10,7 +10,8 @@ jobs:
     uses: trowaflo/github-actions/.github/workflows/quality.yml@<sha> # vX.Y.Z
     permissions:
       contents: read
-      security-events: write
+      pull-requests: write     # gitleaks annotations, dependency-review, KICS comments
+      security-events: write   # SARIF uploads (checkov, actionlint, trivy, kics)
     with:
       enable_gitleaks: true       # default — désactiver si besoin
       enable_checkov: true        # default — désactiver si besoin
@@ -35,10 +36,18 @@ jobs:
 | `enable_ansible_lint` | boolean | `false` | Lint Ansible avec ansible-lint |
 | `enable_terraform_validate` | boolean | `false` | `terraform fmt` + `tflint` |
 | `enable_json_lint` | boolean | `false` | Validation syntaxe JSON et JSON5 |
-| `enable_kics` | boolean | `false` | Scan IaC avec KICS (⚠ TeamPCP 2026-03-23 — préférer checkov) |
-| `enable_trivy` | boolean | `false` | Scan IaC/filesystem avec Trivy |
+| `enable_kics` | boolean | `true` | Scan IaC avec KICS (⚠ TeamPCP 2026-03-23 — SHA pinné pré-incident) |
+| `enable_trivy` | boolean | `true` | Scan IaC/filesystem avec Trivy |
 | `checkov_framework` | string | `""` | Framework Checkov : `terraform`, `kubernetes`, `helm`, `dockerfile`, `""` = tout |
 | `trivy_severity` | string | `"UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"` | Niveaux de sévérité Trivy |
+
+## Permissions requises
+
+| Permission | Jobs qui l'utilisent |
+| --- | --- |
+| `contents: read` | Tous les jobs (checkout) |
+| `pull-requests: write` | gitleaks (annotations), dependency-review, KICS (commentaires) |
+| `security-events: write` | checkov, actionlint, trivy, KICS (upload SARIF) |
 
 ## Secrets
 
@@ -48,9 +57,9 @@ Aucun — utilise `GITHUB_TOKEN` implicitement.
 
 ### KICS
 
-KICS est disponible via `enable_kics: true`. Le fichier `kics.yml` standalone a été supprimé.
+KICS est disponible via `enable_kics: true` (défaut). Le fichier `kics.yml` standalone a été supprimé.
 
-> ⚠ `checkmarx/kics-github-action` a été compromis lors de l'attaque supply chain TeamPCP (2026-03-23). **Préférer `enable_checkov`** sauf besoin spécifique.
+> ⚠ `checkmarx/kics-github-action` a été compromis lors de l'attaque supply chain TeamPCP (2026-03-23). Le SHA actuel est pinné sur un commit pré-incident (`v2.1.20`, 2026-03-04). Le SHA pinning protège contre le tag hijack.
 
 ### Trivy (IaC)
 
@@ -58,9 +67,19 @@ KICS est disponible via `enable_kics: true`. Le fichier `kics.yml` standalone a 
 
 Les résultats sont uploadés au format SARIF dans l'onglet **Security > Code scanning** du repo, avec des annotations inline sur les PRs.
 
+### actionlint
+
+Version gérée via Renovate (`datasource=github-releases depName=rhysd/actionlint`). Les binaires sont vérifiés par checksum SHA-256.
+
+Les résultats sont uploadés au format SARIF — annotations inline sur les PRs.
+
 ### dependency-review
 
 Ce job ne s'exécute que si le workflow caller est déclenché par `pull_request`. Si activé depuis un workflow `push`, il sera automatiquement ignoré.
+
+### json_lint
+
+Valide la syntaxe de tous les fichiers `*.json` (via `json.load`) et `*.json5` (via `json5.load`). Les fichiers dans `.git/` et `node_modules/` sont exclus.
 
 ### yamllint
 

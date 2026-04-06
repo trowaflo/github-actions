@@ -44,8 +44,9 @@ jobs:
 
 ## Defaults philosophy
 
-- **Security / universal quality** → `true` by default (opt-out): `enable_gitleaks`, `enable_checkov`, `enable_actionlint`
+- **Security / universal quality** → `true` by default (opt-out): `enable_gitleaks`, `enable_checkov`, `enable_actionlint`, `enable_kics`, `enable_trivy`
 - **Domain-specific** → `false` by default (opt-in): everything else
+- **Triggers** — Quality/lint workflows should use `on: [pull_request]` only, not `push` to `main` (avoids running the same checks twice). Use `push` triggers for post-merge workflows: `release.yml`, `docker.yml` (publish), `helm.yml` (chart release)
 
 ## Security
 
@@ -53,8 +54,8 @@ jobs:
 - `ci.yml` enforces this with a `sha-check` job on every PR
 - **Checkov**, **Trivy**, **KICS** and **actionlint** upload results in SARIF format to **Security > Code scanning** — inline annotations on PRs
 - `enable_harden_runner` available on all workflows (default: `true`, egress `block`) — [StepSecurity harden-runner](https://github.com/step-security/harden-runner) blocks unauthorized network egress. Each workflow ships with built-in default endpoints. Start with `harden_runner_egress_policy: audit` to discover additional endpoints, then switch to `block`
-- KICS available in `quality.yml` via `enable_kics` (⚠ TeamPCP supply chain attack, 2026-03-23 — prefer checkov)
-- Trivy IaC scanning available in `quality.yml` via `enable_trivy`; container scanning in `docker.yml`
+- KICS available in `quality.yml` via `enable_kics` (default: `true`) — ⚠ TeamPCP supply chain attack (2026-03-23), SHA pinned to pre-incident commit
+- Trivy IaC scanning available in `quality.yml` via `enable_trivy` (default: `true`); container scanning in `docker.yml`
 - Claude Code (`claude-code.yml`) — **requires access control on public repos**, restrict to `github.repository_owner` (see [docs](docs/claude-code.md))
 
 ## Deprecated
