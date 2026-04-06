@@ -5,6 +5,11 @@ name: Markdown Lint
 
 on:
   workflow_call:
+    inputs:
+      enable_harden_runner:
+        description: "Network monitoring via StepSecurity harden-runner (egress audit)"
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -15,6 +20,11 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 

@@ -19,6 +19,7 @@ All external `uses:` references are pinned to full commit SHAs. Renovate manages
 | [`docker.yml`](.github/workflows/docker.yml) | — (all opt-in) | [docs/docker.md](docs/docker.md) |
 | [`release.yml`](.github/workflows/release.yml) | — (all opt-in) | [docs/release.md](docs/release.md) |
 | [`claude-code.yml`](.github/workflows/claude-code.yml) | — (all opt-in) | [docs/claude-code.md](docs/claude-code.md) |
+| [`validate-renovate.yml`](.github/workflows/validate-renovate.yml) | — (all opt-in) | [docs/validate-renovate.md](docs/validate-renovate.md) |
 
 ## Quick start
 

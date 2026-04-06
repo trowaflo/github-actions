@@ -14,7 +14,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      repository-projects: write
       security-events: write
     with:
       enable_harden_runner: true
@@ -24,8 +23,14 @@ jobs:
       enable_dependency_review: true
       enable_markdown_lint: true
       enable_yamllint: true
+      enable_json_lint: true
       enable_kics: true
       enable_trivy: true
+
+  validate-renovate:
+    uses: ./.github/workflows/validate-renovate.yml
+    permissions:
+      contents: read
 
   sha-check:
     name: SHA Pinning Check

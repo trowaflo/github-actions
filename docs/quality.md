@@ -8,6 +8,9 @@ Sécurité + Linting universel. Les jobs de sécurité sont **activés par défa
 jobs:
   quality:
     uses: trowaflo/github-actions/.github/workflows/quality.yml@<sha> # vX.Y.Z
+    permissions:
+      contents: read
+      security-events: write
     with:
       enable_gitleaks: true       # default — désactiver si besoin
       enable_checkov: true        # default — désactiver si besoin

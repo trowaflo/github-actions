@@ -9,39 +9,39 @@ on:
   workflow_call:
     inputs:
       enable_harden_runner:
-        description: "Monitoring réseau des runners via StepSecurity harden-runner (egress audit)"
+        description: "Network monitoring via StepSecurity harden-runner (egress audit)"
         type: boolean
         default: false
       enable_release:
-        description: "Release des charts via chart-releaser"
+        description: "Release charts via chart-releaser"
         type: boolean
         default: false
       enable_lint:
-        description: "Lint des charts avec chart-testing (ct lint)"
+        description: "Lint charts with chart-testing (ct lint)"
         type: boolean
         default: false
       enable_unittest:
-        description: "Unit tests Helm avec helm-unittest"
+        description: "Helm unit tests with helm-unittest"
         type: boolean
         default: false
       enable_docs:
-        description: "Génération de la documentation avec helm-docs"
+        description: "Documentation generation with helm-docs"
         type: boolean
         default: false
       enable_bump:
-        description: "Auto-bump de version des charts modifiés sur PR"
+        description: "Auto-bump versions of modified charts on PR"
         type: boolean
         default: false
       enable_pr_charts:
-        description: "Packaging des charts modifiés sur PR (commentaire de téléchargement)"
+        description: "Package modified charts on PR (download comment)"
         type: boolean
         default: false
       enable_pr_cleanup:
-        description: "Nettoyage des commentaires de charts après merge/fermeture PR"
+        description: "Cleanup chart comments after PR merge/close"
         type: boolean
         default: false
       charts_dir:
-        description: "Répertoire racine des charts Helm"
+        description: "Root directory for Helm charts"
         type: string
         default: "charts"
 
@@ -49,7 +49,7 @@ permissions: {}
 
 jobs:
   helm-release:
-    if: ${{ inputs.enable_release == true }}
+    if: ${{ inputs.enable_release }}
     name: Helm Release
     runs-on: ubuntu-latest
     permissions:
@@ -57,7 +57,7 @@ jobs:
       pages: write
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner == true }}
+        if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: audit
@@ -72,14 +72,14 @@ jobs:
           CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   helm-lint:
-    if: ${{ inputs.enable_lint == true }}
+    if: ${{ inputs.enable_lint }}
     name: Helm Lint
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner == true }}
+        if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: audit
@@ -97,7 +97,7 @@ jobs:
         run: ct lint --chart-dirs "$CHARTS_DIR"
 
   helm-unittest:
-    if: ${{ inputs.enable_unittest == true }}
+    if: ${{ inputs.enable_unittest }}
     name: Helm Unit Tests
     runs-on: ubuntu-latest
     permissions:
@@ -105,7 +105,7 @@ jobs:
       checks: write
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner == true }}
+        if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: audit
@@ -117,7 +117,7 @@ jobs:
           path: ~/.local/share/helm/plugins
           key: helm-unittest-${{ runner.os }}
       - name: Install helm-unittest plugin
-        run: helm plugin install https://github.com/helm-unittest/helm-unittest.git || true
+        run: helm plugin list | grep -q unittest || helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v0.7.3
       - name: Run helm unittest
         env:
           CHARTS_DIR: ${{ inputs.charts_dir }}
@@ -131,14 +131,14 @@ jobs:
           files: test-results.xml
 
   helm-docs:
-    if: ${{ inputs.enable_docs == true }}
+    if: ${{ inputs.enable_docs }}
     name: Helm Docs
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner == true }}
+        if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: audit
@@ -149,6 +149,7 @@ jobs:
       - name: Install helm-docs v1.14.2 with checksum verification
         run: |
           set -euo pipefail
+          # renovate: datasource=github-releases depName=norwoodj/helm-docs
           VERSION=1.14.2
           ARCHIVE="helm-docs_${VERSION}_Linux_x86_64.tar.gz"
           BASE_URL="https://github.com/norwoodj/helm-docs/releases/download/v${VERSION}"
@@ -170,7 +171,7 @@ jobs:
           git diff --quiet || (git add "$CHARTS_DIR" && git commit -m "docs: update helm-docs" && git push)
 
   helm-bump:
-    if: ${{ inputs.enable_bump == true }}
+    if: ${{ inputs.enable_bump }}
     name: Helm Version Bump
     runs-on: ubuntu-latest
     permissions:
@@ -178,7 +179,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner == true }}
+        if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: audit
@@ -208,7 +209,7 @@ jobs:
           git diff --quiet || (git add "$CHARTS_DIR" && git commit -m "chore: bump chart versions" && git push)
 
   helm-pr-charts:
-    if: ${{ inputs.enable_pr_charts == true && github.event_name == 'pull_request' }}
+    if: ${{ inputs.enable_pr_charts && github.event_name == 'pull_request' }}
     name: PR Chart Packages
     runs-on: ubuntu-latest
     permissions:
@@ -216,7 +217,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner == true }}
+        if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: audit
@@ -247,14 +248,14 @@ jobs:
             });
 
   helm-pr-cleanup:
-    if: ${{ inputs.enable_pr_cleanup == true && github.event_name == 'pull_request' }}
+    if: ${{ inputs.enable_pr_cleanup && github.event_name == 'pull_request' }}
     name: PR Chart Cleanup
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner == true }}
+        if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: audit

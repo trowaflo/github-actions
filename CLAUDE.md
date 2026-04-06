@@ -19,6 +19,7 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
   docker.yml           # Docker: build/push, trivy scan, grype scan
   release.yml          # Release: release-please
   claude-code.yml      # Claude Code: @claude mentions + /review command
+  validate-renovate.yml # Renovate: config file validation
 
   # ─── Self-CI (this repo only) ────────────────────────────────
   ci.yml               # Calls quality.yml locally + sha-check (enforces SHA pinning)
@@ -152,3 +153,44 @@ Secret: `codecov_token` (optional)
 | `trivy_severity` | `""` | Trivy severity levels (empty = all) |
 
 Secrets: `registry_username`, `registry_password` (both optional — defaults to GITHUB_TOKEN for ghcr.io)
+
+## helm.yml inputs
+
+| Input | Default | Description |
+| --- | --- | --- |
+| `enable_harden_runner` | `false` | Runtime network monitoring via StepSecurity harden-runner |
+| `enable_release` | `false` | Release charts via chart-releaser |
+| `enable_lint` | `false` | Lint charts with chart-testing (ct lint) |
+| `enable_unittest` | `false` | Helm unit tests with helm-unittest |
+| `enable_docs` | `false` | Documentation generation with helm-docs |
+| `enable_bump` | `false` | Auto-bump versions of modified charts on PR |
+| `enable_pr_charts` | `false` | Package modified charts on PR (download comment) |
+| `enable_pr_cleanup` | `false` | Cleanup chart comments after PR merge/close |
+| `charts_dir` | `"charts"` | Root directory for Helm charts |
+
+## release.yml inputs
+
+| Input | Default | Description |
+| --- | --- | --- |
+| `enable_harden_runner` | `false` | Runtime network monitoring via StepSecurity harden-runner |
+| `enable_release_please` | `false` | Automated releases via release-please |
+| `release_config_file` | `""` | Path to release-please-config.json |
+| `release_manifest_file` | `""` | Path to .release-please-manifest.json |
+
+Secret: `release_token` (optional — uses GITHUB_TOKEN if absent)
+
+## claude-code.yml inputs
+
+| Input | Default | Description |
+| --- | --- | --- |
+| `enable_harden_runner` | `false` | Runtime network monitoring via StepSecurity harden-runner |
+
+Secret: `claude_code_oauth_token` (required)
+
+## validate-renovate.yml inputs
+
+| Input | Default | Description |
+| --- | --- | --- |
+| `enable_harden_runner` | `false` | Runtime network monitoring via StepSecurity harden-runner |
+| `node_version` | `"22"` | Node.js version for renovate-config-validator |
+| `config_files` | `""` | Glob pattern of files to validate (default: `*.json` `*.json5` at root) |
