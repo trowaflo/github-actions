@@ -1,5 +1,29 @@
 # Changelog
 
+## [3.0.0](https://github.com/trowaflo/github-actions/compare/v2.0.0...v3.0.0) (2026-04-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* **github-actions:** Update actions/setup-node action (actions/setup-node v6.3.0) ([#25](https://github.com/trowaflo/github-actions/issues/25))
+
+### Features
+
+* add json-lint job and validate-renovate reusable workflow ([#18](https://github.com/trowaflo/github-actions/issues/18)) ([7a6d266](https://github.com/trowaflo/github-actions/commit/7a6d266189f57b20d02fe58648717b785055976b))
+* SARIF upload pour checkov, trivy, actionlint, kics + badges README ([#21](https://github.com/trowaflo/github-actions/issues/21)) ([89183bc](https://github.com/trowaflo/github-actions/commit/89183bc58b300175e44cb55b1edea7a7de4fc48e))
+
+
+### Bug Fixes
+
+* add default endpoints to release.yml ([#30](https://github.com/trowaflo/github-actions/issues/30)) ([fba3f66](https://github.com/trowaflo/github-actions/commit/fba3f66ab2fa1cac298095705544a7d71ed7be7f))
+* address all 26 deep review findings ([#26](https://github.com/trowaflo/github-actions/issues/26)) ([834934b](https://github.com/trowaflo/github-actions/commit/834934b3386d34fc05737e0f631430255177680b))
+* correct actions/setup-node SHA (v4.5.0 n'existe pas) ([#23](https://github.com/trowaflo/github-actions/issues/23)) ([362ed2a](https://github.com/trowaflo/github-actions/commit/362ed2af3c0ed0506aef310081350a97e2b4db7f))
+
+
+### Continuous Integration
+
+* **github-actions:** Update actions/setup-node action (actions/setup-node v6.3.0) ([#25](https://github.com/trowaflo/github-actions/issues/25)) ([684d46c](https://github.com/trowaflo/github-actions/commit/684d46ce959268ad6a628ad8434069d2ecb159fb))
+
 ## [2.0.0](https://github.com/trowaflo/github-actions/compare/v1.0.0...v2.0.0) (2026-04-06)
 
 
