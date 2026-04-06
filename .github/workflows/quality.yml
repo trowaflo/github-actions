@@ -28,6 +28,7 @@ on:
           pypi.org:443
           files.pythonhosted.org:443
           raw.githubusercontent.com:443
+          registry.npmjs.org:443
           ghcr.io:443
           pkg-containers.githubusercontent.com:443
           get.trivy.dev:443
