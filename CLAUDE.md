@@ -148,7 +148,9 @@ jobs:
 | `enable_hacs` | `false` | HACS validation |
 | `enable_hassfest` | `false` | hassfest validation |
 | `enable_config_check` | `false` | HA config check |
-| `ha_version` | `""` | HA version (required if enable_config_check) |
+| `ha_version` | `""` | HA version (required if enable_config_check, e.g. `2026.3.4`, `stable`) |
+| `config_check_secrets` | `""` | Path to secrets file for config check (e.g. `secrets.fake.yaml`) |
+| `config_check_setup` | `""` | Shell commands to run before config check (e.g. install custom components) |
 
 ## python.yml inputs
 
