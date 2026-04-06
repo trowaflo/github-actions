@@ -243,20 +243,20 @@ jobs:
         run: |
           pip install --quiet json5
           exit_code=0
-          for f in $(find . -name '*.json' -not -path './.git/*' -not -path './node_modules/*'); do
+          while IFS= read -r -d '' f; do
             if ! python3 -c "import json; json.load(open('$f'))"; then
               echo "❌ Invalid JSON: $f"; exit_code=1
             else
               echo "✅ $f"
             fi
-          done
-          for f in $(find . -name '*.json5' -not -path './.git/*' -not -path './node_modules/*'); do
+          done < <(find . -name '*.json' -not -path './.git/*' -not -path './node_modules/*' -print0)
+          while IFS= read -r -d '' f; do
             if ! python3 -c "import json5; json5.load(open('$f'))"; then
               echo "❌ Invalid JSON5: $f"; exit_code=1
             else
               echo "✅ $f"
             fi
-          done
+          done < <(find . -name '*.json5' -not -path './.git/*' -not -path './node_modules/*' -print0)
           exit $exit_code
 
   kics:

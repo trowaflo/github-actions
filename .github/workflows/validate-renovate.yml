@@ -49,7 +49,7 @@ jobs:
           if [ -n "${{ inputs.config_files }}" ]; then
             files="${{ inputs.config_files }}"
           else
-            files=$(ls *.json *.json5 2>/dev/null || true)
+            files=$(ls ./*.json ./*.json5 2>/dev/null || true)
           fi
           for f in $files; do
             if [ -f "$f" ]; then
