@@ -84,7 +84,8 @@ jobs:
           python-version: ${{ inputs.python_version }}
 
       - name: Install ruff
-        run: pip install ruff
+        # renovate: datasource=pypi depName=ruff
+        run: pip install ruff==0.15.9
 
       - name: Run ruff
         run: ruff check .

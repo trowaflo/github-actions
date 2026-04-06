@@ -82,7 +82,7 @@ jobs:
     name: Secret Scanning
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
     steps:
       - name: Harden Runner
@@ -159,7 +159,8 @@ jobs:
       - name: Run actionlint (SARIF)
         if: always()
         run: |
-          SARIF_TEMPLATE="$(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/testdata/format/sarif_template.txt)"
+          set -euo pipefail
+          SARIF_TEMPLATE="$(curl -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/v${VERSION}/testdata/format/sarif_template.txt")"
           ./actionlint -format "$SARIF_TEMPLATE" > actionlint-results.sarif || true
       - name: Upload actionlint SARIF
         if: always()
@@ -222,7 +223,8 @@ jobs:
       - name: Run yamllint
         run: |
           set -euo pipefail
-          pip install --quiet yamllint
+          # renovate: datasource=pypi depName=yamllint
+          pip install --quiet yamllint==1.38.0
           yamllint .
 
   ansible-lint:
@@ -280,7 +282,9 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Validate JSON and JSON5 files
         run: |
-          pip install --quiet json5
+          set -euo pipefail
+          # renovate: datasource=pypi depName=json5
+          pip install --quiet json5==0.14.0
           exit_code=0
           while IFS= read -r -d '' f; do
             if ! python3 -c "import json, sys; json.load(open(sys.argv[1]))" "$f"; then

@@ -128,6 +128,7 @@ jobs:
           path: ~/.local/share/helm/plugins
           key: helm-unittest-${{ runner.os }}
       - name: Install helm-unittest plugin
+        # renovate: datasource=github-releases depName=helm-unittest/helm-unittest
         run: helm plugin list | grep -q unittest || helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v0.7.3
       - name: Run helm unittest
         env:
@@ -208,7 +209,8 @@ jobs:
           CHARTS_DIR: ${{ inputs.charts_dir }}
           BASE_REF: ${{ github.base_ref }}
         run: |
-          npm install --global semver
+          # renovate: datasource=npm depName=semver
+          npm install --global semver@7.7.4
           for chart in "$CHARTS_DIR"/*/Chart.yaml; do
             if git diff --name-only "origin/$BASE_REF..HEAD" | grep -q "$(dirname "$chart")/"; then
               current=$(grep '^version:' "$chart" | awk '{print $2}')
@@ -241,14 +243,14 @@ jobs:
         env:
           CHARTS_DIR: ${{ inputs.charts_dir }}
         run: |
-          mkdir -p /tmp/charts
+          mkdir -p "$RUNNER_TEMP/charts"
           for chart in "$CHARTS_DIR"/*/; do
-            helm package "$chart" --destination /tmp/charts/
+            helm package "$chart" --destination "$RUNNER_TEMP/charts/"
           done
       - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: helm-charts-pr-${{ github.event.number }}
-          path: /tmp/charts/*.tgz
+          path: ${{ runner.temp }}/charts/*.tgz
           retention-days: 7
       - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
@@ -258,7 +260,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `### Helm Charts packagés\n\n📦 [Télécharger les charts](${runUrl})\n\n> Disponible 7 jours.`
+              body: `### Helm Charts packaged\n\n📦 [Download charts](${runUrl})\n\n> Available for 7 days.`
             });
 
   helm-pr-cleanup:
@@ -283,7 +285,7 @@ jobs:
               issue_number: context.issue.number,
             });
             for (const comment of comments.data) {
-              if (comment.body.includes('Helm Charts packagés')) {
+              if (comment.body.includes('Helm Charts packaged')) {
                 await github.rest.issues.deleteComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,

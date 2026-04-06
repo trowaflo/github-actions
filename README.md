@@ -54,7 +54,7 @@ jobs:
 
 - All `uses:` are SHA-pinned — never tags (`@v4`) or branches (`@main`)
 - `ci.yml` enforces this with a `sha-check` job on every PR
-- **Checkov**, **Trivy**, **KICS** et **actionlint** uploadent leurs résultats au format SARIF dans l'onglet **Security > Code scanning** — annotations inline sur les PRs
+- **Checkov**, **Trivy**, **KICS** and **actionlint** upload results in SARIF format to **Security > Code scanning** — inline annotations on PRs
 - `enable_harden_runner` available on all workflows (default: `true`, egress `block`) — [StepSecurity harden-runner](https://github.com/step-security/harden-runner) blocks unauthorized network egress. Start with `harden_runner_egress_policy: audit` to discover endpoints, then switch to `block` with `harden_runner_allowed_endpoints`
 - KICS available in `quality.yml` via `enable_kics` (⚠ TeamPCP supply chain attack, 2026-03-23 — prefer checkov)
 - Trivy IaC scanning available in `quality.yml` via `enable_trivy`; container scanning in `docker.yml`

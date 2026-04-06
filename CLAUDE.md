@@ -12,7 +12,7 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
 .github/workflows/
   # ─── Reusable workflows (call from other repos) ──────────────
   quality.yml          # Security + Linting: gitleaks, checkov, actionlint, dependency-review,
-                       #   markdownlint, yamllint, ansible-lint, terraform-validate, kics, trivy
+                       #   markdownlint, yamllint, ansible-lint, terraform-validate, kics, trivy, json-lint
   ha.yml               # Home Assistant: hacs, hassfest, config-check
   python.yml           # Python CI: pytest+ruff+codecov (generic — HA uses extra_packages)
   helm.yml             # Helm: release, lint, unittest, docs, bump, PR charts, PR cleanup
@@ -135,6 +135,7 @@ jobs:
 | `enable_terraform_validate` | `false` | terraform fmt + tflint |
 | `enable_kics` | `false` | IaC scan via KICS (⚠ TeamPCP — prefer checkov) |
 | `enable_trivy` | `false` | IaC/filesystem scan via Trivy |
+| `enable_json_lint` | `false` | JSON and JSON5 syntax validation |
 | `checkov_framework` | `""` | terraform / kubernetes / helm / dockerfile / "" (all) |
 | `trivy_severity` | `"UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"` | Trivy severity levels |
 

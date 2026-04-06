@@ -50,7 +50,8 @@ jobs:
           node-version: ${{ inputs.node_version }}
 
       - name: Install renovate
-        run: npm install --global renovate
+        # renovate: datasource=npm depName=renovate
+        run: npm install --global renovate@43.104.6
 
       - name: Validate Renovate config files
         env:
