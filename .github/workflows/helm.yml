@@ -198,7 +198,7 @@ jobs:
         with:
           files: test-results-*.xml
           check_name: "Test Results - ${{ matrix.chart }}"
-          comment_mode: off
+          comment_mode: "off"
 
   # ─── Documentation ───────────────────────────────────────────────────────────
 
@@ -327,7 +327,7 @@ jobs:
               chart_dir=$(dirname "$chart_dir")
             done
             chart="$chart_dir/Chart.yaml"
-            if [ -f "$chart" ] && [[ ! " ${charts_to_bump[*]} " =~ " ${chart} " ]]; then
+            if [ -f "$chart" ] && [[ ! " ${charts_to_bump[*]} " =~ " ${chart} " ]]; then  # shellcheck disable=SC2076
               charts_to_bump+=("$chart")
             fi
           done
@@ -381,7 +381,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          find "$CHARTS_DIR" -name Chart.yaml | xargs git add
+          find "$CHARTS_DIR" -name Chart.yaml -exec git add {} +
           git commit -m "ci: bump chart versions [skip ci]"
           git push
 
@@ -448,12 +448,12 @@ jobs:
               done < <(yq '.dependencies[] | select(.repository | test("^https?://")) | [.name, .repository] | @tsv' "$chart_file" 2>/dev/null || true)
             done
           done
-          [ "$repos_added" -gt 0 ] && helm repo update || true
+          if [ "$repos_added" -gt 0 ]; then helm repo update; fi
       # ── First directory ──
       - name: Build dependencies (first)
         run: |
           for chart in "${{ steps.dirs.outputs.first }}"/*/; do
-            [ -f "$chart/Chart.yaml" ] && helm dependency build "$chart" || true
+            if [ -f "$chart/Chart.yaml" ]; then helm dependency build "$chart"; fi
           done
       - name: Release first directory
         uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1.7.0
@@ -474,7 +474,7 @@ jobs:
         if: ${{ steps.dirs.outputs.second != '' }}
         run: |
           for chart in "${{ steps.dirs.outputs.second }}"/*/; do
-            [ -f "$chart/Chart.yaml" ] && helm dependency build "$chart" || true
+            if [ -f "$chart/Chart.yaml" ]; then helm dependency build "$chart"; fi
           done
       - name: Release second directory
         if: ${{ steps.dirs.outputs.second != '' }}
@@ -531,7 +531,7 @@ jobs:
             while [ ! -f "$chart_dir/Chart.yaml" ] && [ "$chart_dir" != "." ]; do
               chart_dir=$(dirname "$chart_dir")
             done
-            if [ -f "$chart_dir/Chart.yaml" ] && [[ ! " $changed_charts " =~ " $chart_dir " ]]; then
+            if [ -f "$chart_dir/Chart.yaml" ] && [[ ! " $changed_charts " =~ " $chart_dir " ]]; then  # shellcheck disable=SC2076
               changed_charts="$changed_charts $chart_dir"
             fi
           done
@@ -552,12 +552,12 @@ jobs:
               fi
             done < <(yq '.dependencies[] | select(.repository | test("^https?://")) | [.name, .repository] | @tsv' "$chart_file" 2>/dev/null || true)
           done
-          [ "$repos_added" -gt 0 ] && helm repo update || true
+          if [ "$repos_added" -gt 0 ]; then helm repo update; fi
       - name: Build chart dependencies
         if: steps.detect.outputs.changed != ''
         run: |
           for chart in ${{ steps.detect.outputs.changed }}; do
-            [ -f "$chart/Chart.yaml" ] && helm dependency build "$chart" || true
+            if [ -f "$chart/Chart.yaml" ]; then helm dependency build "$chart"; fi
           done
       - name: Package charts
         if: steps.detect.outputs.changed != ''
@@ -609,7 +609,7 @@ jobs:
           cp /tmp/pr-charts/*.tgz .
           helm repo index . --url "https://raw.githubusercontent.com/${{ github.repository }}/pr-charts" --merge index.yaml 2>/dev/null || \
           helm repo index . --url "https://raw.githubusercontent.com/${{ github.repository }}/pr-charts"
-          git add *.tgz index.yaml
+          git add ./*.tgz index.yaml
           git commit -m "Add PR #${PR_NUM} charts" || echo "No changes to commit"
           git push origin pr-charts
       - name: Comment on PR
@@ -628,7 +628,18 @@ jobs:
                 chartsList += `- \`${name}\` version \`${version}\`\n`;
               }
             });
-            const body = `## 📦 PR Charts Available for Testing\n\n${chartsList}\n### Testing with Helm\n\n\`\`\`bash\nhelm repo add pr-charts https://raw.githubusercontent.com/${process.env.REPO_FULL}/pr-charts\nhelm repo update\nhelm install test-release pr-charts/<chart-name> --version <version>\n\`\`\`\n\n> 💡 Charts are automatically removed when this PR is merged or closed.`;
+            const repoUrl = `https://raw.githubusercontent.com/${process.env.REPO_FULL}/pr-charts`;
+            const body = [
+              '## 📦 PR Charts Available for Testing\n',
+              chartsList,
+              '### Testing with Helm\n',
+              '```bash',
+              `helm repo add pr-charts ${repoUrl}`,
+              'helm repo update',
+              'helm install test-release pr-charts/<chart-name> --version <version>',
+              '```\n',
+              '> 💡 Charts are automatically removed when this PR is merged or closed.'
+            ].join('\n');
             const comments = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -695,7 +706,7 @@ jobs:
         if: steps.check.outputs.exists == 'true'
         run: |
           PR_NUM=${{ github.event.pull_request.number }}
-          rm -f *-pr${PR_NUM}.tgz || true
+          rm -f ./*-pr${PR_NUM}.tgz || true
           helm repo index . --url "https://raw.githubusercontent.com/${{ github.repository }}/pr-charts"
           git add -A
           git commit -m "Remove PR #${PR_NUM} charts after merge/close" || echo "No charts to remove"
