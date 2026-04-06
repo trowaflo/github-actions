@@ -1,0 +1,62 @@
+name: Validate Renovate Config
+
+# Reusable workflow — Validation des fichiers de configuration Renovate
+# Usage: uses: trowaflo/github-actions/.github/workflows/validate-renovate.yml@<sha>
+
+on:
+  workflow_call:
+    inputs:
+      enable_harden_runner:
+        description: "Monitoring réseau des runners via StepSecurity harden-runner (egress audit)"
+        type: boolean
+        default: false
+      node_version:
+        description: "Version de Node.js pour renovate-config-validator"
+        type: string
+        default: "22"
+      config_files:
+        description: "Glob pattern des fichiers à valider (défaut : *.json *.json5 à la racine)"
+        type: string
+        default: ""
+
+permissions: {}
+
+jobs:
+  validate:
+    name: Renovate Config Validator
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner == true }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.5.0
+        with:
+          node-version: ${{ inputs.node_version }}
+
+      - name: Install renovate
+        run: npm install --global renovate
+
+      - name: Validate Renovate config files
+        run: |
+          exit_code=0
+          if [ -n "${{ inputs.config_files }}" ]; then
+            files="${{ inputs.config_files }}"
+          else
+            files=$(ls ./*.json ./*.json5 2>/dev/null || true)
+          fi
+          for f in $files; do
+            if [ -f "$f" ]; then
+              echo "--- Validating $f ---"
+              if ! renovate-config-validator "$f"; then
+                exit_code=1
+              fi
+            fi
+          done
+          exit $exit_code
