@@ -37,9 +37,7 @@ jobs:
 
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
-| `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
-| `harden_runner_allowed_endpoints` | string | `""` | Allowed endpoints when block (space-separated) |
+| `enable_harden_runner` | boolean | `false` | Monitoring réseau via StepSecurity harden-runner (egress audit) |
 | `enable_test` | boolean | `false` | Tests pytest + couverture codecov |
 | `enable_lint` | boolean | `false` | Lint ruff |
 | `python_version` | string | `"3.13"` | Version Python |

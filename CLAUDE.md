@@ -12,14 +12,13 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
 .github/workflows/
   # ─── Reusable workflows (call from other repos) ──────────────
   quality.yml          # Security + Linting: gitleaks, checkov, actionlint, dependency-review,
-                       #   markdownlint, yamllint, ansible-lint, terraform-validate, kics, trivy, json-lint
+                       #   markdownlint, yamllint, ansible-lint, terraform-validate, kics, trivy
   ha.yml               # Home Assistant: hacs, hassfest, config-check
   python.yml           # Python CI: pytest+ruff+codecov (generic — HA uses extra_packages)
   helm.yml             # Helm: release, lint, unittest, docs, bump, PR charts, PR cleanup
   docker.yml           # Docker: build/push, trivy scan, grype scan
   release.yml          # Release: release-please
   claude-code.yml      # Claude Code: @claude mentions + /review command
-  validate-renovate.yml # Renovate: config file validation
 
   # ─── Self-CI (this repo only) ────────────────────────────────
   ci.yml               # Calls quality.yml locally + sha-check (enforces SHA pinning)
@@ -56,25 +55,7 @@ Dependency updates are managed by Renovate using the shared config at `github>tr
 
 ### Harden Runner
 
-All reusable workflows enable [StepSecurity harden-runner](https://github.com/step-security/harden-runner) by default (`enable_harden_runner: true`). The default egress policy is `block` — all outbound network traffic is denied unless explicitly allowed.
-
-Consumers must define their allowed endpoints:
-
-```yaml
-with:
-  harden_runner_egress_policy: block          # default
-  harden_runner_allowed_endpoints: >
-    github.com:443
-    api.github.com:443
-    pypi.org:443
-```
-
-To observe endpoints before enforcing, start with `audit`:
-
-```yaml
-with:
-  harden_runner_egress_policy: audit          # observe mode — no blocking
-```
+All reusable workflows support `enable_harden_runner` (default: `false`). When enabled, [StepSecurity harden-runner](https://github.com/step-security/harden-runner) monitors network egress in audit mode on every job — detects compromised actions phoning home. No blocking, just observability.
 
 ### KICS
 
@@ -109,9 +90,6 @@ jobs:
       contents: read
       security-events: write
     with:
-      harden_runner_allowed_endpoints: >
-        github.com:443
-        api.github.com:443
       enable_gitleaks: true      # default
       enable_checkov: true       # default
       enable_actionlint: true    # default
@@ -122,9 +100,7 @@ jobs:
 
 | Input | Default | Description |
 | --- | --- | --- |
-| `enable_harden_runner` | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
-| `harden_runner_allowed_endpoints` | `""` | Allowed endpoints when block (space-separated) |
+| `enable_harden_runner` | `false` | Runtime network monitoring via StepSecurity harden-runner |
 | `enable_gitleaks` | `true` | Secret scanning |
 | `enable_checkov` | `true` | IaC misconfig scan (replaces KICS) |
 | `enable_actionlint` | `true` | Lint GitHub Actions workflow files |
@@ -135,7 +111,6 @@ jobs:
 | `enable_terraform_validate` | `false` | terraform fmt + tflint |
 | `enable_kics` | `false` | IaC scan via KICS (⚠ TeamPCP — prefer checkov) |
 | `enable_trivy` | `false` | IaC/filesystem scan via Trivy |
-| `enable_json_lint` | `false` | JSON and JSON5 syntax validation |
 | `checkov_framework` | `""` | terraform / kubernetes / helm / dockerfile / "" (all) |
 | `trivy_severity` | `"UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"` | Trivy severity levels |
 
@@ -143,9 +118,7 @@ jobs:
 
 | Input | Default | Description |
 | --- | --- | --- |
-| `enable_harden_runner` | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
-| `harden_runner_allowed_endpoints` | `""` | Allowed endpoints when block (space-separated) |
+| `enable_harden_runner` | `false` | Runtime network monitoring via StepSecurity harden-runner |
 | `enable_hacs` | `false` | HACS validation |
 | `enable_hassfest` | `false` | hassfest validation |
 | `enable_config_check` | `false` | HA config check |
@@ -155,9 +128,7 @@ jobs:
 
 | Input | Default | Description |
 | --- | --- | --- |
-| `enable_harden_runner` | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
-| `harden_runner_allowed_endpoints` | `""` | Allowed endpoints when block (space-separated) |
+| `enable_harden_runner` | `false` | Runtime network monitoring via StepSecurity harden-runner |
 | `enable_test` | `false` | pytest + codecov |
 | `enable_lint` | `false` | ruff lint |
 | `python_version` | `"3.13"` | Python version |
@@ -172,9 +143,7 @@ Secret: `codecov_token` (optional)
 
 | Input | Default | Description |
 | --- | --- | --- |
-| `enable_harden_runner` | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
-| `harden_runner_allowed_endpoints` | `""` | Allowed endpoints when block (space-separated) |
+| `enable_harden_runner` | `false` | Runtime network monitoring via StepSecurity harden-runner |
 | `enable_build` | `false` | Docker build & push via bake |
 | `enable_trivy` | `false` | CVE scan via Trivy |
 | `enable_grype` | `false` | CVE scan via grype |
@@ -183,52 +152,3 @@ Secret: `codecov_token` (optional)
 | `trivy_severity` | `""` | Trivy severity levels (empty = all) |
 
 Secrets: `registry_username`, `registry_password` (both optional — defaults to GITHUB_TOKEN for ghcr.io)
-
-## helm.yml inputs
-
-| Input | Default | Description |
-| --- | --- | --- |
-| `enable_harden_runner` | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
-| `harden_runner_allowed_endpoints` | `""` | Allowed endpoints when block (space-separated) |
-| `enable_release` | `false` | Release charts via chart-releaser |
-| `enable_lint` | `false` | Lint charts with chart-testing (ct lint) |
-| `enable_unittest` | `false` | Helm unit tests with helm-unittest |
-| `enable_docs` | `false` | Documentation generation with helm-docs |
-| `enable_bump` | `false` | Auto-bump versions of modified charts on PR |
-| `enable_pr_charts` | `false` | Package modified charts on PR (download comment) |
-| `enable_pr_cleanup` | `false` | Cleanup chart comments after PR merge/close |
-| `charts_dir` | `"charts"` | Root directory for Helm charts |
-
-## release.yml inputs
-
-| Input | Default | Description |
-| --- | --- | --- |
-| `enable_harden_runner` | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
-| `harden_runner_allowed_endpoints` | `""` | Allowed endpoints when block (space-separated) |
-| `enable_release_please` | `false` | Automated releases via release-please |
-| `release_config_file` | `""` | Path to release-please-config.json |
-| `release_manifest_file` | `""` | Path to .release-please-manifest.json |
-
-Secret: `release_token` (optional — uses GITHUB_TOKEN if absent)
-
-## claude-code.yml inputs
-
-| Input | Default | Description |
-| --- | --- | --- |
-| `enable_harden_runner` | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
-| `harden_runner_allowed_endpoints` | `""` | Allowed endpoints when block (space-separated) |
-
-Secret: `claude_code_oauth_token` (required)
-
-## validate-renovate.yml inputs
-
-| Input | Default | Description |
-| --- | --- | --- |
-| `enable_harden_runner` | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
-| `harden_runner_allowed_endpoints` | `""` | Allowed endpoints when block (space-separated) |
-| `node_version` | `"22"` | Node.js version for renovate-config-validator |
-| `config_files` | `""` | Glob pattern of files to validate (default: `*.json` `*.json5` at root) |
