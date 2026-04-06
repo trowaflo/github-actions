@@ -327,7 +327,8 @@ jobs:
               chart_dir=$(dirname "$chart_dir")
             done
             chart="$chart_dir/Chart.yaml"
-            if [ -f "$chart" ] && [[ ! " ${charts_to_bump[*]} " =~ " ${chart} " ]]; then  # shellcheck disable=SC2076
+            # shellcheck disable=SC2076
+            if [ -f "$chart" ] && [[ ! " ${charts_to_bump[*]} " =~ " ${chart} " ]]; then
               charts_to_bump+=("$chart")
             fi
           done
@@ -531,7 +532,8 @@ jobs:
             while [ ! -f "$chart_dir/Chart.yaml" ] && [ "$chart_dir" != "." ]; do
               chart_dir=$(dirname "$chart_dir")
             done
-            if [ -f "$chart_dir/Chart.yaml" ] && [[ ! " $changed_charts " =~ " $chart_dir " ]]; then  # shellcheck disable=SC2076
+            # shellcheck disable=SC2076
+            if [ -f "$chart_dir/Chart.yaml" ] && [[ ! " $changed_charts " =~ " $chart_dir " ]]; then
               changed_charts="$changed_charts $chart_dir"
             fi
           done
