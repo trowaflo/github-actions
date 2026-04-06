@@ -34,7 +34,7 @@ jobs:
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
 | `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
-| `harden_runner_allowed_endpoints` | string | `""` | Allowed endpoints when block (space-separated) |
+| `harden_runner_allowed_endpoints` | string | `(built-in)` | Allowed endpoints when block (space-separated) — override replaces defaults |
 | `enable_release` | boolean | `false` | Release via chart-releaser |
 | `enable_lint` | boolean | `false` | Lint avec `ct lint` |
 | `enable_unittest` | boolean | `false` | Unit tests avec helm-unittest |
