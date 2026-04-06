@@ -27,6 +27,9 @@ jobs:
         registry.npmjs.org:443
         ghcr.io:443
         pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        kics.io:443
+        apk.cgr.dev:443
       enable_gitleaks: true
       enable_checkov: true
       enable_actionlint: true
@@ -41,6 +44,12 @@ jobs:
     uses: ./.github/workflows/validate-renovate.yml
     permissions:
       contents: read
+    with:
+      enable_harden_runner: true
+      harden_runner_allowed_endpoints: >
+        github.com:443
+        api.github.com:443
+        registry.npmjs.org:443
 
   sha-check:
     name: SHA Pinning Check

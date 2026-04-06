@@ -134,6 +134,9 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    env:
+      # renovate: datasource=github-releases depName=rhysd/actionlint
+      ACTIONLINT_VERSION: "1.7.12"
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -142,14 +145,12 @@ jobs:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install actionlint v1.7.12 with checksum verification
+      - name: Install actionlint with checksum verification
         run: |
           set -euo pipefail
-          # renovate: datasource=github-releases depName=rhysd/actionlint
-          VERSION=1.7.12
-          ARCHIVE="actionlint_${VERSION}_linux_amd64.tar.gz"
-          CHECKSUMS="actionlint_${VERSION}_checksums.txt"
-          BASE_URL="https://github.com/rhysd/actionlint/releases/download/v${VERSION}"
+          ARCHIVE="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          CHECKSUMS="actionlint_${ACTIONLINT_VERSION}_checksums.txt"
+          BASE_URL="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}"
           curl -fsSLO "${BASE_URL}/${ARCHIVE}"
           curl -fsSLO "${BASE_URL}/${CHECKSUMS}"
           grep " ${ARCHIVE}$" "${CHECKSUMS}" | sha256sum -c -
@@ -160,7 +161,7 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          SARIF_TEMPLATE="$(curl -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/v${VERSION}/testdata/format/sarif_template.txt")"
+          SARIF_TEMPLATE="$(curl -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/v${ACTIONLINT_VERSION}/testdata/format/sarif_template.txt")"
           ./actionlint -format "$SARIF_TEMPLATE" > actionlint-results.sarif || true
       - name: Upload actionlint SARIF
         if: always()
