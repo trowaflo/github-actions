@@ -41,7 +41,15 @@ on:
         type: boolean
         default: false
       ha_version:
-        description: "Home Assistant version — required if enable_config_check"
+        description: "Home Assistant version — required if enable_config_check (e.g. 2026.3.4, stable, beta)"
+        type: string
+        default: ""
+      config_check_secrets:
+        description: "Path to a secrets file for config check (e.g. secrets.fake.yaml)"
+        type: string
+        default: ""
+      config_check_setup:
+        description: "Shell commands to run before config check (e.g. install custom components)"
         type: string
         default: ""
 
@@ -104,7 +112,14 @@ jobs:
             exit 1
           fi
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Pre-check setup
+        if: ${{ inputs.config_check_setup != '' }}
+        env:
+          SETUP_COMMANDS: ${{ inputs.config_check_setup }}
+        run: |
+          eval "$SETUP_COMMANDS"
       - uses: frenck/action-home-assistant@941d5d917f4c1c7a7e7d4087526daf90d53f4437 # v1.4.1
         with:
           path: .
-          ha_version: ${{ inputs.ha_version }}
+          version: ${{ inputs.ha_version }}
+          secrets: ${{ inputs.config_check_secrets }}
