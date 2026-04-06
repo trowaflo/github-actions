@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.0](https://github.com/trowaflo/github-actions/compare/v3.0.0...v3.1.0) (2026-04-06)
+
+
+### Features
+
+* **quality:** skip SARIF upload on private repos ([#33](https://github.com/trowaflo/github-actions/issues/33)) ([1127812](https://github.com/trowaflo/github-actions/commit/112781274cfbd85caf264bdf50b20501ad11f92c))
+
 ## [3.0.0](https://github.com/trowaflo/github-actions/compare/v2.0.0...v3.0.0) (2026-04-06)
 
 
