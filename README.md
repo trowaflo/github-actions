@@ -19,6 +19,7 @@ All external `uses:` references are pinned to full commit SHAs. Renovate manages
 | [`docker.yml`](.github/workflows/docker.yml) | — (all opt-in) | [docs/docker.md](docs/docker.md) |
 | [`release.yml`](.github/workflows/release.yml) | — (all opt-in) | [docs/release.md](docs/release.md) |
 | [`claude-code.yml`](.github/workflows/claude-code.yml) | — (all opt-in) | [docs/claude-code.md](docs/claude-code.md) |
+| [`validate-renovate.yml`](.github/workflows/validate-renovate.yml) | — (all opt-in) | [docs/validate-renovate.md](docs/validate-renovate.md) |
 
 ## Quick start
 
@@ -38,6 +39,9 @@ jobs:
       contents: read
       security-events: write
     with:
+      harden_runner_allowed_endpoints: >
+        github.com:443
+        api.github.com:443
       enable_ansible_lint: true  # opt-in extras as needed
 ```
 
@@ -50,8 +54,8 @@ jobs:
 
 - All `uses:` are SHA-pinned — never tags (`@v4`) or branches (`@main`)
 - `ci.yml` enforces this with a `sha-check` job on every PR
-- **Checkov**, **Trivy**, **KICS** et **actionlint** uploadent leurs résultats au format SARIF dans l'onglet **Security > Code scanning** — annotations inline sur les PRs
-- `enable_harden_runner` available on all workflows — [StepSecurity harden-runner](https://github.com/step-security/harden-runner) monitors network egress in audit mode to detect compromised actions
+- **Checkov**, **Trivy**, **KICS** and **actionlint** upload results in SARIF format to **Security > Code scanning** — inline annotations on PRs
+- `enable_harden_runner` available on all workflows (default: `true`, egress `block`) — [StepSecurity harden-runner](https://github.com/step-security/harden-runner) blocks unauthorized network egress. Start with `harden_runner_egress_policy: audit` to discover endpoints, then switch to `block` with `harden_runner_allowed_endpoints`
 - KICS available in `quality.yml` via `enable_kics` (⚠ TeamPCP supply chain attack, 2026-03-23 — prefer checkov)
 - Trivy IaC scanning available in `quality.yml` via `enable_trivy`; container scanning in `docker.yml`
 - Claude Code (`claude-code.yml`) — **requires access control on public repos**, restrict to `github.repository_owner` (see [docs](docs/claude-code.md))
