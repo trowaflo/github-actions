@@ -75,11 +75,11 @@ on:
       enable_kics:
         description: "IaC scanning with KICS (⚠ checkmarx/kics-github-action impacted by TeamPCP 2026-03-23)"
         type: boolean
-        default: false
+        default: true
       enable_trivy:
         description: "IaC/filesystem scanning with Trivy"
         type: boolean
-        default: false
+        default: true
       checkov_framework:
         description: "Checkov framework: terraform, kubernetes, helm, dockerfile, or empty for all"
         type: string

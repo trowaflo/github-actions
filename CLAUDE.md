@@ -51,7 +51,7 @@ Dependency updates are managed by Renovate using the shared config at `github>tr
 
 ### Defaults philosophy
 
-- **Security / quality universelle** (gitleaks, checkov, actionlint) → `true` by default (opt-out)
+- **Security / quality universelle** (gitleaks, checkov, actionlint, kics, trivy) → `true` by default (opt-out)
 - **Domain-specific** (ansible, terraform, helm, HA, docker) → `false` by default (opt-in)
 
 ### Harden Runner
@@ -80,7 +80,7 @@ with:
 
 ### KICS
 
-KICS is available in `quality.yml` via `enable_kics`. The standalone `kics.yml` was removed. Note: `checkmarx/kics-github-action` was impacted by the TeamPCP supply chain attack (2026-03-23) — `checkov` is the recommended alternative.
+KICS is available in `quality.yml` via `enable_kics` (default: `true`). Note: `checkmarx/kics-github-action` was impacted by the TeamPCP supply chain attack (2026-03-23) — the current SHA is pinned to a pre-incident commit (`v2.1.20`, 2026-03-04).
 
 ### IaC scanning (Trivy)
 
@@ -136,8 +136,8 @@ Quality/lint workflows should trigger on `pull_request` only — **not** on `pus
 | `enable_yamllint` | `false` | yamllint |
 | `enable_ansible_lint` | `false` | ansible-lint |
 | `enable_terraform_validate` | `false` | terraform fmt + tflint |
-| `enable_kics` | `false` | IaC scan via KICS (⚠ TeamPCP — prefer checkov) |
-| `enable_trivy` | `false` | IaC/filesystem scan via Trivy |
+| `enable_kics` | `true` | IaC scan via KICS (⚠ TeamPCP — SHA pinned pre-incident) |
+| `enable_trivy` | `true` | IaC/filesystem scan via Trivy |
 | `enable_json_lint` | `false` | JSON and JSON5 syntax validation |
 | `checkov_framework` | `""` | terraform / kubernetes / helm / dockerfile / "" (all) |
 | `trivy_severity` | `"UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"` | Trivy severity levels |

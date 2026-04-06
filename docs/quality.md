@@ -36,8 +36,8 @@ jobs:
 | `enable_ansible_lint` | boolean | `false` | Lint Ansible avec ansible-lint |
 | `enable_terraform_validate` | boolean | `false` | `terraform fmt` + `tflint` |
 | `enable_json_lint` | boolean | `false` | Validation syntaxe JSON et JSON5 |
-| `enable_kics` | boolean | `false` | Scan IaC avec KICS (⚠ TeamPCP 2026-03-23 — préférer checkov) |
-| `enable_trivy` | boolean | `false` | Scan IaC/filesystem avec Trivy |
+| `enable_kics` | boolean | `true` | Scan IaC avec KICS (⚠ TeamPCP 2026-03-23 — SHA pinné pré-incident) |
+| `enable_trivy` | boolean | `true` | Scan IaC/filesystem avec Trivy |
 | `checkov_framework` | string | `""` | Framework Checkov : `terraform`, `kubernetes`, `helm`, `dockerfile`, `""` = tout |
 | `trivy_severity` | string | `"UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"` | Niveaux de sévérité Trivy |
 
@@ -57,9 +57,9 @@ Aucun — utilise `GITHUB_TOKEN` implicitement.
 
 ### KICS
 
-KICS est disponible via `enable_kics: true`. Le fichier `kics.yml` standalone a été supprimé.
+KICS est disponible via `enable_kics: true` (défaut). Le fichier `kics.yml` standalone a été supprimé.
 
-> ⚠ `checkmarx/kics-github-action` a été compromis lors de l'attaque supply chain TeamPCP (2026-03-23). **Préférer `enable_checkov`** sauf besoin spécifique.
+> ⚠ `checkmarx/kics-github-action` a été compromis lors de l'attaque supply chain TeamPCP (2026-03-23). Le SHA actuel est pinné sur un commit pré-incident (`v2.1.20`, 2026-03-04). Le SHA pinning protège contre le tag hijack.
 
 ### Trivy (IaC)
 
