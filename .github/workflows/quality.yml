@@ -20,7 +20,21 @@ on:
       harden_runner_allowed_endpoints:
         description: "Allowed endpoints when egress-policy is block (space-separated, e.g. github.com:443 pypi.org:443)"
         type: string
-        default: ""
+        # 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com = Chainguard R2 bucket for KICS apk — hash may change
+        default: >-
+          github.com:443
+          api.github.com:443
+          release-assets.githubusercontent.com:443
+          pypi.org:443
+          files.pythonhosted.org:443
+          raw.githubusercontent.com:443
+          ghcr.io:443
+          pkg-containers.githubusercontent.com:443
+          get.trivy.dev:443
+          mirror.gcr.io:443
+          kics.io:443
+          apk.cgr.dev:443
+          9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
       enable_gitleaks:
         description: "Secret scanning with gitleaks"
         type: boolean
