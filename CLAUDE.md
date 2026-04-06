@@ -80,9 +80,15 @@ Both are `false` by default. Enable one, both, or neither depending on the repo.
 # .github/workflows/ci.yml (in a consumer repo)
 name: CI
 on: [pull_request]
+
+permissions: {}
+
 jobs:
   quality:
     uses: trowaflo/github-actions/.github/workflows/quality.yml@<sha> # vX.Y.Z
+    permissions:
+      contents: read
+      security-events: write
     with:
       enable_gitleaks: true      # default
       enable_checkov: true       # default

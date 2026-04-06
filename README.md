@@ -1,5 +1,9 @@
 # github-actions
 
+[![CI](https://github.com/trowaflo/github-actions/actions/workflows/ci.yml/badge.svg)](https://github.com/trowaflo/github-actions/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/trowaflo/github-actions)](https://github.com/trowaflo/github-actions/releases)
+[![License](https://img.shields.io/github/license/trowaflo/github-actions)](LICENSE)
+
 Reusable GitHub Actions workflows — source of truth for all `trowaflo/*` repositories.
 
 All external `uses:` references are pinned to full commit SHAs. Renovate manages SHA updates automatically via `github>trowaflo/renovate-config`.
@@ -25,9 +29,14 @@ Pin to a specific SHA (Renovate updates it automatically):
 name: CI
 on: [pull_request]
 
+permissions: {}
+
 jobs:
   quality:
     uses: trowaflo/github-actions/.github/workflows/quality.yml@<sha> # vX.Y.Z
+    permissions:
+      contents: read
+      security-events: write
     with:
       enable_ansible_lint: true  # opt-in extras as needed
 ```
@@ -41,6 +50,7 @@ jobs:
 
 - All `uses:` are SHA-pinned — never tags (`@v4`) or branches (`@main`)
 - `ci.yml` enforces this with a `sha-check` job on every PR
+- **Checkov**, **Trivy**, **KICS** et **actionlint** uploadent leurs résultats au format SARIF dans l'onglet **Security > Code scanning** — annotations inline sur les PRs
 - `enable_harden_runner` available on all workflows — [StepSecurity harden-runner](https://github.com/step-security/harden-runner) monitors network egress in audit mode to detect compromised actions
 - KICS available in `quality.yml` via `enable_kics` (⚠ TeamPCP supply chain attack, 2026-03-23 — prefer checkov)
 - Trivy IaC scanning available in `quality.yml` via `enable_trivy`; container scanning in `docker.yml`

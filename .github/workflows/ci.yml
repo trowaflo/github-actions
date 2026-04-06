@@ -15,6 +15,7 @@ jobs:
       contents: write
       pull-requests: write
       repository-projects: write
+      security-events: write
     with:
       enable_harden_runner: true
       enable_gitleaks: true
