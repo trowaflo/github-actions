@@ -61,7 +61,7 @@ jobs:
           if [ -n "$CONFIG_FILES" ]; then
             files="$CONFIG_FILES"
           else
-            files=$(ls ./*.json ./*.json5 2>/dev/null || true)
+            files=$(ls ./*.json ./*.json5 2>/dev/null | grep -i 'renovate' || true)
           fi
           for f in $files; do
             if [ -f "$f" ]; then
