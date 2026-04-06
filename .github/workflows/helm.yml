@@ -182,7 +182,7 @@ jobs:
             helm-deps-${{ matrix.chart }}-
       - name: Install helm-unittest plugin
         # renovate: datasource=github-releases depName=helm-unittest/helm-unittest
-        run: helm plugin list | grep -q unittest || helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.0.3
+        run: helm plugin list | grep -q unittest || helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.0.3 --verify=false
       - name: Build Helm dependencies
         run: helm dependency update "${{ matrix.chart }}"
       - name: Run Helm unit tests
@@ -226,6 +226,7 @@ jobs:
           VERSION=1.14.2
           ARCHIVE="helm-docs_${VERSION}_Linux_x86_64.tar.gz"
           BASE_URL="https://github.com/norwoodj/helm-docs/releases/download/v${VERSION}"
+          cd /tmp
           curl -fsSLO "${BASE_URL}/${ARCHIVE}"
           curl -fsSLO "${BASE_URL}/checksums.txt"
           grep " ${ARCHIVE}$" checksums.txt | sha256sum -c -
@@ -234,7 +235,7 @@ jobs:
       - name: Generate docs
         env:
           CHARTS_DIR: ${{ inputs.charts_dir }}
-        run: ./helm-docs --chart-search-root "$CHARTS_DIR"
+        run: /tmp/helm-docs --chart-search-root "$CHARTS_DIR"
       - name: Commit updated docs
         env:
           CHARTS_DIR: ${{ inputs.charts_dir }}
@@ -267,6 +268,7 @@ jobs:
           VERSION=1.14.2
           ARCHIVE="helm-docs_${VERSION}_Linux_x86_64.tar.gz"
           BASE_URL="https://github.com/norwoodj/helm-docs/releases/download/v${VERSION}"
+          cd /tmp
           curl -fsSLO "${BASE_URL}/${ARCHIVE}"
           curl -fsSLO "${BASE_URL}/checksums.txt"
           grep " ${ARCHIVE}$" checksums.txt | sha256sum -c -
@@ -275,7 +277,7 @@ jobs:
       - name: Generate docs
         env:
           CHARTS_DIR: ${{ inputs.charts_dir }}
-        run: ./helm-docs --chart-search-root "$CHARTS_DIR"
+        run: /tmp/helm-docs --chart-search-root "$CHARTS_DIR"
       - name: Check for changes
         run: |
           git add .
