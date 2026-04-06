@@ -17,7 +17,12 @@ on:
       harden_runner_allowed_endpoints:
         description: "Allowed endpoints when egress-policy is block (space-separated, e.g. github.com:443 pypi.org:443)"
         type: string
-        default: ""
+        default: >-
+          github.com:443
+          api.github.com:443
+          registry.npmjs.org:443
+          nodejs.org:443
+          release-assets.githubusercontent.com:443
       node_version:
         description: "Node.js version for renovate-config-validator"
         type: string
@@ -61,7 +66,7 @@ jobs:
           if [ -n "$CONFIG_FILES" ]; then
             files="$CONFIG_FILES"
           else
-            files=$(ls ./*.json ./*.json5 2>/dev/null || true)
+            files=$(find . -maxdepth 1 -name '*renovate*' \( -name '*.json' -o -name '*.json5' \) 2>/dev/null || true)
           fi
           for f in $files; do
             if [ -f "$f" ]; then

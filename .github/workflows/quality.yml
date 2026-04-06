@@ -20,7 +20,22 @@ on:
       harden_runner_allowed_endpoints:
         description: "Allowed endpoints when egress-policy is block (space-separated, e.g. github.com:443 pypi.org:443)"
         type: string
-        default: ""
+        # 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com = Chainguard R2 bucket for KICS apk — hash may change
+        default: >-
+          github.com:443
+          api.github.com:443
+          release-assets.githubusercontent.com:443
+          pypi.org:443
+          files.pythonhosted.org:443
+          raw.githubusercontent.com:443
+          registry.npmjs.org:443
+          ghcr.io:443
+          pkg-containers.githubusercontent.com:443
+          get.trivy.dev:443
+          mirror.gcr.io:443
+          kics.io:443
+          apk.cgr.dev:443
+          9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
       enable_gitleaks:
         description: "Secret scanning with gitleaks"
         type: boolean
@@ -134,6 +149,9 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    env:
+      # renovate: datasource=github-releases depName=rhysd/actionlint
+      ACTIONLINT_VERSION: "1.7.12"
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -142,14 +160,12 @@ jobs:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install actionlint v1.7.12 with checksum verification
+      - name: Install actionlint with checksum verification
         run: |
           set -euo pipefail
-          # renovate: datasource=github-releases depName=rhysd/actionlint
-          VERSION=1.7.12
-          ARCHIVE="actionlint_${VERSION}_linux_amd64.tar.gz"
-          CHECKSUMS="actionlint_${VERSION}_checksums.txt"
-          BASE_URL="https://github.com/rhysd/actionlint/releases/download/v${VERSION}"
+          ARCHIVE="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          CHECKSUMS="actionlint_${ACTIONLINT_VERSION}_checksums.txt"
+          BASE_URL="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}"
           curl -fsSLO "${BASE_URL}/${ARCHIVE}"
           curl -fsSLO "${BASE_URL}/${CHECKSUMS}"
           grep " ${ARCHIVE}$" "${CHECKSUMS}" | sha256sum -c -
@@ -160,7 +176,7 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          SARIF_TEMPLATE="$(curl -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/v${VERSION}/testdata/format/sarif_template.txt")"
+          SARIF_TEMPLATE="$(curl -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/v${ACTIONLINT_VERSION}/testdata/format/sarif_template.txt")"
           ./actionlint -format "$SARIF_TEMPLATE" > actionlint-results.sarif || true
       - name: Upload actionlint SARIF
         if: always()
