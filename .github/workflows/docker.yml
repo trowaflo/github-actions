@@ -36,7 +36,14 @@ on:
       harden_runner_allowed_endpoints:
         description: "Allowed endpoints when egress-policy is block (space-separated, e.g. github.com:443 pypi.org:443)"
         type: string
-        default: ""
+        # ghcr.io registry, trivy DB (mirror.gcr.io), trivy install
+        default: >-
+          github.com:443
+          api.github.com:443
+          ghcr.io:443
+          pkg-containers.githubusercontent.com:443
+          get.trivy.dev:443
+          mirror.gcr.io:443
       enable_build:
         description: "Docker build & push via bake"
         type: boolean

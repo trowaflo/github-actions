@@ -22,7 +22,12 @@ on:
       harden_runner_allowed_endpoints:
         description: "Allowed endpoints when egress-policy is block (space-separated, e.g. github.com:443 pypi.org:443)"
         type: string
-        default: ""
+        # HA actions pull Docker images from ghcr.io
+        default: >-
+          github.com:443
+          api.github.com:443
+          ghcr.io:443
+          pkg-containers.githubusercontent.com:443
       enable_hacs:
         description: "HACS validation"
         type: boolean
