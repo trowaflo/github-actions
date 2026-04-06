@@ -17,6 +17,8 @@ jobs:
       security-events: write
     with:
       enable_harden_runner: true
+      harden_runner_allowed_endpoints: >
+        github.com:443
       enable_gitleaks: true
       enable_checkov: true
       enable_actionlint: true
