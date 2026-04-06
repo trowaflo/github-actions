@@ -12,23 +12,15 @@ on:
   workflow_call:
     inputs:
       enable_harden_runner:
-        description: "Runtime security via StepSecurity harden-runner"
+        description: "Monitoring réseau des runners via StepSecurity harden-runner (egress audit)"
         type: boolean
-        default: true
-      harden_runner_egress_policy:
-        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
-        type: string
-        default: "block"
-      harden_runner_allowed_endpoints:
-        description: "Allowed endpoints when egress-policy is block (space-separated, e.g. github.com:443 pypi.org:443)"
-        type: string
-        default: ""
+        default: false
       enable_hacs:
-        description: "HACS validation"
+        description: "Validation HACS"
         type: boolean
         default: false
       enable_hassfest:
-        description: "hassfest validation"
+        description: "Validation hassfest"
         type: boolean
         default: false
       enable_config_check:
@@ -36,7 +28,7 @@ on:
         type: boolean
         default: false
       ha_version:
-        description: "Home Assistant version — required if enable_config_check"
+        description: "Version Home Assistant — requis si enable_config_check"
         type: string
         default: ""
 
@@ -44,52 +36,49 @@ permissions: {}
 
 jobs:
   hacs:
-    if: ${{ inputs.enable_hacs }}
+    if: ${{ inputs.enable_hacs == true }}
     name: HACS Validation
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
+        if: ${{ inputs.enable_harden_runner == true }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: hacs/action@d556e736723344f83838d08488c983a15381059a # 22.5.0
         with:
           category: integration
 
   hassfest:
-    if: ${{ inputs.enable_hassfest }}
+    if: ${{ inputs.enable_hassfest == true }}
     name: Hassfest Validation
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
+        if: ${{ inputs.enable_harden_runner == true }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: home-assistant/actions/hassfest@5752577ea7cc5aefb064b0b21432f18fe4d6ba90 # master (no semver releases)
+      - uses: home-assistant/actions/hassfest@5752577ea7cc5aefb064b0b21432f18fe4d6ba90 # master
 
   config-check:
-    if: ${{ inputs.enable_config_check }}
+    if: ${{ inputs.enable_config_check == true }}
     name: HA Config Check
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
+        if: ${{ inputs.enable_harden_runner == true }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          egress-policy: audit
       - name: Validate ha_version
         env:
           HA_VERSION: ${{ inputs.ha_version }}

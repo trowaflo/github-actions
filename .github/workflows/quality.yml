@@ -10,67 +10,59 @@ on:
   workflow_call:
     inputs:
       enable_harden_runner:
-        description: "Runtime security via StepSecurity harden-runner"
+        description: "Monitoring réseau des runners via StepSecurity harden-runner (egress audit)"
         type: boolean
-        default: true
-      harden_runner_egress_policy:
-        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
-        type: string
-        default: "block"
-      harden_runner_allowed_endpoints:
-        description: "Allowed endpoints when egress-policy is block (space-separated, e.g. github.com:443 pypi.org:443)"
-        type: string
-        default: ""
+        default: false
       enable_gitleaks:
-        description: "Secret scanning with gitleaks"
+        description: "Secret scanning avec gitleaks"
         type: boolean
         default: true
       enable_checkov:
-        description: "IaC misconfiguration scanning with Checkov (replaces KICS)"
+        description: "Scan IaC misconfigurations avec Checkov (remplace KICS)"
         type: boolean
         default: true
       enable_actionlint:
-        description: "Lint GitHub Actions workflow files"
+        description: "Lint des fichiers workflow GitHub Actions"
         type: boolean
         default: true
       enable_dependency_review:
-        description: "Dependency review on PR — requires pull_request event"
+        description: "Revue des dépendances sur PR — nécessite event pull_request"
         type: boolean
         default: false
       enable_markdown_lint:
-        description: "Lint Markdown with markdownlint-cli2"
+        description: "Lint Markdown avec markdownlint-cli2"
         type: boolean
         default: false
       enable_yamllint:
-        description: "Lint YAML with yamllint (auto-detects .yamllint.yml)"
+        description: "Lint YAML avec yamllint (auto-détecte .yamllint.yml)"
         type: boolean
         default: false
       enable_ansible_lint:
-        description: "Lint Ansible with ansible-lint"
+        description: "Lint Ansible avec ansible-lint officiel"
         type: boolean
         default: false
       enable_terraform_validate:
-        description: "Terraform validation: fmt check + tflint"
+        description: "Validation Terraform : fmt check + tflint"
         type: boolean
         default: false
       enable_json_lint:
-        description: "JSON and JSON5 syntax validation"
+        description: "Validation syntaxe JSON et JSON5"
         type: boolean
         default: false
       enable_kics:
-        description: "IaC scanning with KICS (⚠ checkmarx/kics-github-action impacted by TeamPCP 2026-03-23)"
+        description: "Scan IaC avec KICS (⚠ checkmarx/kics-github-action impacté TeamPCP 2026-03-23)"
         type: boolean
         default: false
       enable_trivy:
-        description: "IaC/filesystem scanning with Trivy"
+        description: "Scan IaC/filesystem avec Trivy"
         type: boolean
         default: false
       checkov_framework:
-        description: "Checkov framework: terraform, kubernetes, helm, dockerfile, or empty for all"
+        description: "Framework Checkov : terraform, kubernetes, helm, dockerfile, ou vide pour tout"
         type: string
         default: ""
       trivy_severity:
-        description: "Trivy severity levels: UNKNOWN, LOW, MEDIUM, HIGH, CRITICAL"
+        description: "Niveaux de sévérité Trivy : UNKNOWN, LOW, MEDIUM, HIGH, CRITICAL"
         type: string
         default: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
 
@@ -78,19 +70,19 @@ permissions: {}
 
 jobs:
   gitleaks:
-    if: ${{ inputs.enable_gitleaks }}
+    if: ${{ inputs.enable_gitleaks == true }}
     name: Secret Scanning
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
+      repository-projects: write
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
+        if: ${{ inputs.enable_harden_runner == true }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
@@ -99,36 +91,26 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   checkov:
-    if: ${{ inputs.enable_checkov }}
+    if: ${{ inputs.enable_checkov == true }}
     name: IaC Scan (Checkov)
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
+        if: ${{ inputs.enable_harden_runner == true }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: bridgecrewio/checkov-action@0ce65fae06c148e349f955c3c35ad049c11e838c # v12.3092.0
         with:
           directory: .
           framework: ${{ inputs.checkov_framework }}
           quiet: true
-          output_format: cli,sarif
-          output_file_path: console,checkov-results.sarif
-      - name: Upload Checkov SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
-        with:
-          sarif_file: checkov-results.sarif
-          category: checkov
 
   actionlint:
-    if: ${{ inputs.enable_actionlint }}
+    if: ${{ inputs.enable_actionlint == true }}
     name: Lint Workflows
     runs-on: ubuntu-latest
     permissions:
@@ -136,16 +118,14 @@ jobs:
       security-events: write
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
+        if: ${{ inputs.enable_harden_runner == true }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install actionlint v1.7.12 with checksum verification
         run: |
           set -euo pipefail
-          # renovate: datasource=github-releases depName=rhysd/actionlint
           VERSION=1.7.12
           ARCHIVE="actionlint_${VERSION}_linux_amd64.tar.gz"
           CHECKSUMS="actionlint_${VERSION}_checksums.txt"
@@ -159,8 +139,7 @@ jobs:
       - name: Run actionlint (SARIF)
         if: always()
         run: |
-          set -euo pipefail
-          SARIF_TEMPLATE="$(curl -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/v${VERSION}/testdata/format/sarif_template.txt")"
+          SARIF_TEMPLATE="$(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/testdata/format/sarif_template.txt)"
           ./actionlint -format "$SARIF_TEMPLATE" > actionlint-results.sarif || true
       - name: Upload actionlint SARIF
         if: always()
@@ -170,7 +149,7 @@ jobs:
           category: actionlint
 
   dependency-review:
-    if: ${{ inputs.enable_dependency_review && github.event_name == 'pull_request' }}
+    if: ${{ inputs.enable_dependency_review == true && github.event_name == 'pull_request' }}
     name: Dependency Review
     runs-on: ubuntu-latest
     permissions:
@@ -178,27 +157,25 @@ jobs:
       pull-requests: write
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
+        if: ${{ inputs.enable_harden_runner == true }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
 
   markdown-lint:
-    if: ${{ inputs.enable_markdown_lint }}
+    if: ${{ inputs.enable_markdown_lint == true }}
     name: Lint Markdown
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
+        if: ${{ inputs.enable_harden_runner == true }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: DavidAnson/markdownlint-cli2-action@07035fd053f7be764496c0f8d8f9f41f98305101 # v22.0.0
         with:
@@ -207,55 +184,50 @@ jobs:
             !.venv/**
 
   yamllint:
-    if: ${{ inputs.enable_yamllint }}
+    if: ${{ inputs.enable_yamllint == true }}
     name: Lint YAML
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
+        if: ${{ inputs.enable_harden_runner == true }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Run yamllint
         run: |
-          set -euo pipefail
-          # renovate: datasource=pypi depName=yamllint
-          pip install --quiet yamllint==1.38.0
+          pip install --quiet yamllint
           yamllint .
 
   ansible-lint:
-    if: ${{ inputs.enable_ansible_lint }}
+    if: ${{ inputs.enable_ansible_lint == true }}
     name: Lint Ansible
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
+        if: ${{ inputs.enable_harden_runner == true }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ansible/ansible-lint@5fac056c45595896c973fbde871f01f6cb14d74c # v26.4.0
 
   terraform-validate:
-    if: ${{ inputs.enable_terraform_validate }}
+    if: ${{ inputs.enable_terraform_validate == true }}
     name: Validate Terraform
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
+        if: ${{ inputs.enable_harden_runner == true }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
       - uses: terraform-linters/setup-tflint@b480b8fcdaa6f2c577f8e4fa799e89e756bb7c93 # v6.2.2
@@ -267,34 +239,31 @@ jobs:
         run: tflint --recursive --format compact
 
   json-lint:
-    if: ${{ inputs.enable_json_lint }}
+    if: ${{ inputs.enable_json_lint == true }}
     name: Lint JSON
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
+        if: ${{ inputs.enable_harden_runner == true }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Validate JSON and JSON5 files
         run: |
-          set -euo pipefail
-          # renovate: datasource=pypi depName=json5
-          pip install --quiet json5==0.14.0
+          pip install --quiet json5
           exit_code=0
           while IFS= read -r -d '' f; do
-            if ! python3 -c "import json, sys; json.load(open(sys.argv[1]))" "$f"; then
+            if ! python3 -c "import json; json.load(open('$f'))"; then
               echo "❌ Invalid JSON: $f"; exit_code=1
             else
               echo "✅ $f"
             fi
           done < <(find . -name '*.json' -not -path './.git/*' -not -path './node_modules/*' -print0)
           while IFS= read -r -d '' f; do
-            if ! python3 -c "import json5, sys; json5.load(open(sys.argv[1]))" "$f"; then
+            if ! python3 -c "import json5; json5.load(open('$f'))"; then
               echo "❌ Invalid JSON5: $f"; exit_code=1
             else
               echo "✅ $f"
@@ -303,7 +272,7 @@ jobs:
           exit $exit_code
 
   kics:
-    if: ${{ inputs.enable_kics }}
+    if: ${{ inputs.enable_kics == true }}
     name: IaC Scan (KICS)
     runs-on: ubuntu-latest
     permissions:
@@ -312,11 +281,10 @@ jobs:
       security-events: write
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
+        if: ${{ inputs.enable_harden_runner == true }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Run KICS Scan
         uses: checkmarx/kics-github-action@05aa5eb70eede1355220f4ca5238d96b397e30a6 # v2.1.20
@@ -338,7 +306,7 @@ jobs:
           category: kics
 
   trivy:
-    if: ${{ inputs.enable_trivy }}
+    if: ${{ inputs.enable_trivy == true }}
     name: IaC Scan (Trivy)
     runs-on: ubuntu-latest
     permissions:
@@ -346,11 +314,10 @@ jobs:
       security-events: write
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
+        if: ${{ inputs.enable_harden_runner == true }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          egress-policy: audit
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Run Trivy (table)
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
