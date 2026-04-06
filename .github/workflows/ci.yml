@@ -17,6 +17,7 @@ jobs:
       security-events: write
     with:
       enable_harden_runner: true
+      # ⚠ 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com = Chainguard R2 bucket for KICS apk — hash may change
       harden_runner_allowed_endpoints: >
         github.com:443
         api.github.com:443
@@ -28,8 +29,10 @@ jobs:
         ghcr.io:443
         pkg-containers.githubusercontent.com:443
         get.trivy.dev:443
+        mirror.gcr.io:443
         kics.io:443
         apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
       enable_gitleaks: true
       enable_checkov: true
       enable_actionlint: true
@@ -50,6 +53,8 @@ jobs:
         github.com:443
         api.github.com:443
         registry.npmjs.org:443
+        nodejs.org:443
+        release-assets.githubusercontent.com:443
 
   sha-check:
     name: SHA Pinning Check
