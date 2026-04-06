@@ -117,6 +117,10 @@ jobs:
       enable_ansible_lint: true  # opt-in for ansible repos
 ```
 
+### Triggers — `pull_request` only
+
+Quality/lint workflows should trigger on `pull_request` only — **not** on `push` to `main`. A push to `main` happens after a PR merge, so the same checks would run twice (once on the PR, once on the push). Use `push` triggers only for workflows that must run post-merge: `release.yml` (release-please), `docker.yml` (build & publish), `helm.yml` (chart release).
+
 ## quality.yml inputs
 
 | Input | Default | Description |

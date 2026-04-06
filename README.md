@@ -46,6 +46,7 @@ jobs:
 
 - **Security / universal quality** → `true` by default (opt-out): `enable_gitleaks`, `enable_checkov`, `enable_actionlint`
 - **Domain-specific** → `false` by default (opt-in): everything else
+- **Triggers** — Quality/lint workflows should use `on: [pull_request]` only, not `push` to `main` (avoids running the same checks twice). Use `push` triggers for post-merge workflows: `release.yml`, `docker.yml` (publish), `helm.yml` (chart release)
 
 ## Security
 
