@@ -51,6 +51,8 @@ KICS est disponible via `enable_kics: true`. Le fichier `kics.yml` standalone a 
 
 `enable_trivy: true` lance un scan IaC/filesystem via `aquasecurity/trivy-action`. Par défaut, toutes les sévérités sont remontées (`UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL`). Configurable via `trivy_severity`. Ce scan est indépendant du scan container Trivy dans `docker.yml`.
 
+Les résultats sont uploadés au format SARIF dans l'onglet **Security > Code scanning** du repo, avec des annotations inline sur les PRs.
+
 ### dependency-review
 
 Ce job ne s'exécute que si le workflow caller est déclenché par `pull_request`. Si activé depuis un workflow `push`, il sera automatiquement ignoré.
@@ -68,6 +70,8 @@ with:
   enable_checkov: true
   checkov_framework: "terraform"
 ```
+
+Les résultats sont uploadés au format SARIF dans l'onglet **Security > Code scanning** du repo, avec des annotations inline sur les PRs.
 
 ### harden-runner
 
