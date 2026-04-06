@@ -20,6 +20,7 @@ jobs:
       harden_runner_allowed_endpoints: >
         github.com:443
         api.github.com:443
+        release-assets.githubusercontent.com:443
       enable_gitleaks: true
       enable_checkov: true
       enable_actionlint: true
@@ -59,3 +60,5 @@ jobs:
             exit 1
           fi
           echo "All external uses: are properly SHA-pinned."
+
+          
