@@ -7,15 +7,23 @@ on:
   workflow_call:
     inputs:
       enable_harden_runner:
-        description: "Monitoring réseau des runners via StepSecurity harden-runner (egress audit)"
+        description: "Runtime security via StepSecurity harden-runner"
         type: boolean
-        default: false
+        default: true
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "block"
+      harden_runner_allowed_endpoints:
+        description: "Allowed endpoints when egress-policy is block (space-separated, e.g. github.com:443 pypi.org:443)"
+        type: string
+        default: ""
       node_version:
-        description: "Version de Node.js pour renovate-config-validator"
+        description: "Node.js version for renovate-config-validator"
         type: string
         default: "22"
       config_files:
-        description: "Glob pattern des fichiers à valider (défaut : *.json *.json5 à la racine)"
+        description: "Glob pattern of files to validate (default: *.json *.json5 at root)"
         type: string
         default: ""
 
@@ -29,25 +37,29 @@ jobs:
       contents: read
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner == true }}
+        if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: audit
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: ${{ inputs.node_version }}
 
       - name: Install renovate
-        run: npm install --global renovate
+        # renovate: datasource=npm depName=renovate
+        run: npm install --global renovate@43.104.6
 
       - name: Validate Renovate config files
+        env:
+          CONFIG_FILES: ${{ inputs.config_files }}
         run: |
           exit_code=0
-          if [ -n "${{ inputs.config_files }}" ]; then
-            files="${{ inputs.config_files }}"
+          if [ -n "$CONFIG_FILES" ]; then
+            files="$CONFIG_FILES"
           else
             files=$(ls ./*.json ./*.json5 2>/dev/null || true)
           fi

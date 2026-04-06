@@ -26,9 +26,17 @@ on:
   workflow_call:
     inputs:
       enable_harden_runner:
-        description: "Monitoring réseau des runners via StepSecurity harden-runner (egress audit)"
+        description: "Runtime security via StepSecurity harden-runner"
         type: boolean
-        default: false
+        default: true
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "block"
+      harden_runner_allowed_endpoints:
+        description: "Allowed endpoints when egress-policy is block (space-separated, e.g. github.com:443 pypi.org:443)"
+        type: string
+        default: ""
       enable_build:
         description: "Docker build & push via bake"
         type: boolean
@@ -42,30 +50,30 @@ on:
         type: boolean
         default: false
       registry:
-        description: "Registre Docker cible"
+        description: "Target Docker registry"
         type: string
         default: "ghcr.io"
       image_name:
-        description: "Nom de l'image (ex: owner/image) — défaut : {registry}/{github.repository}"
+        description: "Image name (e.g., owner/image) — defaults to {registry}/{github.repository}"
         type: string
         default: ""
       trivy_severity:
-        description: "Niveaux de sévérité Trivy (vide = tous les niveaux)"
+        description: "Trivy severity levels (empty = all)"
         type: string
         default: ""
     secrets:
       registry_username:
-        description: "Username registre Docker (optionnel — utilise GITHUB_TOKEN pour ghcr.io)"
+        description: "Docker registry username (optional — uses GITHUB_TOKEN for ghcr.io)"
         required: false
       registry_password:
-        description: "Password registre Docker (optionnel — utilise GITHUB_TOKEN pour ghcr.io)"
+        description: "Docker registry password (optional — uses GITHUB_TOKEN for ghcr.io)"
         required: false
 
 permissions: {}
 
 jobs:
   docker:
-    if: ${{ inputs.enable_build == true }}
+    if: ${{ inputs.enable_build }}
     name: Docker Build → Scan → Publish
     runs-on: ubuntu-latest
     permissions:
@@ -74,10 +82,11 @@ jobs:
       security-events: write
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner == true }}
+        if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: audit
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
@@ -91,7 +100,7 @@ jobs:
       # Skippé si aucun scan activé (on passe directement au publish final)
       - name: Set staging tag
         id: staging
-        if: ${{ inputs.enable_trivy == true || inputs.enable_grype == true }}
+        if: ${{ inputs.enable_trivy || inputs.enable_grype }}
         env:
           REGISTRY: ${{ inputs.registry }}
           REPOSITORY: ${{ github.repository }}
@@ -99,7 +108,7 @@ jobs:
         run: echo "tag=${REGISTRY}/${REPOSITORY}:scan-${RUN_ID}" >> "$GITHUB_OUTPUT"
 
       - name: Build staging image
-        if: ${{ inputs.enable_trivy == true || inputs.enable_grype == true }}
+        if: ${{ inputs.enable_trivy || inputs.enable_grype }}
         uses: docker/bake-action@82490499d2e5613fcead7e128237ef0b0ea210f7 # v7.0.0
         with:
           push: true
@@ -109,7 +118,7 @@ jobs:
       # ── Phase 2 : scan ─────────────────────────────────────────────────────
       # Si un scan échoue, le job échoue et la phase 3 (publish) ne s'exécute pas.
       - name: Trivy scan
-        if: ${{ inputs.enable_trivy == true }}
+        if: ${{ inputs.enable_trivy }}
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: ${{ steps.staging.outputs.tag }}
@@ -117,13 +126,37 @@ jobs:
           severity: ${{ inputs.trivy_severity }}
           exit-code: "1"
 
+      - name: Trivy scan (SARIF)
+        if: ${{ always() && inputs.enable_trivy }}
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: ${{ steps.staging.outputs.tag }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: ${{ inputs.trivy_severity }}
+
+      - name: Upload Trivy SARIF
+        if: ${{ always() && inputs.enable_trivy }}
+        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-container
+
       - name: Grype scan
-        if: ${{ inputs.enable_grype == true }}
+        if: ${{ inputs.enable_grype }}
+        id: grype
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:
           image: ${{ steps.staging.outputs.tag }}
           fail-build: true
           severity-cutoff: negligible
+
+      - name: Upload Grype SARIF
+        if: ${{ always() && inputs.enable_grype }}
+        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        with:
+          sarif_file: ${{ steps.grype.outputs.sarif }}
+          category: grype-container
 
       # ── Phase 3 : publish final ────────────────────────────────────────────
       # Tags définis par le bake file du consumer. Cache buildx = republication quasi-instantanée.
@@ -136,7 +169,7 @@ jobs:
       # Tourne même si le scan a échoué (always) — le staging a été pushé dans tous les cas.
       # continue-on-error : la suppression n'est pas critique, la rétention ghcr.io (90j) prend le relais.
       - name: Delete staging tag
-        if: ${{ always() && (inputs.enable_trivy == true || inputs.enable_grype == true) }}
+        if: ${{ always() && (inputs.enable_trivy || inputs.enable_grype) }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -144,16 +177,17 @@ jobs:
           PACKAGE_NAME: ${{ github.event.repository.name }}
           TAG_NAME: scan-${{ github.run_id }}
         run: |
+          # Try org API first, fall back to user API (one will 404 depending on account type)
           VERSION_ID=$(
             gh api "/orgs/${OWNER}/packages/container/${PACKAGE_NAME}/versions" \
               --jq ".[] | select(.metadata.container.tags[]? == \"${TAG_NAME}\") | .id" 2>/dev/null \
             || gh api "/users/${OWNER}/packages/container/${PACKAGE_NAME}/versions" \
-              --jq ".[] | select(.metadata.container.tags[]? == \"${TAG_NAME}\") | .id" 2>/dev/null \
+              --jq ".[] | select(.metadata.container.tags[]? == \"${TAG_NAME}\") | .id" \
             || echo ""
           )
           if [ -n "$VERSION_ID" ]; then
             gh api --method DELETE "/orgs/${OWNER}/packages/container/${PACKAGE_NAME}/versions/${VERSION_ID}" 2>/dev/null \
-              || gh api --method DELETE "/users/${OWNER}/packages/container/${PACKAGE_NAME}/versions/${VERSION_ID}" 2>/dev/null \
+              || gh api --method DELETE "/users/${OWNER}/packages/container/${PACKAGE_NAME}/versions/${VERSION_ID}" \
               || echo "Delete failed — will expire per ghcr.io retention policy (90 days)"
             echo "Deleted staging tag: ${TAG_NAME}"
           else
@@ -164,7 +198,7 @@ jobs:
   # Tourne sur une image existante dans le registre.
 
   trivy-scan:
-    if: ${{ inputs.enable_trivy == true && inputs.enable_build == false }}
+    if: ${{ inputs.enable_trivy && !inputs.enable_build }}
     name: Container Scan (Trivy)
     runs-on: ubuntu-latest
     permissions:
@@ -172,20 +206,36 @@ jobs:
       security-events: write
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner == true }}
+        if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: audit
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+      - name: Trivy scan (table)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: "${{ inputs.image_name != '' && inputs.image_name || format('{0}/{1}', inputs.registry, github.repository) }}"
           format: table
           severity: ${{ inputs.trivy_severity }}
           exit-code: "1"
+      - name: Trivy scan (SARIF)
+        if: always()
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: "${{ inputs.image_name != '' && inputs.image_name || format('{0}/{1}', inputs.registry, github.repository) }}"
+          format: sarif
+          output: trivy-results.sarif
+          severity: ${{ inputs.trivy_severity }}
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-container
 
   grype-scan:
-    if: ${{ inputs.enable_grype == true && inputs.enable_build == false }}
+    if: ${{ inputs.enable_grype && !inputs.enable_build }}
     name: Container Scan (grype)
     runs-on: ubuntu-latest
     permissions:
@@ -193,13 +243,22 @@ jobs:
       security-events: write
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner == true }}
+        if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: audit
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+      - name: Grype scan
+        id: grype
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:
           image: "${{ inputs.image_name != '' && inputs.image_name || format('{0}/{1}', inputs.registry, github.repository) }}"
           fail-build: true
           severity-cutoff: negligible
+      - name: Upload Grype SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        with:
+          sarif_file: ${{ steps.grype.outputs.sarif }}
+          category: grype-container

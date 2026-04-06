@@ -10,57 +10,66 @@ on:
   workflow_call:
     inputs:
       enable_harden_runner:
-        description: "Monitoring réseau des runners via StepSecurity harden-runner (egress audit)"
+        description: "Runtime security via StepSecurity harden-runner"
         type: boolean
-        default: false
+        default: true
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "block"
+      harden_runner_allowed_endpoints:
+        description: "Allowed endpoints when egress-policy is block (space-separated, e.g. github.com:443 pypi.org:443)"
+        type: string
+        default: ""
       enable_test:
-        description: "Tests pytest + couverture codecov"
+        description: "pytest tests + codecov coverage"
         type: boolean
         default: false
       enable_lint:
-        description: "Lint Python avec ruff"
+        description: "Python linting with ruff"
         type: boolean
         default: false
       python_version:
-        description: "Version Python"
+        description: "Python version"
         type: string
         default: "3.13"
       coverage_threshold:
-        description: "Seuil de couverture minimum (%)"
+        description: "Minimum coverage threshold (%)"
         type: string
         default: "80"
       test_path:
-        description: "Répertoire des tests"
+        description: "Test directory"
         type: string
         default: "tests/"
       coverage_path:
-        description: "Chemin couvert par pytest-cov (ex: custom_components/my_component)"
+        description: "Coverage path for pytest-cov (e.g., custom_components/my_component)"
         type: string
         default: "."
       extra_packages:
-        description: "Packages pip supplémentaires avant les tests (ex: pytest-homeassistant-custom-component==0.13.316)"
+        description: "Additional pip packages before tests (e.g., pytest-homeassistant-custom-component==0.13.316)"
         type: string
         default: ""
     secrets:
       codecov_token:
-        description: "Token Codecov (optionnel — fonctionne sans pour les repos publics)"
+        description: "Codecov token (optional — works without for public repos)"
         required: false
 
 permissions: {}
 
 jobs:
   test:
-    if: ${{ inputs.enable_test == true }}
+    if: ${{ inputs.enable_test }}
     name: Test Python
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner == true }}
+        if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: audit
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
@@ -70,6 +79,8 @@ jobs:
           EXTRA_PACKAGES: ${{ inputs.extra_packages }}
         run: |
           pip install pytest pytest-cov
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f pyproject.toml ] || [ -f setup.py ]; then pip install .; fi
           if [ -n "$EXTRA_PACKAGES" ]; then
             # shellcheck disable=SC2086
             pip install $EXTRA_PACKAGES
@@ -91,23 +102,24 @@ jobs:
           fail_ci_if_error: true
 
   lint:
-    if: ${{ inputs.enable_lint == true }}
+    if: ${{ inputs.enable_lint }}
     name: Lint Python (ruff)
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner == true }}
+        if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
-          egress-policy: audit
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: ${{ inputs.python_version }}
       - name: Run ruff
-        # ruff: version suivie manuellement ou via Renovate pip manager.
         run: |
-          pip install ruff
+          # renovate: datasource=pypi depName=ruff
+          pip install ruff==0.15.9
           ruff check .

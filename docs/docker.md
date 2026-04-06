@@ -60,7 +60,9 @@ jobs:
 
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
-| `enable_harden_runner` | boolean | `false` | Monitoring réseau via StepSecurity harden-runner (egress audit) |
+| `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
+| `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
+| `harden_runner_allowed_endpoints` | string | `""` | Allowed endpoints when block (space-separated) |
 | `enable_build` | boolean | `false` | Docker build & push via bake |
 | `enable_trivy` | boolean | `false` | CVE scan via Trivy (aquasecurity) |
 | `enable_grype` | boolean | `false` | CVE scan via grype (Anchore/Cisco) |
