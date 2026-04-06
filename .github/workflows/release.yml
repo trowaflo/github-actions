@@ -19,7 +19,10 @@ on:
       harden_runner_allowed_endpoints:
         description: "Allowed endpoints when egress-policy is block (space-separated, e.g. github.com:443 pypi.org:443)"
         type: string
-        default: ""
+        # release-please needs GitHub API to create PRs/releases
+        default: >-
+          github.com:443
+          api.github.com:443
       enable_release_please:
         description: "Automated releases via release-please"
         type: boolean
