@@ -19,7 +19,12 @@ on:
       harden_runner_allowed_endpoints:
         description: "Allowed endpoints when egress-policy is block (space-separated, e.g. github.com:443 pypi.org:443)"
         type: string
-        default: ""
+        # setup-helm, chart-releaser, helm-docs (GitHub releases), npm (semver)
+        default: >-
+          github.com:443
+          api.github.com:443
+          release-assets.githubusercontent.com:443
+          registry.npmjs.org:443
       enable_release:
         description: "Release charts via chart-releaser"
         type: boolean

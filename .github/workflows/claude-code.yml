@@ -28,7 +28,11 @@ on:
       harden_runner_allowed_endpoints:
         description: "Allowed endpoints when egress-policy is block (space-separated, e.g. github.com:443 pypi.org:443)"
         type: string
-        default: ""
+        # Claude Code action calls Anthropic API
+        default: >-
+          github.com:443
+          api.github.com:443
+          api.anthropic.com:443
     secrets:
       claude_code_oauth_token:
         description: "Claude Code OAuth token"
