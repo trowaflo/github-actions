@@ -12,9 +12,6 @@ jobs:
       contents: read
       security-events: write
     with:
-      harden_runner_allowed_endpoints: >
-        github.com:443
-        api.github.com:443
       enable_gitleaks: true       # default — désactiver si besoin
       enable_checkov: true        # default — désactiver si besoin
       enable_actionlint: true     # default — désactiver si besoin
@@ -28,7 +25,7 @@ jobs:
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
 | `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
-| `harden_runner_allowed_endpoints` | string | `""` | Allowed endpoints when block (space-separated, e.g. `github.com:443`) |
+| `harden_runner_allowed_endpoints` | string | `(built-in)` | Allowed endpoints when block (space-separated) — override replaces defaults |
 | `enable_gitleaks` | boolean | `true` | Secret scanning avec gitleaks |
 | `enable_checkov` | boolean | `true` | Scan IaC misconfigurations (remplace KICS) |
 | `enable_actionlint` | boolean | `true` | Lint des fichiers workflow GitHub Actions |
@@ -83,6 +80,8 @@ Les résultats sont uploadés au format SARIF dans l'onglet **Security > Code sc
 
 ### harden-runner
 
-[StepSecurity harden-runner](https://github.com/step-security/harden-runner) sécurise le réseau de chaque job. Par défaut, la politique egress est `block` — tout le trafic sortant est interdit sauf les endpoints explicitement autorisés via `harden_runner_allowed_endpoints`.
+[StepSecurity harden-runner](https://github.com/step-security/harden-runner) sécurise le réseau de chaque job. Par défaut, la politique egress est `block` — tout le trafic sortant est interdit sauf les endpoints explicitement autorisés.
+
+Le workflow inclut une liste d'endpoints par défaut couvrant ses dépendances internes (pypi, npm, ghcr.io, trivy, kics…). Le consumer peut la surcharger via `harden_runner_allowed_endpoints` — **cela remplace** (ne fusionne pas avec) la liste par défaut.
 
 Pour découvrir les endpoints nécessaires, commencer avec `harden_runner_egress_policy: audit` puis passer à `block` avec la liste d'endpoints identifiés.

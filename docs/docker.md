@@ -62,7 +62,7 @@ jobs:
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
 | `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
-| `harden_runner_allowed_endpoints` | string | `""` | Allowed endpoints when block (space-separated) |
+| `harden_runner_allowed_endpoints` | string | `(built-in)` | Allowed endpoints when block (space-separated) — override replaces defaults |
 | `enable_build` | boolean | `false` | Docker build & push via bake |
 | `enable_trivy` | boolean | `false` | CVE scan via Trivy (aquasecurity) |
 | `enable_grype` | boolean | `false` | CVE scan via grype (Anchore/Cisco) |
