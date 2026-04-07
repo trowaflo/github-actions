@@ -1,0 +1,574 @@
+name: Helm CI
+
+# Reusable workflow — Helm Charts CI (pull_request)
+# Usage: uses: trowaflo/github-actions/.github/workflows/helm-ci.yml@<sha>
+#
+# Job order: lint + unittest → bump → docs → docs-check
+#                                  └──────────────→ pr-charts
+
+on:
+  workflow_call:
+    inputs:
+      enable_harden_runner:
+        description: "Runtime security via StepSecurity harden-runner"
+        type: boolean
+        default: true
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "block"
+      harden_runner_allowed_endpoints:
+        description: "Allowed endpoints when egress-policy is block (space-separated)"
+        type: string
+        # setup-helm, helm-docs (GitHub releases), npm (semver), yq
+        default: >-
+          github.com:443
+          api.github.com:443
+          release-assets.githubusercontent.com:443
+          registry.npmjs.org:443
+          objects.githubusercontent.com:443
+      enable_lint:
+        description: "Lint charts with chart-testing (ct lint)"
+        type: boolean
+        default: false
+      enable_unittest:
+        description: "Helm unit tests with helm-unittest (matrix per chart)"
+        type: boolean
+        default: false
+      enable_bump:
+        description: "Auto-bump chart versions on PR using conventional commits (major/minor/patch)"
+        type: boolean
+        default: false
+      enable_docs:
+        description: "Generate and commit documentation with helm-docs (after bump)"
+        type: boolean
+        default: false
+      enable_docs_check:
+        description: "Validate documentation is up-to-date (dry-run, fails if outdated)"
+        type: boolean
+        default: false
+      enable_pr_charts:
+        description: "Package modified charts on PR and publish to pr-charts branch"
+        type: boolean
+        default: false
+      charts_dir:
+        description: "Root directory for Helm charts"
+        type: string
+        default: "charts"
+      bump_skip_actors:
+        description: "Comma-separated actors to skip for version bumping (e.g., 'renovate[bot]')"
+        type: string
+        default: "renovate[bot]"
+
+permissions: {}
+
+jobs:
+  # ─── Lint ────────────────────────────────────────────────────────────────────
+
+  helm-lint:
+    if: ${{ inputs.enable_lint }}
+    name: Helm Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.x"
+      - uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+      - name: List changed charts
+        id: list-changed
+        env:
+          CHARTS_DIR: ${{ inputs.charts_dir }}
+        run: |
+          changed=$(ct list-changed --target-branch "${{ github.event.repository.default_branch }}" --chart-dirs "$CHARTS_DIR")
+          if [ -n "$changed" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run ct lint
+        if: steps.list-changed.outputs.changed == 'true'
+        env:
+          CHARTS_DIR: ${{ inputs.charts_dir }}
+        run: ct lint --target-branch "${{ github.event.repository.default_branch }}" --chart-dirs "$CHARTS_DIR"
+
+  # ─── Unit Tests ──────────────────────────────────────────────────────────────
+
+  helm-unittest-matrix:
+    if: ${{ inputs.enable_unittest }}
+    name: Detect Test Charts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      has_charts: ${{ steps.set-matrix.outputs.has_charts }}
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Generate chart matrix
+        id: set-matrix
+        env:
+          CHARTS_DIR: ${{ inputs.charts_dir }}
+        run: |
+          charts_json=$(find "$CHARTS_DIR" -type d -name tests -exec dirname {} \; | sort | jq -R -s -c 'split("\n")[:-1]')
+          echo "matrix={\"chart\": $charts_json}" >> "$GITHUB_OUTPUT"
+          if [ "$charts_json" != "[]" ]; then
+            echo "has_charts=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_charts=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Detected charts: $charts_json"
+
+  helm-unittest:
+    if: ${{ inputs.enable_unittest && needs.helm-unittest-matrix.outputs.has_charts == 'true' }}
+    needs: helm-unittest-matrix
+    name: "Test: ${{ matrix.chart }}"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix: ${{ fromJson(needs.helm-unittest-matrix.outputs.matrix) }}
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+      - name: Cache Helm plugins
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ~/.local/share/helm/plugins
+          key: helm-unittest-${{ runner.os }}
+      - name: Cache Helm dependencies
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ${{ matrix.chart }}/charts
+            ${{ matrix.chart }}/Chart.lock
+          key: helm-deps-${{ matrix.chart }}-${{ hashFiles(format('{0}/Chart.yaml', matrix.chart)) }}
+          restore-keys: |
+            helm-deps-${{ matrix.chart }}-
+      - name: Install helm-unittest plugin
+        # renovate: datasource=github-releases depName=helm-unittest/helm-unittest
+        run: helm plugin list | grep -q unittest || helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.0.3 --verify=false
+      - name: Build Helm dependencies
+        run: helm dependency update "${{ matrix.chart }}"
+      - name: Run Helm unit tests
+        run: |
+          chart_name=$(basename "${{ matrix.chart }}")
+          helm unittest \
+            --output-type JUnit \
+            --output-file "test-results-${chart_name}.xml" \
+            "${{ matrix.chart }}"
+      - name: Publish test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@c950f6fb443cb5af20a377fd0dfaa78838901040 # v2.23.0
+        with:
+          files: test-results-*.xml
+          check_name: "Test Results - ${{ matrix.chart }}"
+          comment_mode: "off"
+
+  # ─── Version Bump ────────────────────────────────────────────────────────────
+  # Runs after lint + unittest pass (or are skipped/disabled).
+
+  helm-bump:
+    needs: [helm-lint, helm-unittest-matrix, helm-unittest]
+    if: >-
+      ${{ inputs.enable_bump &&
+          github.event_name == 'pull_request' &&
+          !contains(inputs.bump_skip_actors, github.actor) &&
+          (needs.helm-lint.result == 'success' || needs.helm-lint.result == 'skipped') &&
+          (needs.helm-unittest-matrix.result == 'success' || needs.helm-unittest-matrix.result == 'skipped') &&
+          (needs.helm-unittest.result == 'success' || needs.helm-unittest.result == 'skipped') }}
+    name: Helm Version Bump
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "24"
+      - name: Install semver
+        # renovate: datasource=npm depName=semver
+        run: npm install --global semver@7.7.4
+      - name: Detect changed charts
+        id: detect
+        env:
+          CHARTS_DIR: ${{ inputs.charts_dir }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch origin "$BASE_REF"
+          charts_to_bump=()
+          for file in $(git diff --name-only "origin/$BASE_REF..HEAD" | grep "^$CHARTS_DIR/" || true); do
+            chart_dir=$(dirname "$file")
+            while [ ! -f "$chart_dir/Chart.yaml" ] && [ "$chart_dir" != "." ]; do
+              chart_dir=$(dirname "$chart_dir")
+            done
+            chart="$chart_dir/Chart.yaml"
+            # shellcheck disable=SC2076
+            if [ -f "$chart" ] && [[ ! " ${charts_to_bump[*]} " =~ " ${chart} " ]]; then
+              charts_to_bump+=("$chart")
+            fi
+          done
+          echo "charts=${charts_to_bump[*]}" >> "$GITHUB_OUTPUT"
+          echo "Charts to bump: ${charts_to_bump[*]}"
+      - name: Bump chart versions (conventional commits)
+        if: steps.detect.outputs.charts != ''
+        id: bump
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          CHARTS: ${{ steps.detect.outputs.charts }}
+        run: |
+          bumped_any=false
+          for chart in $CHARTS; do
+            chart_dir=$(dirname "$chart")
+
+            # Skip if version was already manually bumped
+            BASE_VERSION=$(git show "origin/$BASE_REF:$chart" 2>/dev/null | grep '^version:' | awk '{print $2}' || echo "")
+            CURRENT_VERSION=$(grep '^version:' "$chart" | awk '{print $2}')
+            if [ -n "$BASE_VERSION" ] && [ "$BASE_VERSION" != "$CURRENT_VERSION" ]; then
+              echo "Version already bumped for $chart ($BASE_VERSION → $CURRENT_VERSION), skipping."
+              continue
+            fi
+
+            # Analyze commits affecting this chart for conventional commit type
+            COMMITS=$(git log --pretty=%B --no-merges "origin/$BASE_REF..HEAD" -- "$chart_dir")
+            bump="none"
+            if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
+              bump="major"
+            elif echo "$COMMITS" | grep -Eq "^[a-z]+(\([a-z0-9_-]+\))?!:"; then
+              bump="major"
+            elif echo "$COMMITS" | grep -Eq "^feat[:(]"; then
+              bump="minor"
+            elif echo "$COMMITS" | grep -Eq "^fix[:(]"; then
+              bump="patch"
+            fi
+
+            echo "Bump for $chart: $bump"
+            if [ "$bump" != "none" ]; then
+              new=$(semver -i "$bump" "$CURRENT_VERSION")
+              sed -i "s/^version:.*/version: $new/" "$chart"
+              echo "Bumped $chart: $CURRENT_VERSION → $new"
+              bumped_any=true
+            fi
+          done
+          echo "bumped=$bumped_any" >> "$GITHUB_OUTPUT"
+      - name: Commit version bump
+        if: steps.bump.outputs.bumped == 'true'
+        env:
+          CHARTS_DIR: ${{ inputs.charts_dir }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          find "$CHARTS_DIR" -name Chart.yaml -exec git add {} +
+          git commit -m "ci: bump chart versions [skip ci]"
+          git push
+
+  # ─── Documentation ───────────────────────────────────────────────────────────
+  # Runs after bump (to capture the new version in the generated README).
+
+  helm-docs:
+    needs: [helm-bump]
+    if: >-
+      ${{ inputs.enable_docs &&
+          (needs.helm-bump.result == 'success' || needs.helm-bump.result == 'skipped') }}
+    name: Helm Docs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install helm-docs with checksum verification
+        run: |
+          set -euo pipefail
+          # renovate: datasource=github-releases depName=norwoodj/helm-docs
+          VERSION=1.14.2
+          ARCHIVE="helm-docs_${VERSION}_Linux_x86_64.tar.gz"
+          BASE_URL="https://github.com/norwoodj/helm-docs/releases/download/v${VERSION}"
+          cd /tmp
+          curl -fsSLO "${BASE_URL}/${ARCHIVE}"
+          curl -fsSLO "${BASE_URL}/checksums.txt"
+          grep " ${ARCHIVE}$" checksums.txt | sha256sum -c -
+          tar -xzf "${ARCHIVE}" helm-docs
+          chmod +x helm-docs
+      - name: Generate docs
+        env:
+          CHARTS_DIR: ${{ inputs.charts_dir }}
+        run: /tmp/helm-docs --chart-search-root "$CHARTS_DIR"
+      - name: Commit updated docs
+        env:
+          CHARTS_DIR: ${{ inputs.charts_dir }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$CHARTS_DIR"
+          git diff --cached --quiet || (git commit -m "docs: update helm-docs [skip ci]" && git push)
+
+  helm-docs-check:
+    needs: [helm-docs]
+    if: >-
+      ${{ inputs.enable_docs_check &&
+          (needs.helm-docs.result == 'success' || needs.helm-docs.result == 'skipped') }}
+    name: Helm Docs Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+      - name: Install helm-docs with checksum verification
+        run: |
+          set -euo pipefail
+          # renovate: datasource=github-releases depName=norwoodj/helm-docs
+          VERSION=1.14.2
+          ARCHIVE="helm-docs_${VERSION}_Linux_x86_64.tar.gz"
+          BASE_URL="https://github.com/norwoodj/helm-docs/releases/download/v${VERSION}"
+          cd /tmp
+          curl -fsSLO "${BASE_URL}/${ARCHIVE}"
+          curl -fsSLO "${BASE_URL}/checksums.txt"
+          grep " ${ARCHIVE}$" checksums.txt | sha256sum -c -
+          tar -xzf "${ARCHIVE}" helm-docs
+          chmod +x helm-docs
+      - name: Generate docs
+        env:
+          CHARTS_DIR: ${{ inputs.charts_dir }}
+        run: /tmp/helm-docs --chart-search-root "$CHARTS_DIR"
+      - name: Check for changes
+        run: |
+          git add .
+          if git diff --cached --quiet; then
+            echo "✅ Documentation is up-to-date."
+          else
+            echo "❌ Documentation is outdated. Run helm-docs locally to update."
+            echo ""
+            git diff --cached
+            exit 1
+          fi
+
+  # ─── PR Charts ───────────────────────────────────────────────────────────────
+  # Runs after bump (packages the bumped version).
+
+  helm-pr-charts:
+    needs: [helm-bump]
+    if: >-
+      ${{ inputs.enable_pr_charts &&
+          github.event_name == 'pull_request' &&
+          (needs.helm-bump.result == 'success' || needs.helm-bump.result == 'skipped') }}
+    name: PR Chart Packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+      - name: Install yq
+        run: |
+          # renovate: datasource=github-releases depName=mikefarah/yq
+          YQ_VERSION="v4.44.2"
+          curl -fsSL -o /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+          chmod +x /usr/local/bin/yq
+      - name: Detect changed charts
+        id: detect
+        env:
+          CHARTS_DIR: ${{ inputs.charts_dir }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+        run: |
+          git fetch origin "$BASE_BRANCH"
+          changed_charts=""
+          for file in $(git diff --name-only "origin/$BASE_BRANCH..HEAD" | grep "^$CHARTS_DIR/" || true); do
+            chart_dir=$(dirname "$file")
+            while [ ! -f "$chart_dir/Chart.yaml" ] && [ "$chart_dir" != "." ]; do
+              chart_dir=$(dirname "$chart_dir")
+            done
+            # shellcheck disable=SC2076
+            if [ -f "$chart_dir/Chart.yaml" ] && [[ ! " $changed_charts " =~ " $chart_dir " ]]; then
+              changed_charts="$changed_charts $chart_dir"
+            fi
+          done
+          changed_charts=$(echo "$changed_charts" | xargs)
+          echo "changed=$changed_charts" >> "$GITHUB_OUTPUT"
+          echo "Changed charts: $changed_charts"
+      - name: Add Helm repositories
+        if: steps.detect.outputs.changed != ''
+        run: |
+          repos_added=0
+          for chart in ${{ steps.detect.outputs.changed }}; do
+            chart_file="$chart/Chart.yaml"
+            [ -f "$chart_file" ] || continue
+            while IFS=$'\t' read -r repo_name repo_url; do
+              if [ -n "$repo_name" ] && [ -n "$repo_url" ] && [ "$repo_url" != "null" ]; then
+                helm repo add "$repo_name" "$repo_url" 2>/dev/null || true
+                repos_added=$((repos_added + 1))
+              fi
+            done < <(yq '.dependencies[] | select(.repository | test("^https?://")) | [.name, .repository] | @tsv' "$chart_file" 2>/dev/null || true)
+          done
+          if [ "$repos_added" -gt 0 ]; then helm repo update; fi
+      - name: Build chart dependencies
+        if: steps.detect.outputs.changed != ''
+        run: |
+          for chart in ${{ steps.detect.outputs.changed }}; do
+            if [ -f "$chart/Chart.yaml" ]; then helm dependency build "$chart"; fi
+          done
+      - name: Package charts
+        if: steps.detect.outputs.changed != ''
+        id: package
+        run: |
+          mkdir -p /tmp/pr-charts /tmp/pr-artifacts
+          PR_NUM=${{ github.event.pull_request.number }}
+          packaged_charts=""
+          for chart in ${{ steps.detect.outputs.changed }}; do
+            [ -f "$chart/Chart.yaml" ] || continue
+            chart_name=$(yq '.name' "$chart/Chart.yaml")
+            chart_version=$(yq '.version' "$chart/Chart.yaml")
+            pr_version="${chart_version}-pr${PR_NUM}"
+
+            # PR-versioned package for pr-charts branch
+            rm -rf /tmp/chart-copy
+            cp -r "$chart" /tmp/chart-copy
+            yq ".version = \"${pr_version}\"" -i /tmp/chart-copy/Chart.yaml
+            helm package /tmp/chart-copy -d /tmp/pr-charts
+            rm -rf /tmp/chart-copy
+
+            # Original version for artifacts
+            helm package "$chart" -d /tmp/pr-artifacts
+            packaged_charts="$packaged_charts ${chart_name}:${pr_version}"
+          done
+          echo "packaged=$packaged_charts" >> "$GITHUB_OUTPUT"
+      - name: Upload artifacts
+        if: steps.package.outputs.packaged != ''
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: helm-charts-pr-${{ github.event.pull_request.number }}
+          path: /tmp/pr-artifacts/*.tgz
+          retention-days: 30
+      - name: Publish to pr-charts branch
+        if: steps.package.outputs.packaged != ''
+        run: |
+          PR_NUM=${{ github.event.pull_request.number }}
+          git fetch origin pr-charts || true
+          if git show-ref --verify --quiet refs/remotes/origin/pr-charts; then
+            git checkout pr-charts
+          else
+            git checkout --orphan pr-charts
+            git rm -rf .
+            echo "# PR Charts Repository" > README.md
+            echo "Charts are versioned with -prN suffix and cleaned up when PRs are merged/closed." >> README.md
+            git add README.md
+            git commit -m "Initialize pr-charts branch"
+          fi
+          cp /tmp/pr-charts/*.tgz .
+          helm repo index . --url "https://raw.githubusercontent.com/${{ github.repository }}/pr-charts" --merge index.yaml 2>/dev/null || \
+          helm repo index . --url "https://raw.githubusercontent.com/${{ github.repository }}/pr-charts"
+          git add ./*.tgz index.yaml
+          git commit -m "Add PR #${PR_NUM} charts" || echo "No changes to commit"
+          git push origin pr-charts
+      - name: Comment on PR
+        if: steps.package.outputs.packaged != ''
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          PACKAGED: ${{ steps.package.outputs.packaged }}
+          REPO_FULL: ${{ github.repository }}
+        with:
+          script: |
+            const packaged = process.env.PACKAGED.trim().split(' ');
+            let chartsList = '';
+            packaged.forEach(item => {
+              if (item) {
+                const [name, version] = item.split(':');
+                chartsList += `- \`${name}\` version \`${version}\`\n`;
+              }
+            });
+            const repoUrl = `https://raw.githubusercontent.com/${process.env.REPO_FULL}/pr-charts`;
+            const body = [
+              '## 📦 PR Charts Available for Testing\n',
+              chartsList,
+              '### Testing with Helm\n',
+              '```bash',
+              `helm repo add pr-charts ${repoUrl}`,
+              'helm repo update',
+              'helm install test-release pr-charts/<chart-name> --version <version>',
+              '```\n',
+              '> 💡 Charts are automatically removed when this PR is merged or closed.'
+            ].join('\n');
+            const comments = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const existing = comments.data.find(c => c.body.includes('PR Charts Available for Testing'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                comment_id: existing.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }
