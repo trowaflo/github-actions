@@ -205,7 +205,7 @@ Secrets: `registry_username`, `registry_password` (both optional — defaults to
 | `enable_docs_check` | `false` | Validate documentation is up-to-date (fails if outdated) |
 | `enable_pr_charts` | `false` | Package modified charts on PR and publish to pr-charts branch |
 | `charts_dir` | `"charts"` | Root directory for Helm charts |
-| `bump_skip_actors` | `"renovate[bot]"` | Comma-separated actors to skip for version bumping |
+| `bump_skip_actors` | `"renovate[bot]"` | Comma-separated actors to skip (exact match via `format(',{0},', ...)`) |
 
 ## helm-release.yml inputs
 

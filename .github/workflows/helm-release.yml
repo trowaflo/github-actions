@@ -17,7 +17,10 @@ on:
         type: string
         default: "block"
       harden_runner_allowed_endpoints:
-        description: "Allowed endpoints when egress-policy is block (space-separated)"
+        description: >-
+          Allowed endpoints when egress-policy is block (space-separated).
+          Note: chart dependencies may reference external Helm repositories —
+          add those hosts here if charts declare external repository URLs.
         type: string
         # setup-helm, chart-releaser, yq
         default: >-
@@ -82,12 +85,20 @@ jobs:
             echo "first=$CHARTS_DIR" >> "$GITHUB_OUTPUT"
             echo "second=" >> "$GITHUB_OUTPUT"
           fi
-      - name: Install yq
+      - name: Install yq with checksum verification
         run: |
+          set -euo pipefail
           # renovate: datasource=github-releases depName=mikefarah/yq
           YQ_VERSION="v4.44.2"
-          curl -fsSL -o /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
-          chmod +x /usr/local/bin/yq
+          YQ_ASSET="yq_linux_amd64"
+          BASE_URL="https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}"
+          TMP_DIR="$(mktemp -d)"
+          trap 'rm -rf "$TMP_DIR"' EXIT
+          curl -fsSL -o "$TMP_DIR/$YQ_ASSET" "${BASE_URL}/${YQ_ASSET}"
+          curl -fsSL -o "$TMP_DIR/checksums" "${BASE_URL}/checksums"
+          grep -F " ${YQ_ASSET}" "$TMP_DIR/checksums" > "$TMP_DIR/${YQ_ASSET}.sha256"
+          (cd "$TMP_DIR" && sha256sum -c "${YQ_ASSET}.sha256")
+          install -m 0755 "$TMP_DIR/$YQ_ASSET" /usr/local/bin/yq
       - name: Add external Helm repositories
         env:
           DIR_FIRST: ${{ steps.dirs.outputs.first }}

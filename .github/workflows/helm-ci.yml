@@ -18,7 +18,10 @@ on:
         type: string
         default: "block"
       harden_runner_allowed_endpoints:
-        description: "Allowed endpoints when egress-policy is block (space-separated)"
+        description: >-
+          Allowed endpoints when egress-policy is block (space-separated).
+          Note: enable_pr_charts adds Helm repo endpoints dynamically from Chart.yaml
+          dependencies — add those hosts here if charts reference external repositories.
         type: string
         # setup-helm, helm-docs (GitHub releases), npm (semver), yq
         default: >-
@@ -197,7 +200,7 @@ jobs:
     if: >-
       ${{ inputs.enable_bump &&
           github.event_name == 'pull_request' &&
-          !contains(inputs.bump_skip_actors, github.actor) &&
+          !contains(format(',{0},', inputs.bump_skip_actors), format(',{0},', github.actor)) &&
           (needs.helm-lint.result == 'success' || needs.helm-lint.result == 'skipped') &&
           (needs.helm-unittest-matrix.result == 'success' || needs.helm-unittest-matrix.result == 'skipped') &&
           (needs.helm-unittest.result == 'success' || needs.helm-unittest.result == 'skipped') }}
@@ -236,8 +239,7 @@ jobs:
               chart_dir=$(dirname "$chart_dir")
             done
             chart="$chart_dir/Chart.yaml"
-            # shellcheck disable=SC2076
-            if [ -f "$chart" ] && [[ ! " ${charts_to_bump[*]} " =~ " ${chart} " ]]; then
+            if [ -f "$chart" ] && ! printf '%s\n' "${charts_to_bump[@]}" | grep -qxF "$chart"; then
               charts_to_bump+=("$chart")
             fi
           done
@@ -291,6 +293,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # shellcheck disable=SC2038  # -exec {} + is already the safe form
           find "$CHARTS_DIR" -name Chart.yaml -exec git add {} +
           git commit -m "ci: bump chart versions [skip ci]"
           git push
@@ -342,7 +345,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add "$CHARTS_DIR"
-          git diff --cached --quiet || (git commit -m "docs: update helm-docs [skip ci]" && git push)
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: update helm-docs [skip ci]"
+            git push
+          fi
 
   helm-docs-check:
     needs: [helm-docs]
@@ -422,12 +428,20 @@ jobs:
         run: |
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
-      - name: Install yq
+      - name: Install yq with checksum verification
         run: |
+          set -euo pipefail
           # renovate: datasource=github-releases depName=mikefarah/yq
           YQ_VERSION="v4.44.2"
-          curl -fsSL -o /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
-          chmod +x /usr/local/bin/yq
+          YQ_ASSET="yq_linux_amd64"
+          BASE_URL="https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}"
+          TMP_DIR="$(mktemp -d)"
+          trap 'rm -rf "$TMP_DIR"' EXIT
+          curl -fsSL -o "$TMP_DIR/$YQ_ASSET" "${BASE_URL}/${YQ_ASSET}"
+          curl -fsSL -o "$TMP_DIR/checksums" "${BASE_URL}/checksums"
+          grep -F " ${YQ_ASSET}" "$TMP_DIR/checksums" > "$TMP_DIR/${YQ_ASSET}.sha256"
+          (cd "$TMP_DIR" && sha256sum -c "${YQ_ASSET}.sha256")
+          install -m 0755 "$TMP_DIR/$YQ_ASSET" /usr/local/bin/yq
       - name: Detect changed charts
         id: detect
         env:
@@ -441,8 +455,7 @@ jobs:
             while [ ! -f "$chart_dir/Chart.yaml" ] && [ "$chart_dir" != "." ]; do
               chart_dir=$(dirname "$chart_dir")
             done
-            # shellcheck disable=SC2076
-            if [ -f "$chart_dir/Chart.yaml" ] && [[ ! " $changed_charts " =~ " $chart_dir " ]]; then
+            if [ -f "$chart_dir/Chart.yaml" ] && ! printf '%s\n' $changed_charts | grep -qxF "$chart_dir"; then
               changed_charts="$changed_charts $chart_dir"
             fi
           done
@@ -508,7 +521,7 @@ jobs:
           PR_NUM=${{ github.event.pull_request.number }}
           git fetch origin pr-charts || true
           if git show-ref --verify --quiet refs/remotes/origin/pr-charts; then
-            git checkout pr-charts
+            git checkout -B pr-charts origin/pr-charts
           else
             git checkout --orphan pr-charts
             git rm -rf .
