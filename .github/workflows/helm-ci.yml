@@ -461,6 +461,8 @@ jobs:
           done < <(git diff --name-only "origin/$BASE_BRANCH..HEAD" | grep "^$CHARTS_DIR/" || true)
           echo "changed=${changed_charts[*]}" >> "$GITHUB_OUTPUT"
           echo "Changed charts: ${changed_charts[*]}"
+      # NOTE: This step contacts external Helm repository hosts derived from Chart.yaml dependencies.
+      # With harden-runner egress-policy: block, you must add those hosts to harden_runner_allowed_endpoints.
       - name: Add Helm repositories
         if: steps.detect.outputs.changed != ''
         run: |
