@@ -1,0 +1,14 @@
+suite: configmap
+templates:
+  - templates/configmap.yaml
+tests:
+  - it: should create a ConfigMap
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: data.hello
+          value: world
+      - matchRegex:
+          path: metadata.name
+          pattern: ^.*-config$

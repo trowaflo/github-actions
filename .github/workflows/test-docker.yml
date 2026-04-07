@@ -1,0 +1,33 @@
+name: Test Docker Workflow
+
+# Validates docker.yml using the hello-world test fixture in tests/docker/.
+# Builds the image, then runs both Trivy and grype scans on it.
+#
+# Triggered:
+#   - workflow_dispatch (manual)
+#   - pull_request when docker.yml or test fixture change
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/docker.yml"
+      - "tests/docker/**"
+      - "docker-bake.hcl"
+
+permissions: {}
+
+jobs:
+  docker:
+    name: Test docker.yml (build + trivy + grype)
+    uses: ./.github/workflows/docker.yml
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    with:
+      enable_build: true
+      enable_trivy: true
+      enable_grype: true
+      # audit mode: observe egress without blocking — surface any missing endpoints
+      harden_runner_egress_policy: audit
