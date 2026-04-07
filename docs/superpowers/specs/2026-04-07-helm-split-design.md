@@ -8,11 +8,12 @@
 
 `helm.yml` is a monolithic reusable workflow with 8 jobs controlled by `enable_*` flags. It is called up to 3 times with different flag sets:
 
-- On `pull_request`: lint, unittest, bump, docs-check, pr-charts
-- On `push` to main: release, docs
+- On `pull_request`: lint, unittest, bump, docs, docs-check, pr-charts
+- On `push` to main: release
 - On PR `closed`: pr-cleanup
 
 Problems:
+
 - Cascading `if:` conditions make the file hard to read
 - `bump` and `docs-check` run in parallel → docs become stale after bump commits a new version
 - No way to enforce `bump → docs → docs-check` ordering without ugly composite conditions
@@ -20,6 +21,8 @@ Problems:
 ## Decision
 
 Split into 3 dedicated reusable workflow files. Delete `helm.yml`.
+
+`helm-docs` belongs only in `helm-ci.yml`: if the PR cycle ran correctly (bump → docs → commit), docs are already up-to-date when the PR is merged. No need to regenerate on release.
 
 ## Files
 
@@ -45,7 +48,7 @@ helm-unittest      │
 **Inputs:**
 
 | Input | Default | Description |
-|---|---|---|
+| --- | --- | --- |
 | `enable_harden_runner` | `true` | StepSecurity harden-runner |
 | `harden_runner_egress_policy` | `"block"` | `audit` or `block` |
 | `harden_runner_allowed_endpoints` | (built-in) | Override replaces defaults |
@@ -67,20 +70,19 @@ helm-unittest      │
 **Job sequence:**
 
 ```
-helm-release ──→ helm-docs
+helm-release
 ```
 
-- `helm-docs` needs `helm-release` (commits docs after charts are released)
+Docs are not regenerated here — they are committed during the PR cycle.
 
 **Inputs:**
 
 | Input | Default | Description |
-|---|---|---|
+| --- | --- | --- |
 | `enable_harden_runner` | `true` | StepSecurity harden-runner |
 | `harden_runner_egress_policy` | `"block"` | `audit` or `block` |
 | `harden_runner_allowed_endpoints` | (built-in) | Override replaces defaults |
 | `enable_release` | `false` | chart-releaser (multi-dir via `release_charts_dirs`) |
-| `enable_docs` | `false` | Generate + commit helm-docs |
 | `charts_dir` | `"charts"` | Root directory for Helm charts |
 | `release_charts_dirs` | `""` | Space-separated chart dirs to release (max 2) |
 
@@ -95,7 +97,7 @@ helm-release ──→ helm-docs
 **Inputs:**
 
 | Input | Default | Description |
-|---|---|---|
+| --- | --- | --- |
 | `enable_harden_runner` | `true` | StepSecurity harden-runner |
 | `harden_runner_egress_policy` | `"block"` | `audit` or `block` |
 | `harden_runner_allowed_endpoints` | (built-in) | Override replaces defaults |
@@ -105,7 +107,7 @@ helm-release ──→ helm-docs
 ## Documentation updates
 
 | File | Action |
-|---|---|
+| --- | --- |
 | `docs/helm.md` | Replace with 3 sections — one per workflow — with inputs tables and usage examples |
 | `CLAUDE.md` | Replace `helm.yml inputs` section with 3 separate tables |
 
