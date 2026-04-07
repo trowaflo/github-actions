@@ -10,6 +10,10 @@ variable "REPO" {
   default = "trowaflo/github-actions"
 }
 
+group "default" {
+  targets = ["hello-world"]
+}
+
 target "hello-world" {
   context    = "tests/docker"
   dockerfile = "Dockerfile"

@@ -30,6 +30,7 @@ on:
           release-assets.githubusercontent.com:443
           registry.npmjs.org:443
           objects.githubusercontent.com:443
+          get.helm.sh:443
       enable_lint:
         description: "Lint charts with chart-testing (ct lint)"
         type: boolean

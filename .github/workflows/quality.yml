@@ -36,6 +36,7 @@ on:
           kics.io:443
           apk.cgr.dev:443
           9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+          api0.prismacloud.io:443
       enable_gitleaks:
         description: "Secret scanning with gitleaks"
         type: boolean
