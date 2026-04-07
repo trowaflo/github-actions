@@ -15,7 +15,9 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
                        #   markdownlint, yamllint, ansible-lint, terraform-validate, kics, trivy, json-lint
   ha.yml               # Home Assistant: hacs, hassfest, config-check
   python.yml           # Python CI: pytest+ruff+codecov (generic — HA uses extra_packages)
-  helm.yml             # Helm: release, lint, unittest, docs, docs-check, bump, PR charts, PR cleanup
+  helm-ci.yml          # Helm CI: lint, unittest, bump, docs, docs-check, pr-charts (pull_request)
+  helm-release.yml     # Helm Release: chart-releaser (push to main)
+  helm-pr-cleanup.yml  # Helm Cleanup: remove pr-charts on PR close
   docker.yml           # Docker: build/push, trivy scan, grype scan
   release.yml          # Release: release-please
   claude-code.yml      # Claude Code: @claude mentions + /review command
@@ -189,7 +191,23 @@ Secret: `codecov_token` (optional)
 
 Secrets: `registry_username`, `registry_password` (both optional — defaults to GITHUB_TOKEN for ghcr.io)
 
-## helm.yml inputs
+## helm-ci.yml inputs
+
+| Input | Default | Description |
+| --- | --- | --- |
+| `enable_harden_runner` | `true` | Runtime security via StepSecurity harden-runner |
+| `harden_runner_egress_policy` | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
+| `harden_runner_allowed_endpoints` | `(built-in)` | Allowed endpoints when block (space-separated) — override replaces defaults |
+| `enable_lint` | `false` | Lint charts with chart-testing (ct lint) |
+| `enable_unittest` | `false` | Helm unit tests with helm-unittest (matrix per chart) |
+| `enable_bump` | `false` | Auto-bump chart versions on PR using conventional commits |
+| `enable_docs` | `false` | Generate and commit helm-docs (runs after bump) |
+| `enable_docs_check` | `false` | Validate documentation is up-to-date (fails if outdated) |
+| `enable_pr_charts` | `false` | Package modified charts on PR and publish to pr-charts branch |
+| `charts_dir` | `"charts"` | Root directory for Helm charts |
+| `bump_skip_actors` | `"renovate[bot]"` | Comma-separated actors to skip for version bumping |
+
+## helm-release.yml inputs
 
 | Input | Default | Description |
 | --- | --- | --- |
@@ -197,16 +215,16 @@ Secrets: `registry_username`, `registry_password` (both optional — defaults to
 | `harden_runner_egress_policy` | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
 | `harden_runner_allowed_endpoints` | `(built-in)` | Allowed endpoints when block (space-separated) — override replaces defaults |
 | `enable_release` | `false` | Release charts via chart-releaser (multi-dir support via release_charts_dirs) |
-| `enable_lint` | `false` | Lint charts with chart-testing (ct lint) |
-| `enable_unittest` | `false` | Helm unit tests with helm-unittest (matrix per chart) |
-| `enable_docs` | `false` | Generate and commit documentation with helm-docs |
-| `enable_docs_check` | `false` | Validate documentation is up-to-date (dry-run, fails if outdated) |
-| `enable_bump` | `false` | Auto-bump chart versions on PR using conventional commits (major/minor/patch) |
-| `enable_pr_charts` | `false` | Package modified charts on PR and publish to pr-charts branch |
-| `enable_pr_cleanup` | `false` | Cleanup PR charts from pr-charts branch after merge/close |
 | `charts_dir` | `"charts"` | Root directory for Helm charts |
 | `release_charts_dirs` | `""` | Space-separated ordered chart directories to release (max 2) |
-| `bump_skip_actors` | `"renovate[bot]"` | Comma-separated actors to skip for version bumping |
+
+## helm-pr-cleanup.yml inputs
+
+| Input | Default | Description |
+| --- | --- | --- |
+| `enable_harden_runner` | `true` | Runtime security via StepSecurity harden-runner |
+| `harden_runner_egress_policy` | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
+| `harden_runner_allowed_endpoints` | `(built-in)` | Allowed endpoints when block (space-separated) — override replaces defaults |
 
 ## release.yml inputs
 
