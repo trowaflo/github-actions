@@ -15,7 +15,9 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
                        #   markdownlint, yamllint, ansible-lint, terraform-validate, kics, trivy, json-lint
   ha.yml               # Home Assistant: hacs, hassfest, config-check
   python.yml           # Python CI: pytest+ruff+codecov (generic — HA uses extra_packages)
-  helm.yml             # Helm: release, lint, unittest, docs, bump, PR charts, PR cleanup
+  helm-ci.yml          # Helm CI: lint, unittest, bump, docs, docs-check, pr-charts (pull_request)
+  helm-release.yml     # Helm Release: chart-releaser (push to main)
+  helm-pr-cleanup.yml  # Helm Cleanup: remove pr-charts on PR close
   docker.yml           # Docker: build/push, trivy scan, grype scan
   release.yml          # Release: release-please
   claude-code.yml      # Claude Code: @claude mentions + /review command
@@ -189,21 +191,40 @@ Secret: `codecov_token` (optional)
 
 Secrets: `registry_username`, `registry_password` (both optional — defaults to GITHUB_TOKEN for ghcr.io)
 
-## helm.yml inputs
+## helm-ci.yml inputs
 
 | Input | Default | Description |
 | --- | --- | --- |
 | `enable_harden_runner` | `true` | Runtime security via StepSecurity harden-runner |
 | `harden_runner_egress_policy` | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
 | `harden_runner_allowed_endpoints` | `(built-in)` | Allowed endpoints when block (space-separated) — override replaces defaults |
-| `enable_release` | `false` | Release charts via chart-releaser |
 | `enable_lint` | `false` | Lint charts with chart-testing (ct lint) |
-| `enable_unittest` | `false` | Helm unit tests with helm-unittest |
-| `enable_docs` | `false` | Documentation generation with helm-docs |
-| `enable_bump` | `false` | Auto-bump versions of modified charts on PR |
-| `enable_pr_charts` | `false` | Package modified charts on PR (download comment) |
-| `enable_pr_cleanup` | `false` | Cleanup chart comments after PR merge/close |
+| `enable_unittest` | `false` | Helm unit tests with helm-unittest (matrix per chart) |
+| `enable_bump` | `false` | Auto-bump chart versions on PR using conventional commits |
+| `enable_docs` | `false` | Generate and commit helm-docs (runs after bump) |
+| `enable_docs_check` | `false` | Validate documentation is up-to-date (fails if outdated) |
+| `enable_pr_charts` | `false` | Package modified charts on PR and publish to pr-charts branch |
 | `charts_dir` | `"charts"` | Root directory for Helm charts |
+| `bump_skip_actors` | `"renovate[bot]"` | Comma-separated actors to skip (exact match via `format(',{0},', ...)`) |
+
+## helm-release.yml inputs
+
+| Input | Default | Description |
+| --- | --- | --- |
+| `enable_harden_runner` | `true` | Runtime security via StepSecurity harden-runner |
+| `harden_runner_egress_policy` | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
+| `harden_runner_allowed_endpoints` | `(built-in)` | Allowed endpoints when block (space-separated) — override replaces defaults |
+| `enable_release` | `false` | Release charts via chart-releaser (multi-dir support via release_charts_dirs) |
+| `charts_dir` | `"charts"` | Root directory for Helm charts |
+| `release_charts_dirs` | `""` | Space-separated ordered chart directories to release (max 2) |
+
+## helm-pr-cleanup.yml inputs
+
+| Input | Default | Description |
+| --- | --- | --- |
+| `enable_harden_runner` | `true` | Runtime security via StepSecurity harden-runner |
+| `harden_runner_egress_policy` | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
+| `harden_runner_allowed_endpoints` | `(built-in)` | Allowed endpoints when block (space-separated) — override replaces defaults |
 
 ## release.yml inputs
 
@@ -237,3 +258,4 @@ Secret: `claude_code_oauth_token` (required)
 | `harden_runner_allowed_endpoints` | `(built-in)` | Allowed endpoints when block (space-separated) — override replaces defaults |
 | `node_version` | `"22"` | Node.js version for renovate-config-validator |
 | `config_files` | `""` | Glob pattern of files to validate (default: `*.json` `*.json5` at root) |
+
