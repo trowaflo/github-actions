@@ -1,5 +1,16 @@
 # Changelog
 
+## [4.0.0](https://github.com/trowaflo/github-actions/compare/v3.1.0...v4.0.0) (2026-04-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* **helm:** split helm.yml into helm-ci, helm-release, helm-pr-cleanup ([#35](https://github.com/trowaflo/github-actions/issues/35))
+
+### Code Refactoring
+
+* **helm:** split helm.yml into helm-ci, helm-release, helm-pr-cleanup ([#35](https://github.com/trowaflo/github-actions/issues/35)) ([cd356b2](https://github.com/trowaflo/github-actions/commit/cd356b251c9164c99ac3278e4a94e9c156a97522))
+
 ## [3.1.0](https://github.com/trowaflo/github-actions/compare/v3.0.0...v3.1.0) (2026-04-06)
 
 
