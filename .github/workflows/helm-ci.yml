@@ -449,19 +449,18 @@ jobs:
           BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
         run: |
           git fetch origin "$BASE_BRANCH"
-          changed_charts=""
-          for file in $(git diff --name-only "origin/$BASE_BRANCH..HEAD" | grep "^$CHARTS_DIR/" || true); do
+          changed_charts=()
+          while IFS= read -r file; do
             chart_dir=$(dirname "$file")
             while [ ! -f "$chart_dir/Chart.yaml" ] && [ "$chart_dir" != "." ]; do
               chart_dir=$(dirname "$chart_dir")
             done
-            if [ -f "$chart_dir/Chart.yaml" ] && ! printf '%s\n' $changed_charts | grep -qxF "$chart_dir"; then
-              changed_charts="$changed_charts $chart_dir"
+            if [ -f "$chart_dir/Chart.yaml" ] && ! printf '%s\n' "${changed_charts[@]}" | grep -qxF "$chart_dir"; then
+              changed_charts+=("$chart_dir")
             fi
-          done
-          changed_charts=$(echo "$changed_charts" | xargs)
-          echo "changed=$changed_charts" >> "$GITHUB_OUTPUT"
-          echo "Changed charts: $changed_charts"
+          done < <(git diff --name-only "origin/$BASE_BRANCH..HEAD" | grep "^$CHARTS_DIR/" || true)
+          echo "changed=${changed_charts[*]}" >> "$GITHUB_OUTPUT"
+          echo "Changed charts: ${changed_charts[*]}"
       - name: Add Helm repositories
         if: steps.detect.outputs.changed != ''
         run: |
