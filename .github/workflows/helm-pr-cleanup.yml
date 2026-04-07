@@ -1,0 +1,90 @@
+name: Helm PR Cleanup
+
+# Reusable workflow — Helm PR Charts Cleanup (pull_request closed)
+# Usage: uses: trowaflo/github-actions/.github/workflows/helm-pr-cleanup.yml@<sha>
+#
+# No enable flag — calling this workflow implies cleanup intent.
+
+on:
+  workflow_call:
+    inputs:
+      enable_harden_runner:
+        description: "Runtime security via StepSecurity harden-runner"
+        type: boolean
+        default: true
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "block"
+      harden_runner_allowed_endpoints:
+        description: "Allowed endpoints when egress-policy is block (space-separated)"
+        type: string
+        default: >-
+          github.com:443
+          api.github.com:443
+
+permissions: {}
+
+jobs:
+  # ─── PR Cleanup ──────────────────────────────────────────────────────────────
+
+  helm-pr-cleanup:
+    if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' }}
+    name: PR Chart Cleanup
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Check if pr-charts branch exists
+        id: check
+        run: |
+          if git ls-remote --heads origin pr-charts | grep -q pr-charts; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+        if: steps.check.outputs.exists == 'true'
+      - name: Checkout pr-charts branch
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: pr-charts
+          fetch-depth: 0
+      - name: Configure Git
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+      - name: Remove PR charts and update index
+        if: steps.check.outputs.exists == 'true'
+        env:
+          PR_NUM: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          rm -f ./*-pr${PR_NUM}.tgz || true
+          helm repo index . --url "https://raw.githubusercontent.com/${REPO}/pr-charts"
+          git add -A
+          git commit -m "Remove PR #${PR_NUM} charts after merge/close" || echo "No charts to remove"
+          git push origin pr-charts || echo "Nothing to push"
+      - name: Comment on merged PR
+        if: steps.check.outputs.exists == 'true' && github.event.pull_request.merged == true
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '## 🧹 PR Charts Cleaned Up\n\nThe test charts for this PR have been removed from the `pr-charts` branch.'
+            });
