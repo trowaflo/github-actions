@@ -69,10 +69,10 @@ jobs:
       - name: Remove PR charts and update index
         if: steps.check.outputs.exists == 'true'
         env:
-          PR_NUM: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
+          PR_NUM: "${{ github.event.pull_request.number }}"
+          REPO: "${{ github.repository }}"
         run: |
-          rm -f ./*-pr${PR_NUM}.tgz || true
+          rm -f ./*-pr"${PR_NUM}".tgz || true
           helm repo index . --url "https://raw.githubusercontent.com/${REPO}/pr-charts"
           git add -A
           git commit -m "Remove PR #${PR_NUM} charts after merge/close" || echo "No charts to remove"
