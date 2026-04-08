@@ -24,4 +24,5 @@ jobs:
       enable_hassfest: true
       enable_config_check: true
       ha_version: "stable"
+      config_check_setup: "cp tests/ha/configuration.yaml ."
       hacs_ignore: "brands topics"
