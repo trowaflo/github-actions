@@ -39,3 +39,10 @@ jobs:
     with:
       enable_release: true
       charts_dir: tests/charts
+
+  helm-pr-cleanup:
+    name: Test helm-pr-cleanup.yml
+    uses: ./.github/workflows/helm-pr-cleanup.yml
+    permissions:
+      contents: write
+      pull-requests: write
