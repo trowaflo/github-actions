@@ -66,6 +66,8 @@ jobs:
         api.github.com:443
         ghcr.io:443
         pkg-containers.githubusercontent.com:443
+        raw.githubusercontent.com:443
+        brands.home-assistant.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -92,6 +94,8 @@ jobs:
         api.github.com:443
         ghcr.io:443
         pkg-containers.githubusercontent.com:443
+        raw.githubusercontent.com:443
+        brands.home-assistant.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -116,6 +120,8 @@ jobs:
         api.github.com:443
         ghcr.io:443
         pkg-containers.githubusercontent.com:443
+        raw.githubusercontent.com:443
+        brands.home-assistant.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
