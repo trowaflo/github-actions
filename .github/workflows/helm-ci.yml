@@ -72,6 +72,7 @@ jobs:
     env:
       # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
         github.com:443
         api.github.com:443
         release-assets.githubusercontent.com:443
@@ -126,6 +127,7 @@ jobs:
     env:
       # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
         github.com:443
         api.github.com:443
         release-assets.githubusercontent.com:443
@@ -173,6 +175,7 @@ jobs:
     env:
       # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
         github.com:443
         api.github.com:443
         release-assets.githubusercontent.com:443
@@ -245,6 +248,7 @@ jobs:
     env:
       # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
         github.com:443
         api.github.com:443
         release-assets.githubusercontent.com:443
@@ -360,6 +364,7 @@ jobs:
     env:
       # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
         github.com:443
         api.github.com:443
         release-assets.githubusercontent.com:443
@@ -422,6 +427,7 @@ jobs:
     env:
       # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
         github.com:443
         api.github.com:443
         release-assets.githubusercontent.com:443
@@ -488,6 +494,7 @@ jobs:
     env:
       # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
         github.com:443
         api.github.com:443
         release-assets.githubusercontent.com:443
