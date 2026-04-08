@@ -268,7 +268,7 @@ jobs:
           ref: ${{ github.head_ref }}
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version: "24"
+          node-version: "26"
       - name: Install semver
         # renovate: datasource=npm depName=semver
         run: npm install --global semver@7.7.4
