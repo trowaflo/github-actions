@@ -29,5 +29,6 @@ jobs:
       enable_build: true
       enable_trivy: true
       enable_grype: true
+      grype_severity_cutoff: high
       # audit mode: observe egress without blocking — surface any missing endpoints
       harden_runner_egress_policy: audit

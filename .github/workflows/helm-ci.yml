@@ -32,6 +32,7 @@ on:
           objects.githubusercontent.com:443
           get.helm.sh:443
           tuf-repo-cdn.sigstore.dev:443
+          rekor.sigstore.dev:443
       enable_lint:
         description: "Lint charts with chart-testing (ct lint)"
         type: boolean

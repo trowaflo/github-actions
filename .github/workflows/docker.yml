@@ -68,6 +68,10 @@ on:
         description: "Trivy severity levels (empty = all)"
         type: string
         default: ""
+      grype_severity_cutoff:
+        description: "Grype minimum severity to fail build (negligible, low, medium, high, critical)"
+        type: string
+        default: "negligible"
     secrets:
       registry_username:
         description: "Docker registry username (optional — uses GITHUB_TOKEN for ghcr.io)"
@@ -156,7 +160,7 @@ jobs:
         with:
           image: ${{ steps.staging.outputs.tag }}
           fail-build: true
-          severity-cutoff: negligible
+          severity-cutoff: ${{ inputs.grype_severity_cutoff }}
 
       - name: Upload Grype SARIF
         if: ${{ always() && inputs.enable_grype }}
@@ -262,7 +266,7 @@ jobs:
         with:
           image: "${{ inputs.image_name != '' && inputs.image_name || format('{0}/{1}', inputs.registry, github.repository) }}"
           fail-build: true
-          severity-cutoff: negligible
+          severity-cutoff: ${{ inputs.grype_severity_cutoff }}
       - name: Upload Grype SARIF
         if: always()
         uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
