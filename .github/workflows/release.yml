@@ -17,12 +17,9 @@ on:
         type: string
         default: "block"
       harden_runner_allowed_endpoints:
-        description: "Allowed endpoints when egress-policy is block (space-separated, e.g. github.com:443 pypi.org:443)"
+        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string
-        # release-please needs GitHub API to create PRs/releases
-        default: >-
-          github.com:443
-          api.github.com:443
+        default: ""
       enable_release_please:
         description: "Automated releases via release-please"
         type: boolean
@@ -50,13 +47,18 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        github.com:443
+        api.github.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
         with:
           token: ${{ secrets.release_token || secrets.GITHUB_TOKEN }}
