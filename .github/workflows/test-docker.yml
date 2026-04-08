@@ -10,7 +10,6 @@ name: Test Docker Workflow
 on:
   workflow_dispatch:
   pull_request:
-      - "docker-bake.hcl"
 
 permissions: {}
 
