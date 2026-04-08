@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.1.0](https://github.com/trowaflo/github-actions/compare/v4.0.0...v4.1.0) (2026-04-08)
+
+
+### Features
+
+* merge harden_runner endpoints + test workflows (helm, docker) + yq checksum fix ([#38](https://github.com/trowaflo/github-actions/issues/38)) ([510e1af](https://github.com/trowaflo/github-actions/commit/510e1af91940d9e3a9aaa4b44ca0c9072fa61772))
+
 ## [4.0.0](https://github.com/trowaflo/github-actions/compare/v3.1.0...v4.0.0) (2026-04-07)
 
 
