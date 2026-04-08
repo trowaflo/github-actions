@@ -265,6 +265,24 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -285,6 +303,24 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -306,6 +342,24 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -322,6 +376,24 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -345,6 +417,24 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}

@@ -60,7 +60,7 @@ Dependency updates are managed by Renovate using the shared config at `github>tr
 
 All reusable workflows enable [StepSecurity harden-runner](https://github.com/step-security/harden-runner) by default (`enable_harden_runner: true`). The default egress policy is `block` — all outbound network traffic is denied unless explicitly allowed.
 
-Each workflow ships with a **built-in list of allowed endpoints** covering its own dependencies (pip, npm, Docker registries, etc.). Consumers can override with `harden_runner_allowed_endpoints` if needed — this **replaces** (does not merge with) the built-in defaults.
+Each workflow ships with a **built-in list of allowed endpoints** covering its own dependencies (pip, npm, Docker registries, etc.). These built-in defaults are **always applied**. Consumers can pass extra endpoints via `harden_runner_allowed_endpoints` — they are **merged** (union) with the built-in defaults, not replaced.
 
 To observe endpoints before enforcing, start with `audit`:
 
@@ -69,14 +69,11 @@ with:
   harden_runner_egress_policy: audit          # observe mode — no blocking
 ```
 
-To override the built-in endpoint list (e.g. add private registry):
+To add extra endpoints (e.g. private registry) — built-in defaults remain active:
 
 ```yaml
 with:
-  harden_runner_egress_policy: block          # default
   harden_runner_allowed_endpoints: >
-    github.com:443
-    api.github.com:443
     my-private-registry.example.com:443
 ```
 
@@ -125,7 +122,7 @@ Quality/lint workflows should trigger on `pull_request` only — **not** on `pus
 
 ## Inputs reference
 
-All inputs (including secrets) are documented inline in each workflow file — read the file directly for the full list. Shared across all workflows: `enable_harden_runner` (default: `true`), `harden_runner_egress_policy` (default: `"block"`), `harden_runner_allowed_endpoints` (built-in per workflow).
+All inputs (including secrets) are documented inline in each workflow file — read the file directly for the full list. Shared across all workflows: `enable_harden_runner` (default: `true`), `harden_runner_egress_policy` (default: `"block"`), `harden_runner_allowed_endpoints` (extra endpoints merged with built-in defaults).
 
 Key files: `quality.yml`, `ha.yml`, `python.yml`, `helm-ci.yml`, `helm-release.yml`, `helm-pr-cleanup.yml`, `docker.yml`, `release.yml`, `claude-code.yml`, `validate-renovate.yml`
 
