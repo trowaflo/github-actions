@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.1.1](https://github.com/trowaflo/github-actions/compare/v4.1.0...v4.1.1) (2026-04-08)
+
+
+### Bug Fixes
+
+* **helm-pr-cleanup:** add get.helm.sh to harden-runner defaults ([#40](https://github.com/trowaflo/github-actions/issues/40)) ([a9544bf](https://github.com/trowaflo/github-actions/commit/a9544bf03d45a231a46562260638b43033a3eaae))
+
 ## [4.1.0](https://github.com/trowaflo/github-actions/compare/v4.0.0...v4.1.0) (2026-04-08)
 
 
