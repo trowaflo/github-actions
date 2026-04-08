@@ -1,0 +1,6 @@
+# Default values for hello-world test chart
+replicaCount: 1
+
+image:
+  repository: nginx
+  tag: "latest"
