@@ -48,6 +48,10 @@ on:
         description: "Shell commands to run before config check (e.g. install custom components)"
         type: string
         default: ""
+      hacs_ignore:
+        description: "Space-separated HACS checks to skip (e.g. 'brands topics')"
+        type: string
+        default: ""
 
 permissions: {}
 
@@ -66,6 +70,8 @@ jobs:
         api.github.com:443
         ghcr.io:443
         pkg-containers.githubusercontent.com:443
+        raw.githubusercontent.com:443
+        brands.home-assistant.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -77,6 +83,7 @@ jobs:
       - uses: hacs/action@d556e736723344f83838d08488c983a15381059a # 22.5.0
         with:
           category: integration
+          ignore: ${{ inputs.hacs_ignore }}
 
   hassfest:
     if: ${{ inputs.enable_hassfest }}
@@ -92,6 +99,8 @@ jobs:
         api.github.com:443
         ghcr.io:443
         pkg-containers.githubusercontent.com:443
+        raw.githubusercontent.com:443
+        brands.home-assistant.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -116,6 +125,8 @@ jobs:
         api.github.com:443
         ghcr.io:443
         pkg-containers.githubusercontent.com:443
+        raw.githubusercontent.com:443
+        brands.home-assistant.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}

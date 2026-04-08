@@ -1,0 +1,28 @@
+name: Test HA Workflow
+
+# Validates ha.yml using the minimal test integration fixture
+# in custom_components/test_integration/.
+#
+# Triggered:
+#   - workflow_dispatch (manual)
+#   - pull_request (every PR)
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  ha:
+    name: Test ha.yml (hacs + hassfest)
+    uses: ./.github/workflows/ha.yml
+    permissions:
+      contents: read
+    with:
+      enable_hacs: true
+      enable_hassfest: true
+      enable_config_check: true
+      ha_version: "stable"
+      config_check_setup: "cp tests/ha/configuration.yaml ."
+      hacs_ignore: "brands topics"

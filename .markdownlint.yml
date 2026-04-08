@@ -15,3 +15,6 @@ MD040: false
 
 # Allow duplicate headings (release-please CHANGELOG has repeated section names per version)
 MD024: false
+
+# Disable table column style — helm-docs auto-generates tables with its own format
+MD060: false
