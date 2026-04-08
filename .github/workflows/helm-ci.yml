@@ -79,6 +79,7 @@ jobs:
         objects.githubusercontent.com:443
         get.helm.sh:443
         pypi.org:443
+        files.pythonhosted.org:443
         tuf-repo-cdn.sigstore.dev:443
         rekor.sigstore.dev:443
     steps:
@@ -132,6 +133,7 @@ jobs:
         objects.githubusercontent.com:443
         get.helm.sh:443
         pypi.org:443
+        files.pythonhosted.org:443
         tuf-repo-cdn.sigstore.dev:443
         rekor.sigstore.dev:443
     steps:
@@ -178,6 +180,7 @@ jobs:
         objects.githubusercontent.com:443
         get.helm.sh:443
         pypi.org:443
+        files.pythonhosted.org:443
         tuf-repo-cdn.sigstore.dev:443
         rekor.sigstore.dev:443
     steps:
@@ -249,6 +252,7 @@ jobs:
         objects.githubusercontent.com:443
         get.helm.sh:443
         pypi.org:443
+        files.pythonhosted.org:443
         tuf-repo-cdn.sigstore.dev:443
         rekor.sigstore.dev:443
     steps:
@@ -363,6 +367,7 @@ jobs:
         objects.githubusercontent.com:443
         get.helm.sh:443
         pypi.org:443
+        files.pythonhosted.org:443
         tuf-repo-cdn.sigstore.dev:443
         rekor.sigstore.dev:443
     steps:
@@ -424,6 +429,7 @@ jobs:
         objects.githubusercontent.com:443
         get.helm.sh:443
         pypi.org:443
+        files.pythonhosted.org:443
         tuf-repo-cdn.sigstore.dev:443
         rekor.sigstore.dev:443
     steps:
@@ -489,6 +495,7 @@ jobs:
         objects.githubusercontent.com:443
         get.helm.sh:443
         pypi.org:443
+        files.pythonhosted.org:443
         tuf-repo-cdn.sigstore.dev:443
         rekor.sigstore.dev:443
     steps:
@@ -518,7 +525,10 @@ jobs:
           trap 'rm -rf "$TMP_DIR"' EXIT
           curl -fsSL -o "$TMP_DIR/$YQ_ASSET" "${BASE_URL}/${YQ_ASSET}"
           curl -fsSL -o "$TMP_DIR/checksums" "${BASE_URL}/checksums"
-          grep -E "[[:space:]]\.?${YQ_ASSET}$" "$TMP_DIR/checksums" > "$TMP_DIR/${YQ_ASSET}.sha256"
+          curl -fsSL -o "$TMP_DIR/checksums_hashes_order" "${BASE_URL}/checksums_hashes_order"
+          SHA256_COL=$(( $(grep -n '^SHA-256$' "$TMP_DIR/checksums_hashes_order" | cut -d: -f1) + 1 ))
+          SHA256_HASH=$(grep "^${YQ_ASSET}[[:space:]]" "$TMP_DIR/checksums" | sed 's/  /\t/g' | cut -f"$SHA256_COL")
+          echo "${SHA256_HASH}  ${YQ_ASSET}" > "$TMP_DIR/${YQ_ASSET}.sha256"
           (cd "$TMP_DIR" && sha256sum -c "${YQ_ASSET}.sha256")
           install -m 0755 "$TMP_DIR/$YQ_ASSET" /usr/local/bin/yq
       - name: Detect changed charts
