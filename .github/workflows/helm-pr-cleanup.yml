@@ -20,6 +20,10 @@ on:
         description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string
         default: ""
+      skip_event_check:
+        description: "Skip event.action == closed check (for testing only)"
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -27,7 +31,7 @@ jobs:
   # ─── PR Cleanup ──────────────────────────────────────────────────────────────
 
   helm-pr-cleanup:
-    if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' }}
+    if: ${{ inputs.skip_event_check || (github.event_name == 'pull_request' && github.event.action == 'closed') }}
     name: PR Chart Cleanup
     runs-on: ubuntu-latest
     permissions:

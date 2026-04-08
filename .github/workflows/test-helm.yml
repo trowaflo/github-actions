@@ -42,7 +42,10 @@ jobs:
 
   helm-pr-cleanup:
     name: Test helm-pr-cleanup.yml
+    needs: [helm-ci]
     uses: ./.github/workflows/helm-pr-cleanup.yml
     permissions:
       contents: write
       pull-requests: write
+    with:
+      skip_event_check: true
