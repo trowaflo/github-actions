@@ -540,6 +540,7 @@ jobs:
           install -m 0755 "$TMP_DIR/$YQ_ASSET" /usr/local/bin/yq
       - name: Detect changed charts
         id: detect
+
         env:
           CHARTS_DIR: ${{ inputs.charts_dir }}
           BASE_BRANCH: ${{ github.event.pull_request.base.ref }}

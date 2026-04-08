@@ -22,4 +22,6 @@ jobs:
     with:
       enable_hacs: true
       enable_hassfest: true
+      enable_config_check: true
+      ha_version: "stable"
       hacs_ignore: "brands topics"

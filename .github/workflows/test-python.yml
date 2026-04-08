@@ -14,21 +14,14 @@ on:
 permissions: {}
 
 jobs:
-  python-lint:
-    name: Test python.yml (lint)
-    uses: ./.github/workflows/python.yml
-    permissions:
-      contents: read
-    with:
-      enable_lint: true
-
-  python-test:
-    name: Test python.yml (test)
+  python:
+    name: Test python.yml (test + lint)
     uses: ./.github/workflows/python.yml
     permissions:
       contents: read
     with:
       enable_test: true
+      enable_lint: true
       test_path: "tests/python/"
       coverage_path: "tests/python"
       coverage_threshold: "80"

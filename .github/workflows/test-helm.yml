@@ -24,6 +24,9 @@ jobs:
     with:
       enable_lint: true
       enable_unittest: true
+      enable_bump: true
+      enable_docs: true
+      enable_docs_check: true
       enable_pr_charts: true
       charts_dir: tests/charts
 
