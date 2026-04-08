@@ -5,16 +5,11 @@ name: Test Helm Workflows
 #
 # Triggered:
 #   - workflow_dispatch (manual)
-#   - pull_request when helm workflows or test fixtures change
+#   - pull_request (every PR)
 
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - ".github/workflows/helm-ci.yml"
-      - ".github/workflows/helm-release.yml"
-      - ".github/workflows/helm-pr-cleanup.yml"
-      - "tests/charts/**"
 
 permissions: {}
 

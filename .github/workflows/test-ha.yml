@@ -5,16 +5,11 @@ name: Test HA Workflow
 #
 # Triggered:
 #   - workflow_dispatch (manual)
-#   - pull_request when ha workflow or test fixtures change
+#   - pull_request (every PR)
 
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - ".github/workflows/ha.yml"
-      - ".github/workflows/test-ha.yml"
-      - "custom_components/**"
-      - "hacs.json"
 
 permissions: {}
 

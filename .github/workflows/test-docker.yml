@@ -5,14 +5,11 @@ name: Test Docker Workflow
 #
 # Triggered:
 #   - workflow_dispatch (manual)
-#   - pull_request when docker.yml or test fixture change
+#   - pull_request (every PR)
 
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - ".github/workflows/docker.yml"
-      - "tests/docker/**"
       - "docker-bake.hcl"
 
 permissions: {}
