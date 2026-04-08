@@ -1,0 +1,38 @@
+name: Test Python Workflow
+
+# Validates python.yml (test + lint) using the calculator fixture
+# in tests/python/.
+#
+# Triggered:
+#   - workflow_dispatch (manual)
+#   - pull_request when python workflow or test fixtures change
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/python.yml"
+      - ".github/workflows/test-python.yml"
+      - "tests/python/**"
+
+permissions: {}
+
+jobs:
+  python-lint:
+    name: Test python.yml (lint)
+    uses: ./.github/workflows/python.yml
+    permissions:
+      contents: read
+    with:
+      enable_lint: true
+
+  python-test:
+    name: Test python.yml (test)
+    uses: ./.github/workflows/python.yml
+    permissions:
+      contents: read
+    with:
+      enable_test: true
+      test_path: "tests/python/"
+      coverage_path: "tests/python"
+      coverage_threshold: "80"
