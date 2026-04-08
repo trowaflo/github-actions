@@ -1,0 +1,11 @@
+# 84eaf4d-2f45-47b2-abe8-e581b06deb66: Ensure Administrative Boundaries Between Resources
+# kics-scan disable=e84eaf4d-2f45-47b2-abe8-e581b06deb66
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  namespace: test-fixtures
+  labels:
+    {{- include "hello-world.labels" . | nindent 4 }}
+data:
+  hello: "world"

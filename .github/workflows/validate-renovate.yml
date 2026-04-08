@@ -15,18 +15,13 @@ on:
         type: string
         default: "block"
       harden_runner_allowed_endpoints:
-        description: "Allowed endpoints when egress-policy is block (space-separated, e.g. github.com:443 pypi.org:443)"
+        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string
-        default: >-
-          github.com:443
-          api.github.com:443
-          registry.npmjs.org:443
-          nodejs.org:443
-          release-assets.githubusercontent.com:443
+        default: ""
       node_version:
         description: "Node.js version for renovate-config-validator"
         type: string
-        default: "22"
+        default: "24"
       config_files:
         description: "Glob pattern of files to validate (default: *.json *.json5 at root)"
         type: string
@@ -40,13 +35,22 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        registry.npmjs.org:443
+        nodejs.org:443
+        release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 

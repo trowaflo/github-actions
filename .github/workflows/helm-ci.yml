@@ -19,17 +19,12 @@ on:
         default: "block"
       harden_runner_allowed_endpoints:
         description: >-
-          Allowed endpoints when egress-policy is block (space-separated).
+          Extra endpoints to allow (merged with built-in defaults, space-separated).
           Note: enable_pr_charts adds Helm repo endpoints dynamically from Chart.yaml
           dependencies — add those hosts here if charts reference external repositories.
         type: string
         # setup-helm, helm-docs (GitHub releases), npm (semver), yq
-        default: >-
-          github.com:443
-          api.github.com:443
-          release-assets.githubusercontent.com:443
-          registry.npmjs.org:443
-          objects.githubusercontent.com:443
+        default: ""
       enable_lint:
         description: "Lint charts with chart-testing (ct lint)"
         type: boolean
@@ -74,13 +69,27 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        registry.npmjs.org:443
+        objects.githubusercontent.com:443
+        get.helm.sh:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        tuf-repo-cdn.sigstore.dev:443
+        rekor.sigstore.dev:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
@@ -115,13 +124,27 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       has_charts: ${{ steps.set-matrix.outputs.has_charts }}
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        registry.npmjs.org:443
+        objects.githubusercontent.com:443
+        get.helm.sh:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        tuf-repo-cdn.sigstore.dev:443
+        rekor.sigstore.dev:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Generate chart matrix
         id: set-matrix
@@ -149,13 +172,27 @@ jobs:
       fail-fast: false
       max-parallel: 5
       matrix: ${{ fromJson(needs.helm-unittest-matrix.outputs.matrix) }}
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        registry.npmjs.org:443
+        objects.githubusercontent.com:443
+        get.helm.sh:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        tuf-repo-cdn.sigstore.dev:443
+        rekor.sigstore.dev:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
       - name: Cache Helm plugins
@@ -208,13 +245,27 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        registry.npmjs.org:443
+        objects.githubusercontent.com:443
+        get.helm.sh:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        tuf-repo-cdn.sigstore.dev:443
+        rekor.sigstore.dev:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
@@ -310,13 +361,27 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        registry.npmjs.org:443
+        objects.githubusercontent.com:443
+        get.helm.sh:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        tuf-repo-cdn.sigstore.dev:443
+        rekor.sigstore.dev:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.head_ref || github.ref_name }}
@@ -359,13 +424,27 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        registry.npmjs.org:443
+        objects.githubusercontent.com:443
+        get.helm.sh:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        tuf-repo-cdn.sigstore.dev:443
+        rekor.sigstore.dev:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.head_ref || github.ref_name }}
@@ -412,13 +491,27 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        registry.npmjs.org:443
+        objects.githubusercontent.com:443
+        get.helm.sh:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        tuf-repo-cdn.sigstore.dev:443
+        rekor.sigstore.dev:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
@@ -439,7 +532,10 @@ jobs:
           trap 'rm -rf "$TMP_DIR"' EXIT
           curl -fsSL -o "$TMP_DIR/$YQ_ASSET" "${BASE_URL}/${YQ_ASSET}"
           curl -fsSL -o "$TMP_DIR/checksums" "${BASE_URL}/checksums"
-          grep -F " ${YQ_ASSET}" "$TMP_DIR/checksums" > "$TMP_DIR/${YQ_ASSET}.sha256"
+          curl -fsSL -o "$TMP_DIR/checksums_hashes_order" "${BASE_URL}/checksums_hashes_order"
+          SHA256_COL=$(( $(grep -n '^SHA-256$' "$TMP_DIR/checksums_hashes_order" | cut -d: -f1) + 1 ))
+          SHA256_HASH=$(grep "^${YQ_ASSET}[[:space:]]" "$TMP_DIR/checksums" | sed 's/  /\t/g' | cut -f"$SHA256_COL")
+          echo "${SHA256_HASH}  ${YQ_ASSET}" > "$TMP_DIR/${YQ_ASSET}.sha256"
           (cd "$TMP_DIR" && sha256sum -c "${YQ_ASSET}.sha256")
           install -m 0755 "$TMP_DIR/$YQ_ASSET" /usr/local/bin/yq
       - name: Detect changed charts

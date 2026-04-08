@@ -26,7 +26,7 @@ jobs:
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
 | `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
-| `harden_runner_allowed_endpoints` | string | `(built-in)` | Allowed endpoints when block (space-separated) — override replaces defaults |
+| `harden_runner_allowed_endpoints` | string | `(built-in)` | Allowed endpoints when block (space-separated) — extra endpoints merged with defaults |
 | `enable_gitleaks` | boolean | `true` | Secret scanning avec gitleaks |
 | `enable_checkov` | boolean | `true` | Scan IaC misconfigurations (remplace KICS) |
 | `enable_actionlint` | boolean | `true` | Lint des fichiers workflow GitHub Actions |
@@ -101,6 +101,6 @@ Les résultats sont uploadés au format SARIF dans l'onglet **Security > Code sc
 
 [StepSecurity harden-runner](https://github.com/step-security/harden-runner) sécurise le réseau de chaque job. Par défaut, la politique egress est `block` — tout le trafic sortant est interdit sauf les endpoints explicitement autorisés.
 
-Le workflow inclut une liste d'endpoints par défaut couvrant ses dépendances internes (pypi, npm, ghcr.io, trivy, kics…). Le consumer peut la surcharger via `harden_runner_allowed_endpoints` — **cela remplace** (ne fusionne pas avec) la liste par défaut.
+Le workflow inclut une liste d'endpoints par défaut couvrant ses dépendances internes (pypi, npm, ghcr.io, trivy, kics…). Le consumer peut ajouter des endpoints via `harden_runner_allowed_endpoints` — ils sont **fusionnés** avec la liste par défaut (dédupliqués automatiquement).
 
 Pour découvrir les endpoints nécessaires, commencer avec `harden_runner_egress_policy: audit` puis passer à `block` avec la liste d'endpoints identifiés.

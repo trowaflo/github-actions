@@ -26,7 +26,7 @@ jobs:
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
 | `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
-| `harden_runner_allowed_endpoints` | string | `(built-in)` | Allowed endpoints when block (space-separated) — override replaces defaults |
+| `harden_runner_allowed_endpoints` | string | `(built-in)` | Allowed endpoints when block (space-separated) — extra endpoints merged with defaults |
 | `enable_release_please` | boolean | `false` | Déclencher la création de PR release + tag |
 | `release_config_file` | string | `""` | Chemin vers `release-please-config.json` (défaut : racine du repo) |
 | `release_manifest_file` | string | `""` | Chemin vers `.release-please-manifest.json` (défaut : racine du repo) |

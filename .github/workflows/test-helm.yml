@@ -1,0 +1,43 @@
+name: Test Helm Workflows
+
+# Validates helm-ci.yml, helm-release.yml, and helm-pr-cleanup.yml using
+# the hello-world test fixture chart in tests/charts/.
+#
+# Triggered:
+#   - workflow_dispatch (manual)
+#   - pull_request when helm workflows or test fixtures change
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/helm-ci.yml"
+      - ".github/workflows/helm-release.yml"
+      - ".github/workflows/helm-pr-cleanup.yml"
+      - "tests/charts/**"
+
+permissions: {}
+
+jobs:
+  helm-ci:
+    name: Test helm-ci.yml
+    uses: ./.github/workflows/helm-ci.yml
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: write
+    with:
+      enable_lint: true
+      enable_unittest: true
+      enable_pr_charts: true
+      charts_dir: tests/charts
+
+  helm-release:
+    name: Test helm-release.yml
+    uses: ./.github/workflows/helm-release.yml
+    permissions:
+      contents: write
+      pages: write
+    with:
+      enable_release: true
+      charts_dir: tests/charts

@@ -18,24 +18,10 @@ on:
         type: string
         default: "block"
       harden_runner_allowed_endpoints:
-        description: "Allowed endpoints when egress-policy is block (space-separated, e.g. github.com:443 pypi.org:443)"
+        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string
         # 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com = Chainguard R2 bucket for KICS apk — hash may change
-        default: >-
-          github.com:443
-          api.github.com:443
-          release-assets.githubusercontent.com:443
-          pypi.org:443
-          files.pythonhosted.org:443
-          raw.githubusercontent.com:443
-          registry.npmjs.org:443
-          ghcr.io:443
-          pkg-containers.githubusercontent.com:443
-          get.trivy.dev:443
-          mirror.gcr.io:443
-          kics.io:443
-          apk.cgr.dev:443
-          9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        default: ""
       enable_gitleaks:
         description: "Secret scanning with gitleaks"
         type: boolean
@@ -99,13 +85,32 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
@@ -120,13 +125,32 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: bridgecrewio/checkov-action@0ce65fae06c148e349f955c3c35ad049c11e838c # v12.3092.0
         with:
@@ -150,6 +174,24 @@ jobs:
       contents: read
       security-events: write
     env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
       # renovate: datasource=github-releases depName=rhysd/actionlint
       ACTIONLINT_VERSION: "1.7.12"
     steps:
@@ -158,7 +200,7 @@ jobs:
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install actionlint with checksum verification
         run: |
@@ -192,13 +234,32 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
 
@@ -208,13 +269,32 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: DavidAnson/markdownlint-cli2-action@07035fd053f7be764496c0f8d8f9f41f98305101 # v22.0.0
         with:
@@ -228,13 +308,32 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Run yamllint
         run: |
@@ -249,13 +348,32 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ansible/ansible-lint@5fac056c45595896c973fbde871f01f6cb14d74c # v26.4.0
 
@@ -265,13 +383,32 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
       - uses: terraform-linters/setup-tflint@b480b8fcdaa6f2c577f8e4fa799e89e756bb7c93 # v6.2.2
@@ -288,13 +425,32 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Validate JSON and JSON5 files
         run: |
@@ -326,13 +482,32 @@ jobs:
       contents: read
       pull-requests: write
       security-events: write
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Run KICS Scan
         uses: checkmarx/kics-github-action@05aa5eb70eede1355220f4ca5238d96b397e30a6 # v2.1.20
@@ -360,13 +535,32 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Run Trivy (table)
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0

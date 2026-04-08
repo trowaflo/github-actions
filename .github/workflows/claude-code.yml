@@ -26,13 +26,9 @@ on:
         type: string
         default: "block"
       harden_runner_allowed_endpoints:
-        description: "Allowed endpoints when egress-policy is block (space-separated, e.g. github.com:443 pypi.org:443)"
+        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string
-        # Claude Code action calls Anthropic API
-        default: >-
-          github.com:443
-          api.github.com:443
-          api.anthropic.com:443
+        default: ""
     secrets:
       claude_code_oauth_token:
         description: "Claude Code OAuth token"
@@ -54,13 +50,20 @@ jobs:
       issues: read
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        api.anthropic.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -91,13 +94,20 @@ jobs:
       pull-requests: read
       issues: read
       id-token: write
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        api.anthropic.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ inputs.harden_runner_allowed_endpoints }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
