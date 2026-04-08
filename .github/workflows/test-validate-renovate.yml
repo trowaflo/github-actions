@@ -1,0 +1,20 @@
+name: Test Validate Renovate Workflow
+
+# Validates validate-renovate.yml using the renovate.json5 at repo root.
+#
+# Triggered:
+#   - workflow_dispatch (manual)
+#   - pull_request (every PR)
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  validate-renovate:
+    name: Test validate-renovate.yml
+    uses: ./.github/workflows/validate-renovate.yml
+    permissions:
+      contents: read

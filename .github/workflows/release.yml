@@ -61,6 +61,7 @@ jobs:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
+        if: ${{ github.event_name != 'pull_request' }}
         with:
           token: ${{ secrets.release_token || secrets.GITHUB_TOKEN }}
           config-file: ${{ inputs.release_config_file || 'release-please-config.json' }}

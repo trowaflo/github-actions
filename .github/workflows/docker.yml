@@ -176,6 +176,7 @@ jobs:
       # ── Phase 3 : publish final ────────────────────────────────────────────
       # Tags définis par le bake file du consumer. Cache buildx = republication quasi-instantanée.
       - name: Publish final image
+        if: ${{ github.event_name != 'pull_request' }}
         uses: docker/bake-action@82490499d2e5613fcead7e128237ef0b0ea210f7 # v7.0.0
         with:
           push: true

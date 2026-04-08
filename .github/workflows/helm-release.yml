@@ -141,6 +141,7 @@ jobs:
             if [ -f "$chart/Chart.yaml" ]; then helm dependency build "$chart"; fi
           done
       - name: Release first directory
+        if: ${{ github.event_name != 'pull_request' }}
         uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1.7.0
         with:
           charts_dir: ${{ steps.dirs.outputs.first }}
@@ -167,7 +168,7 @@ jobs:
             if [ -f "$chart/Chart.yaml" ]; then helm dependency build "$chart"; fi
           done
       - name: Release second directory
-        if: ${{ steps.dirs.outputs.second != '' }}
+        if: ${{ steps.dirs.outputs.second != '' && github.event_name != 'pull_request' }}
         uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1.7.0
         with:
           charts_dir: ${{ steps.dirs.outputs.second }}
