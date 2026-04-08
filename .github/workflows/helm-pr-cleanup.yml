@@ -39,6 +39,7 @@ jobs:
         agent.api.stepsecurity.io:443
         github.com:443
         api.github.com:443
+        get.helm.sh:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
