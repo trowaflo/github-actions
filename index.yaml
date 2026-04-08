@@ -1,0 +1,16 @@
+apiVersion: v1
+entries:
+  hello-world:
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-04-08T20:12:50.08623551Z"
+    description: Test fixture chart for CI workflow validation
+    digest: 981d5c797b248c351f16a6946f2fa0b0fe3d8a6d5c79aea6c0fc70b6dcdbf3f3
+    maintainers:
+    - name: trowaflo
+    name: hello-world
+    type: application
+    urls:
+    - https://github.com/trowaflo/github-actions/releases/download/hello-world-0.2.0/hello-world-0.2.0.tgz
+    version: 0.2.0
+generated: "2026-04-08T20:12:50.086250188Z"
