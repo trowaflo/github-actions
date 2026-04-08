@@ -44,7 +44,7 @@ jobs:
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
 | `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` or `block` |
-| `harden_runner_allowed_endpoints` | string | (built-in) | Override replaces defaults |
+| `harden_runner_allowed_endpoints` | string | (built-in) | Extra endpoints merged with defaults |
 | `enable_lint` | boolean | `false` | Lint avec `ct lint` |
 | `enable_unittest` | boolean | `false` | Unit tests avec helm-unittest |
 | `enable_bump` | boolean | `false` | Auto-bump de version des charts modifiés sur PR |
@@ -80,7 +80,7 @@ jobs:
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
 | `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` or `block` |
-| `harden_runner_allowed_endpoints` | string | (built-in) | Override replaces defaults |
+| `harden_runner_allowed_endpoints` | string | (built-in) | Extra endpoints merged with defaults |
 | `enable_release` | boolean | `false` | Release via chart-releaser |
 | `charts_dir` | string | `"charts"` | Répertoire racine des charts |
 | `release_charts_dirs` | string | `""` | Répertoires de charts à releaser (max 2, space-separated) |
@@ -110,7 +110,7 @@ jobs:
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
 | `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` or `block` |
-| `harden_runner_allowed_endpoints` | string | (built-in) | Override replaces defaults |
+| `harden_runner_allowed_endpoints` | string | (built-in) | Extra endpoints merged with defaults |
 
 ---
 
