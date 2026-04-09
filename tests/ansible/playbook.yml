@@ -1,0 +1,9 @@
+---
+# Minimal Ansible playbook — test fixture for ansible-lint validation.
+- name: Hello World
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Print a greeting
+      ansible.builtin.debug:
+        msg: "Hello, World!"

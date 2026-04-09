@@ -1,0 +1,25 @@
+name: Test Release Workflow
+
+# Validates release.yml endpoint defaults.
+# The release-please-action step is skipped on PRs (dry-run guard),
+# but all setup steps (harden-runner, checkout) run to validate endpoints.
+#
+# Triggered:
+#   - workflow_dispatch (manual)
+#   - pull_request (every PR)
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  release:
+    name: Test release.yml (dry-run)
+    uses: ./.github/workflows/release.yml
+    permissions:
+      contents: write
+      pull-requests: write
+    with:
+      enable_release_please: true

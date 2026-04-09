@@ -1,0 +1,27 @@
+name: Test Python Workflow
+
+# Validates ci-python.yml (test + lint) using the calculator fixture
+# in tests/python/.
+#
+# Triggered:
+#   - workflow_dispatch (manual)
+#   - pull_request (every PR)
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  python:
+    name: Test ci-python.yml (test + lint)
+    uses: ./.github/workflows/ci-python.yml
+    permissions:
+      contents: read
+    with:
+      enable_test: true
+      enable_lint: true
+      test_path: "tests/python/"
+      coverage_path: "tests/python"
+      coverage_threshold: "80"

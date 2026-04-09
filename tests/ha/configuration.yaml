@@ -1,0 +1,5 @@
+# Minimal HA configuration for testing config-check workflow
+homeassistant:
+  name: Test
+  unit_system: metric
+  time_zone: UTC

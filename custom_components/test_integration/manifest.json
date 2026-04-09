@@ -1,0 +1,10 @@
+{
+  "domain": "test_integration",
+  "name": "Test Integration",
+  "codeowners": ["@trowaflo"],
+  "documentation": "https://github.com/trowaflo/github-actions",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/trowaflo/github-actions/issues",
+  "requirements": [],
+  "version": "0.0.1"
+}
