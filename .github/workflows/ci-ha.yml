@@ -1,0 +1,156 @@
+name: Home Assistant CI
+
+# Reusable workflow — Home Assistant CI
+# Usage: uses: trowaflo/github-actions/.github/workflows/ci-ha.yml@<sha>
+#
+# Tous les jobs sont domaine-spécifiques → false par défaut (opt-in explicite).
+#
+# Tests Python et lint : utiliser ci-python.yml (workflow dédié, indépendant de HA).
+# Pour un repo HA : appeler ci-python.yml avec extra_packages=pytest-homeassistant-custom-component.
+
+on:
+  workflow_call:
+    inputs:
+      enable_harden_runner:
+        description: "Runtime security via StepSecurity harden-runner"
+        type: boolean
+        default: true
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
+      harden_runner_allowed_endpoints:
+        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
+        type: string
+        # HA actions pull Docker images from ghcr.io
+        default: ""
+      enable_hacs:
+        description: "HACS validation"
+        type: boolean
+        default: false
+      enable_hassfest:
+        description: "hassfest validation"
+        type: boolean
+        default: false
+      enable_config_check:
+        description: "HA config check"
+        type: boolean
+        default: false
+      ha_version:
+        description: "Home Assistant version — required if enable_config_check (e.g. 2026.3.4, stable, beta)"
+        type: string
+        default: ""
+      config_check_secrets:
+        description: "Path to a secrets file for config check (e.g. secrets.fake.yaml)"
+        type: string
+        default: ""
+      config_check_setup:
+        description: "Shell commands to run before config check (e.g. install custom components)"
+        type: string
+        default: ""
+      hacs_ignore:
+        description: "Space-separated HACS checks to skip (e.g. 'brands topics')"
+        type: string
+        default: ""
+
+permissions: {}
+
+jobs:
+  hacs:
+    if: ${{ inputs.enable_hacs }}
+    name: HACS Validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        raw.githubusercontent.com:443
+        brands.home-assistant.io:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: hacs/action@d556e736723344f83838d08488c983a15381059a # 22.5.0
+        with:
+          category: integration
+          ignore: ${{ inputs.hacs_ignore }}
+
+  hassfest:
+    if: ${{ inputs.enable_hassfest }}
+    name: Hassfest Validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        raw.githubusercontent.com:443
+        brands.home-assistant.io:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: home-assistant/actions/hassfest@5752577ea7cc5aefb064b0b21432f18fe4d6ba90 # master (no semver releases)
+
+  config-check:
+    if: ${{ inputs.enable_config_check }}
+    name: HA Config Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        raw.githubusercontent.com:443
+        brands.home-assistant.io:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - name: Validate ha_version
+        env:
+          HA_VERSION: ${{ inputs.ha_version }}
+        run: |
+          if [ -z "$HA_VERSION" ]; then
+            echo "ERROR: ha_version is required when enable_config_check is true"
+            exit 1
+          fi
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Pre-check setup
+        if: ${{ inputs.config_check_setup != '' }}
+        env:
+          SETUP_COMMANDS: ${{ inputs.config_check_setup }}
+        run: |
+          eval "$SETUP_COMMANDS"
+      - uses: frenck/action-home-assistant@941d5d917f4c1c7a7e7d4087526daf90d53f4437 # v1.4.1
+        with:
+          path: .
+          version: ${{ inputs.ha_version }}
+          secrets: ${{ inputs.config_check_secrets }}

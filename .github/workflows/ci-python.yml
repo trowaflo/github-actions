@@ -1,0 +1,152 @@
+name: Python CI
+
+# Reusable workflow — Python CI générique : tests, lint, couverture
+# Usage: uses: trowaflo/github-actions/.github/workflows/ci-python.yml@<sha>
+#
+# Indépendant de Home Assistant — utilisable pour tout projet Python.
+# Pour un repo HA, passer extra_packages avec pytest-homeassistant-custom-component.
+
+on:
+  workflow_call:
+    inputs:
+      enable_harden_runner:
+        description: "Runtime security via StepSecurity harden-runner"
+        type: boolean
+        default: true
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
+      harden_runner_allowed_endpoints:
+        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
+        type: string
+        # pip install (pypi + pythonhosted), codecov upload
+        default: ""
+      enable_test:
+        description: "pytest tests + codecov coverage"
+        type: boolean
+        default: false
+      enable_lint:
+        description: "Python linting with ruff"
+        type: boolean
+        default: false
+      python_version:
+        description: "Python version"
+        type: string
+        default: "3.13"
+      coverage_threshold:
+        description: "Minimum coverage threshold (%)"
+        type: string
+        default: "80"
+      test_path:
+        description: "Test directory"
+        type: string
+        default: "tests/"
+      coverage_path:
+        description: "Coverage path for pytest-cov (e.g., custom_components/my_component)"
+        type: string
+        default: "."
+      extra_packages:
+        description: "Additional pip packages before tests (e.g., pytest-homeassistant-custom-component==0.13.316)"
+        type: string
+        default: ""
+    secrets:
+      codecov_token:
+        description: "Codecov token (optional — works without for public repos)"
+        required: false
+
+permissions: {}
+
+jobs:
+  test:
+    if: ${{ inputs.enable_test }}
+    name: Test Python
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        codecov.io:443
+        cli.codecov.io:443
+        ingest.codecov.io:443
+        keybase.io:443
+        storage.googleapis.com:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ inputs.python_version }}
+      - name: Install dependencies
+        env:
+          EXTRA_PACKAGES: ${{ inputs.extra_packages }}
+        run: |
+          pip install pytest pytest-cov
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f pyproject.toml ] || [ -f setup.py ]; then pip install .; fi
+          if [ -n "$EXTRA_PACKAGES" ]; then
+            # shellcheck disable=SC2086
+            pip install $EXTRA_PACKAGES
+          fi
+      - name: Run pytest
+        env:
+          COVERAGE_PATH: ${{ inputs.coverage_path }}
+          COVERAGE_THRESHOLD: ${{ inputs.coverage_threshold }}
+          TEST_PATH: ${{ inputs.test_path }}
+        run: |
+          pytest \
+            --cov="$COVERAGE_PATH" \
+            --cov-report=xml \
+            --cov-fail-under="$COVERAGE_THRESHOLD" \
+            "$TEST_PATH" -v
+      - uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe # v5
+        with:
+          token: ${{ secrets.codecov_token }}
+          fail_ci_if_error: true
+
+  lint:
+    if: ${{ inputs.enable_lint }}
+    name: Lint Python (ruff)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        codecov.io:443
+        cli.codecov.io:443
+        ingest.codecov.io:443
+        keybase.io:443
+        storage.googleapis.com:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ inputs.python_version }}
+      - name: Run ruff
+        run: |
+          # renovate: datasource=pypi depName=ruff
+          pip install ruff==0.15.9
+          ruff check .
