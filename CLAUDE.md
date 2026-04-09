@@ -28,6 +28,28 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
   claude.yml           # Claude Code — restricted to repository_owner only
   release-please.yml   # Creates tags and CHANGELOG on main push
 
+  # ─── Test workflows (validate each reusable workflow) ────────
+  test-security.yml    # Tests security.yml opt-in: checkov, trivy IaC
+  test-lint.yml        # Tests lint.yml opt-in: ansible-lint, terraform-validate
+  test-ha.yml          # Tests ci-ha.yml: hacs, hassfest, config-check
+  test-python.yml      # Tests ci-python.yml: pytest, ruff
+  test-helm.yml        # Tests ci-helm.yml + release-helm.yml + ci-helm-cleanup.yml
+  test-docker.yml      # Tests ci-docker.yml: build, trivy (container), grype
+  test-validate-renovate.yml  # Tests lint-renovate.yml
+  test-release.yml     # Tests release.yml (dry-run mode)
+
+```
+
+Test fixtures are in `tests/`:
+
+```
+tests/
+  ansible/         # playbook.yml — ansible-lint fixture
+  charts/          # hello-world chart — helm test fixture
+  docker/          # Dockerfile — ci-docker fixture
+  ha/              # configuration.yaml — ci-ha fixture
+  python/          # calculator + tests — ci-python fixture
+  terraform/       # main.tf — checkov + terraform-validate fixture
 ```
 
 ## Key conventions

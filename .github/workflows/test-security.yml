@@ -1,0 +1,44 @@
+name: Test Security Workflow
+
+# Validates the opt-in scanners in security.yml using test fixtures:
+#   - checkov: tests/terraform/main.tf  (framework: terraform)
+#   - trivy:   filesystem scan          (severity: CRITICAL only)
+#
+# The default jobs (gitleaks, kics, dependency-review) are covered by ci.yml.
+#
+# Triggered:
+#   - workflow_dispatch (manual)
+#   - pull_request (every PR)
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  security-checkov:
+    name: Test security.yml (checkov)
+    uses: ./.github/workflows/security.yml
+    permissions:
+      contents: read
+      security-events: write
+    with:
+      enable_gitleaks: false
+      enable_kics: false
+      enable_checkov: true
+      checkov_framework: terraform
+      harden_runner_egress_policy: audit
+
+  security-trivy:
+    name: Test security.yml (trivy IaC)
+    uses: ./.github/workflows/security.yml
+    permissions:
+      contents: read
+      security-events: write
+    with:
+      enable_gitleaks: false
+      enable_kics: false
+      enable_trivy: true
+      trivy_severity: CRITICAL
+      harden_runner_egress_policy: audit

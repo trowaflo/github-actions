@@ -1,0 +1,11 @@
+---
+# ansible-lint configuration — scoped to the test fixture only.
+profile: min
+exclude_paths:
+  - .git/
+  - tests/charts/
+  - tests/docker/
+  - tests/ha/
+  - tests/python/
+  - tests/terraform/
+  - docs/

@@ -1,0 +1,36 @@
+name: Test Lint Workflow
+
+# Validates the opt-in linters in lint.yml using test fixtures:
+#   - ansible-lint: tests/ansible/playbook.yml
+#   - terraform-validate: tests/terraform/main.tf
+#
+# Triggered:
+#   - workflow_dispatch (manual)
+#   - pull_request (every PR)
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  lint-ansible:
+    name: Test lint.yml (ansible-lint)
+    uses: ./.github/workflows/lint.yml
+    permissions:
+      contents: read
+    with:
+      enable_actionlint: false
+      enable_ansible_lint: true
+      harden_runner_egress_policy: audit
+
+  lint-terraform:
+    name: Test lint.yml (terraform-validate)
+    uses: ./.github/workflows/lint.yml
+    permissions:
+      contents: read
+    with:
+      enable_actionlint: false
+      enable_terraform_validate: true
+      harden_runner_egress_policy: audit
