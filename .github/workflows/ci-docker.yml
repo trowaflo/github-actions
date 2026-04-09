@@ -87,6 +87,7 @@ jobs:
       #   get.trivy.dev:443 — Trivy install script (trivy-action)
       #   ghcr.io:443 — GitHub Container Registry (push/pull images)
       #   github.com:443 — git clone, actions checkout
+      #   grype.anchore.io:443 — Grype DB listing endpoint (scan-action)
       #   mirror.gcr.io:443 — GCR mirror (Docker daemon)
       #   pkg-containers.githubusercontent.com:443 — GHCR storage backend
       #   production.cloudflare.docker.com:443 — Docker Hub CDN (setup-qemu-action)
@@ -102,6 +103,7 @@ jobs:
         get.trivy.dev:443
         ghcr.io:443
         github.com:443
+        grype.anchore.io:443
         mirror.gcr.io:443
         pkg-containers.githubusercontent.com:443
         production.cloudflare.docker.com:443
@@ -237,6 +239,7 @@ jobs:
         get.trivy.dev:443
         ghcr.io:443
         github.com:443
+        grype.anchore.io:443
         mirror.gcr.io:443
         pkg-containers.githubusercontent.com:443
         production.cloudflare.docker.com:443
@@ -291,6 +294,7 @@ jobs:
         get.trivy.dev:443
         ghcr.io:443
         github.com:443
+        grype.anchore.io:443
         mirror.gcr.io:443
         pkg-containers.githubusercontent.com:443
         production.cloudflare.docker.com:443
