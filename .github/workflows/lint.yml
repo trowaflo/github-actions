@@ -1,0 +1,317 @@
+name: Lint
+
+# Reusable workflow — Code quality linting
+# Usage: uses: trowaflo/github-actions/.github/workflows/lint.yml@<sha>
+#
+# Defaults on : actionlint = true (opt-out)
+# Defaults opt-in : markdown, yaml, ansible, terraform, json = false
+
+on:
+  workflow_call:
+    inputs:
+      enable_harden_runner:
+        description: "Runtime security via StepSecurity harden-runner"
+        type: boolean
+        default: true
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
+      harden_runner_allowed_endpoints:
+        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
+        type: string
+        default: ""
+      enable_actionlint:
+        description: "Lint GitHub Actions workflow files"
+        type: boolean
+        default: true
+      enable_markdown_lint:
+        description: "Lint Markdown with markdownlint-cli2"
+        type: boolean
+        default: false
+      enable_yamllint:
+        description: "Lint YAML with yamllint (auto-detects .yamllint.yml)"
+        type: boolean
+        default: false
+      enable_ansible_lint:
+        description: "Lint Ansible with ansible-lint"
+        type: boolean
+        default: false
+      enable_terraform_validate:
+        description: "Terraform validation: fmt check + tflint"
+        type: boolean
+        default: false
+      enable_json_lint:
+        description: "JSON and JSON5 syntax validation"
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  actionlint:
+    if: ${{ inputs.enable_actionlint }}
+    name: Lint Workflows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
+      # renovate: datasource=github-releases depName=rhysd/actionlint
+      ACTIONLINT_VERSION: "1.7.12"
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install actionlint with checksum verification
+        run: |
+          set -euo pipefail
+          ARCHIVE="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          CHECKSUMS="actionlint_${ACTIONLINT_VERSION}_checksums.txt"
+          BASE_URL="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}"
+          curl -fsSLO "${BASE_URL}/${ARCHIVE}"
+          curl -fsSLO "${BASE_URL}/${CHECKSUMS}"
+          grep " ${ARCHIVE}$" "${CHECKSUMS}" | sha256sum -c -
+          tar -xzf "${ARCHIVE}" actionlint
+      - name: Run actionlint
+        run: ./actionlint -color
+      - name: Run actionlint (SARIF)
+        if: ${{ always() && github.event.repository.visibility == 'public' }}
+        run: |
+          set -euo pipefail
+          SARIF_TEMPLATE="$(curl -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/v${ACTIONLINT_VERSION}/testdata/format/sarif_template.txt")"
+          ./actionlint -format "$SARIF_TEMPLATE" > actionlint-results.sarif || true
+      - name: Upload actionlint SARIF
+        if: ${{ always() && github.event.repository.visibility == 'public' }}
+        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        with:
+          sarif_file: actionlint-results.sarif
+          category: actionlint
+
+  markdown-lint:
+    if: ${{ inputs.enable_markdown_lint }}
+    name: Lint Markdown
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: DavidAnson/markdownlint-cli2-action@07035fd053f7be764496c0f8d8f9f41f98305101 # v22.0.0
+        with:
+          globs: |
+            **/*.md
+            !.venv/**
+
+  yamllint:
+    if: ${{ inputs.enable_yamllint }}
+    name: Lint YAML
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run yamllint
+        run: |
+          set -euo pipefail
+          # renovate: datasource=pypi depName=yamllint
+          pip install --quiet yamllint==1.38.0
+          yamllint .
+
+  ansible-lint:
+    if: ${{ inputs.enable_ansible_lint }}
+    name: Lint Ansible
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ansible/ansible-lint@5fac056c45595896c973fbde871f01f6cb14d74c # v26.4.0
+
+  terraform-validate:
+    if: ${{ inputs.enable_terraform_validate }}
+    name: Validate Terraform
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+      - uses: terraform-linters/setup-tflint@b480b8fcdaa6f2c577f8e4fa799e89e756bb7c93 # v6.2.2
+      - name: Terraform format check
+        run: terraform fmt -check -recursive
+      - name: TFLint init
+        run: tflint --init
+      - name: TFLint run
+        run: tflint --recursive --format compact
+
+  json-lint:
+    if: ${{ inputs.enable_json_lint }}
+    name: Lint JSON
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        release-assets.githubusercontent.com:443
+        pypi.org:443
+        files.pythonhosted.org:443
+        raw.githubusercontent.com:443
+        registry.npmjs.org:443
+        ghcr.io:443
+        pkg-containers.githubusercontent.com:443
+        get.trivy.dev:443
+        mirror.gcr.io:443
+        kics.io:443
+        apk.cgr.dev:443
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+        api0.prismacloud.io:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Validate JSON and JSON5 files
+        run: |
+          set -euo pipefail
+          # renovate: datasource=pypi depName=json5
+          pip install --quiet json5==0.14.0
+          exit_code=0
+          while IFS= read -r -d '' f; do
+            if ! python3 -c "import json, sys; json.load(open(sys.argv[1]))" "$f"; then
+              echo "Invalid JSON: $f"; exit_code=1
+            else
+              echo "OK: $f"
+            fi
+          done < <(find . -name '*.json' -not -path './.git/*' -not -path './node_modules/*' -print0)
+          while IFS= read -r -d '' f; do
+            if ! python3 -c "import json5, sys; json5.load(open(sys.argv[1]))" "$f"; then
+              echo "Invalid JSON5: $f"; exit_code=1
+            else
+              echo "OK: $f"
+            fi
+          done < <(find . -name '*.json5' -not -path './.git/*' -not -path './node_modules/*' -print0)
+          exit $exit_code
