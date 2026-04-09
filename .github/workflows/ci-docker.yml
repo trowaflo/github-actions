@@ -3,24 +3,15 @@ name: Docker CI
 # Reusable workflow — Docker Build & Container Scanning
 # Usage: uses: trowaflo/github-actions/.github/workflows/ci-docker.yml@<sha>
 #
-# Ordre garanti quand enable_build=true :
+# Ordre garanti :
 #   1. Build → push staging tag (ex: :scan-{run_id})
 #   2. Scan Trivy sur le staging tag
 #   3. Publish final (bake avec les tags originaux du bake file, depuis le cache)
 # Si le scan échoue, le job échoue → le publish final ne s'exécute pas.
-#
-# Mode scan-only (enable_build=false) : job trivy-scan indépendant,
-# tourne sur une image existante dans le registre (image_name ou défaut).
-#
-# image_name : si non fourni, utilise {registry}/{github.repository} par défaut.
 
 on:
   workflow_call:
     inputs:
-      enable_build:
-        description: "Docker build & push via bake"
-        type: boolean
-        default: false
       enable_harden_runner:
         description: "Runtime security via StepSecurity harden-runner"
         type: boolean
@@ -37,10 +28,6 @@ on:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
         default: "audit"
-      image_name:
-        description: "Image name (e.g., owner/image) — defaults to {registry}/{github.repository}"
-        type: string
-        default: ""
       registry:
         description: "Target Docker registry"
         type: string
@@ -61,7 +48,6 @@ permissions: {}
 
 jobs:
   docker:
-    if: ${{ inputs.enable_build }}
     name: Docker Build → Scan → Publish
     runs-on: ubuntu-latest
     permissions:
@@ -189,58 +175,3 @@ jobs:
           else
             echo "Staging version not found — will expire per ghcr.io retention policy (90 days)"
           fi
-
-  # ── Mode scan-only (enable_build=false) ────────────────────────────────────
-
-  trivy-scan:
-    if: ${{ inputs.enable_trivy && !inputs.enable_build }}
-    name: Container Scan (Trivy)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-    env:
-      # Built-in endpoints — see first job above
-      _HARDEN_DEFAULTS: >-
-        agent.api.stepsecurity.io:443
-        api.github.com:443
-        auth.docker.io:443
-        check.trivy.dev:443
-        get.trivy.dev:443
-        ghcr.io:443
-        github.com:443
-        mirror.gcr.io:443
-        pkg-containers.githubusercontent.com:443
-        production.cloudflare.docker.com:443
-        raw.githubusercontent.com:443
-        registry-1.docker.io:443
-        release-assets.githubusercontent.com:443
-    steps:
-      - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
-        with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Trivy scan (table)
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
-        with:
-          image-ref: "${{ inputs.image_name != '' && inputs.image_name || format('{0}/{1}', inputs.registry, github.repository) }}"
-          format: table
-          severity: ${{ inputs.trivy_severity }}
-          exit-code: "1"
-      - name: Trivy scan (SARIF)
-        if: always()
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
-        with:
-          image-ref: "${{ inputs.image_name != '' && inputs.image_name || format('{0}/{1}', inputs.registry, github.repository) }}"
-          format: sarif
-          output: trivy-results.sarif
-          severity: ${{ inputs.trivy_severity }}
-      - name: Upload Trivy SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
-        with:
-          sarif_file: trivy-results.sarif
-          category: trivy-container

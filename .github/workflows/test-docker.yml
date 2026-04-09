@@ -22,6 +22,5 @@ jobs:
       packages: write
       security-events: write
     with:
-      enable_build: true
       enable_trivy: true
       harden_runner_egress_policy: block

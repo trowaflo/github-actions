@@ -6,7 +6,7 @@ Tous les jobs sont **désactivés par défaut** (opt-in explicite).
 
 ## Ordre d'exécution
 
-Quand `enable_build: true`, le workflow garantit l'ordre **build → scan → publish** :
+Le workflow garantit l'ordre **build → scan → publish** :
 
 1. Build l'image avec un tag staging temporaire (`:scan-{run_id}`)
 2. Scan Trivy sur ce tag staging
@@ -17,41 +17,15 @@ Le tag staging (`:scan-{run_id}`) reste dans le registre après le workflow. Il 
 
 ## Usage
 
-### Build + scan (recommandé)
-
 ```yaml
-jobs:
-  docker:
-    uses: trowaflo/github-actions/.github/workflows/ci-docker.yml@<sha> # vX.Y.Z
-    with:
-      enable_build: true
-      enable_trivy: true
-    secrets:
-      registry_username: ${{ secrets.REGISTRY_USER }}    # optionnel pour ghcr.io
-      registry_password: ${{ secrets.REGISTRY_TOKEN }}   # optionnel pour ghcr.io
-```
-
-### Scan uniquement (image existante)
-
-Mode `enable_build: false` : scanner une image déjà dans le registre, sans rebuilder.
-
-Deux cas d'usage principaux :
-
-- **Scan planifié** — détecter les nouvelles CVEs sur des images en production, sans attendre un nouveau build. Une CVE publiée aujourd'hui peut affecter une image buildée il y a 2 semaines.
-- **Scan de base image** — vérifier une image tierce (`nginx:alpine`, `python:3.13-slim`) avant de builder dessus.
-
-```yaml
-# Scan quotidien sur les images en production
-on:
-  schedule:
-    - cron: '0 6 * * *'
-
 jobs:
   docker:
     uses: trowaflo/github-actions/.github/workflows/ci-docker.yml@<sha> # vX.Y.Z
     with:
       enable_trivy: true
-      image_name: "ghcr.io/trowaflo/my-image:latest"
+    secrets:
+      registry_username: ${{ secrets.REGISTRY_USER }}    # optionnel pour ghcr.io
+      registry_password: ${{ secrets.REGISTRY_TOKEN }}   # optionnel pour ghcr.io
 ```
 
 ## Inputs
@@ -61,10 +35,8 @@ jobs:
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
 | `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
 | `harden_runner_allowed_endpoints` | string | `(built-in)` | Allowed endpoints when block (space-separated) — extra endpoints merged with defaults |
-| `enable_build` | boolean | `false` | Docker build & push via bake |
 | `enable_trivy` | boolean | `false` | CVE scan via Trivy (aquasecurity) |
 | `registry` | string | `"ghcr.io"` | Registre Docker cible |
-| `image_name` | string | `""` | Nom de l'image — défaut : `{registry}/{github.repository}` |
 | `trivy_severity` | string | `""` | Sévérités Trivy à remonter (vide = toutes) |
 
 ## Secrets

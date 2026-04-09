@@ -147,3 +147,7 @@ All inputs (including secrets) are documented inline in each workflow file — r
 
 Key files: `security.yml`, `lint.yml`, `lint-renovate.yml`, `ci-ha.yml`, `ci-python.yml`, `ci-helm.yml`, `ci-helm-cleanup.yml`, `ci-docker.yml`, `release.yml`, `release-helm.yml`, `claude-code.yml`
 
+## Documentation
+
+Every reusable workflow has a matching doc file in `docs/` (e.g. `ci-docker.yml` → `docs/ci-docker.md`). **When modifying a workflow, always update the corresponding doc file** — inputs table, usage examples, and notes must stay in sync. Also update `CLAUDE.md` if the change affects architecture, conventions, or the repository structure section.
+
