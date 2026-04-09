@@ -39,7 +39,6 @@ jobs:
       pages: write
     with:
       enable_release: true
-      charts_dir: tests/charts
       harden_runner_egress_policy: block
 
   helm-pr-cleanup:
