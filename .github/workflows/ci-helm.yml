@@ -1,7 +1,7 @@
 name: Helm CI
 
 # Reusable workflow — Helm Charts CI (pull_request)
-# Usage: uses: trowaflo/github-actions/.github/workflows/helm-ci.yml@<sha>
+# Usage: uses: trowaflo/github-actions/.github/workflows/ci-helm.yml@<sha>
 #
 # Job order: lint + unittest → bump → docs → docs-check
 #                                  └──────────────→ pr-charts
@@ -16,14 +16,13 @@ on:
       harden_runner_egress_policy:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "block"
+        default: "audit"
       harden_runner_allowed_endpoints:
         description: >-
           Extra endpoints to allow (merged with built-in defaults, space-separated).
           Note: enable_pr_charts adds Helm repo endpoints dynamically from Chart.yaml
           dependencies — add those hosts here if charts reference external repositories.
         type: string
-        # setup-helm, helm-docs (GitHub releases), npm (semver), yq
         default: ""
       enable_lint:
         description: "Lint charts with chart-testing (ct lint)"
@@ -70,7 +69,6 @@ jobs:
     permissions:
       contents: read
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -125,7 +123,6 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       has_charts: ${{ steps.set-matrix.outputs.has_charts }}
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -173,7 +170,6 @@ jobs:
       max-parallel: 5
       matrix: ${{ fromJson(needs.helm-unittest-matrix.outputs.matrix) }}
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -230,7 +226,6 @@ jobs:
           comment_mode: "off"
 
   # ─── Version Bump ────────────────────────────────────────────────────────────
-  # Runs after lint + unittest pass (or are skipped/disabled).
 
   helm-bump:
     needs: [helm-lint, helm-unittest-matrix, helm-unittest]
@@ -246,7 +241,6 @@ jobs:
     permissions:
       contents: write
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -307,7 +301,6 @@ jobs:
           for chart in $CHARTS; do
             chart_dir=$(dirname "$chart")
 
-            # Skip if version was already manually bumped
             BASE_VERSION=$(git show "origin/$BASE_REF:$chart" 2>/dev/null | grep '^version:' | awk '{print $2}' || echo "")
             CURRENT_VERSION=$(grep '^version:' "$chart" | awk '{print $2}')
             if [ -n "$BASE_VERSION" ] && [ "$BASE_VERSION" != "$CURRENT_VERSION" ]; then
@@ -315,7 +308,6 @@ jobs:
               continue
             fi
 
-            # Analyze commits affecting this chart for conventional commit type
             COMMITS=$(git log --pretty=%B --no-merges "origin/$BASE_REF..HEAD" -- "$chart_dir")
             bump="none"
             if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
@@ -344,13 +336,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # shellcheck disable=SC2038  # -exec {} + is already the safe form
+          # shellcheck disable=SC2038
           find "$CHARTS_DIR" -name Chart.yaml -exec git add {} +
           git commit -m "ci: bump chart versions [skip ci]"
           git push
 
   # ─── Documentation ───────────────────────────────────────────────────────────
-  # Runs after bump (to capture the new version in the generated README).
 
   helm-docs:
     needs: [helm-bump]
@@ -362,7 +353,6 @@ jobs:
     permissions:
       contents: write
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -425,7 +415,6 @@ jobs:
     permissions:
       contents: read
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -469,16 +458,14 @@ jobs:
         run: |
           git add .
           if git diff --cached --quiet; then
-            echo "✅ Documentation is up-to-date."
+            echo "Documentation is up-to-date."
           else
-            echo "❌ Documentation is outdated. Run helm-docs locally to update."
-            echo ""
+            echo "Documentation is outdated. Run helm-docs locally to update."
             git diff --cached
             exit 1
           fi
 
   # ─── PR Charts ───────────────────────────────────────────────────────────────
-  # Runs after bump (packages the bumped version).
 
   helm-pr-charts:
     needs: [helm-bump]
@@ -492,7 +479,6 @@ jobs:
       contents: write
       pull-requests: write
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -540,7 +526,6 @@ jobs:
           install -m 0755 "$TMP_DIR/$YQ_ASSET" /usr/local/bin/yq
       - name: Detect changed charts
         id: detect
-
         env:
           CHARTS_DIR: ${{ inputs.charts_dir }}
           BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
@@ -558,8 +543,6 @@ jobs:
           done < <(git diff --name-only "origin/$BASE_BRANCH..HEAD" | grep "^$CHARTS_DIR/" || true)
           echo "changed=${changed_charts[*]}" >> "$GITHUB_OUTPUT"
           echo "Changed charts: ${changed_charts[*]}"
-      # NOTE: This step contacts external Helm repository hosts derived from Chart.yaml dependencies.
-      # With harden-runner egress-policy: block, you must add those hosts to harden_runner_allowed_endpoints.
       - name: Add Helm repositories
         if: steps.detect.outputs.changed != ''
         run: |
@@ -584,24 +567,21 @@ jobs:
       - name: Package charts
         if: steps.detect.outputs.changed != ''
         id: package
+        env:
+          PR_NUM: ${{ github.event.pull_request.number }}
         run: |
           mkdir -p /tmp/pr-charts /tmp/pr-artifacts
-          PR_NUM=${{ github.event.pull_request.number }}
           packaged_charts=""
           for chart in ${{ steps.detect.outputs.changed }}; do
             [ -f "$chart/Chart.yaml" ] || continue
             chart_name=$(yq '.name' "$chart/Chart.yaml")
             chart_version=$(yq '.version' "$chart/Chart.yaml")
             pr_version="${chart_version}-pr${PR_NUM}"
-
-            # PR-versioned package for pr-charts branch
             rm -rf /tmp/chart-copy
             cp -r "$chart" /tmp/chart-copy
             yq ".version = \"${pr_version}\"" -i /tmp/chart-copy/Chart.yaml
             helm package /tmp/chart-copy -d /tmp/pr-charts
             rm -rf /tmp/chart-copy
-
-            # Original version for artifacts
             helm package "$chart" -d /tmp/pr-artifacts
             packaged_charts="$packaged_charts ${chart_name}:${pr_version}"
           done
@@ -615,8 +595,10 @@ jobs:
           retention-days: 30
       - name: Publish to pr-charts branch
         if: steps.package.outputs.packaged != ''
+        env:
+          PR_NUM: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
-          PR_NUM=${{ github.event.pull_request.number }}
           git fetch origin pr-charts || true
           if git show-ref --verify --quiet refs/remotes/origin/pr-charts; then
             git checkout -B pr-charts origin/pr-charts
@@ -629,8 +611,8 @@ jobs:
             git commit -m "Initialize pr-charts branch"
           fi
           cp /tmp/pr-charts/*.tgz .
-          helm repo index . --url "https://raw.githubusercontent.com/${{ github.repository }}/pr-charts" --merge index.yaml 2>/dev/null || \
-          helm repo index . --url "https://raw.githubusercontent.com/${{ github.repository }}/pr-charts"
+          helm repo index . --url "https://raw.githubusercontent.com/${REPO}/pr-charts" --merge index.yaml 2>/dev/null || \
+          helm repo index . --url "https://raw.githubusercontent.com/${REPO}/pr-charts"
           git add ./*.tgz index.yaml
           git commit -m "Add PR #${PR_NUM} charts" || echo "No changes to commit"
           git push origin pr-charts
@@ -652,7 +634,7 @@ jobs:
             });
             const repoUrl = `https://raw.githubusercontent.com/${process.env.REPO_FULL}/pr-charts`;
             const body = [
-              '## 📦 PR Charts Available for Testing\n',
+              '## PR Charts Available for Testing\n',
               chartsList,
               '### Testing with Helm\n',
               '```bash',
@@ -660,7 +642,7 @@ jobs:
               'helm repo update',
               'helm install test-release pr-charts/<chart-name> --version <version>',
               '```\n',
-              '> 💡 Charts are automatically removed when this PR is merged or closed.'
+              '> Charts are automatically removed when this PR is merged or closed.'
             ].join('\n');
             const comments = await github.rest.issues.listComments({
               issue_number: context.issue.number,

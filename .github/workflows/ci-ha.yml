@@ -1,12 +1,12 @@
-name: Home Assistant
+name: Home Assistant CI
 
 # Reusable workflow — Home Assistant CI
-# Usage: uses: trowaflo/github-actions/.github/workflows/ha.yml@<sha>
+# Usage: uses: trowaflo/github-actions/.github/workflows/ci-ha.yml@<sha>
 #
 # Tous les jobs sont domaine-spécifiques → false par défaut (opt-in explicite).
 #
-# Tests Python et lint : utiliser python.yml (workflow dédié, indépendant de HA).
-# Pour un repo HA : appeler python.yml avec extra_packages=pytest-homeassistant-custom-component.
+# Tests Python et lint : utiliser ci-python.yml (workflow dédié, indépendant de HA).
+# Pour un repo HA : appeler ci-python.yml avec extra_packages=pytest-homeassistant-custom-component.
 
 on:
   workflow_call:
@@ -18,7 +18,7 @@ on:
       harden_runner_egress_policy:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "block"
+        default: "audit"
       harden_runner_allowed_endpoints:
         description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string

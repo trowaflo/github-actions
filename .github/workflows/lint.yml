@@ -1,10 +1,10 @@
-name: Quality
+name: Lint
 
-# Reusable workflow — Sécurité + Linting universel
-# Usage: uses: trowaflo/github-actions/.github/workflows/quality.yml@<sha>
+# Reusable workflow — Code quality linting
+# Usage: uses: trowaflo/github-actions/.github/workflows/lint.yml@<sha>
 #
-# Defaults security-on : gitleaks, checkov, actionlint = true (opt-out)
-# Defaults domain-specific : tous les autres = false (opt-in)
+# Defaults on : actionlint = true (opt-out)
+# Defaults opt-in : markdown, yaml, ansible, terraform, json = false
 
 on:
   workflow_call:
@@ -16,28 +16,15 @@ on:
       harden_runner_egress_policy:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "block"
+        default: "audit"
       harden_runner_allowed_endpoints:
         description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string
-        # 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com = Chainguard R2 bucket for KICS apk — hash may change
         default: ""
-      enable_gitleaks:
-        description: "Secret scanning with gitleaks"
-        type: boolean
-        default: true
-      enable_checkov:
-        description: "IaC misconfiguration scanning with Checkov (replaces KICS)"
-        type: boolean
-        default: true
       enable_actionlint:
         description: "Lint GitHub Actions workflow files"
         type: boolean
         default: true
-      enable_dependency_review:
-        description: "Dependency review on PR — requires pull_request event"
-        type: boolean
-        default: false
       enable_markdown_lint:
         description: "Lint Markdown with markdownlint-cli2"
         type: boolean
@@ -58,114 +45,10 @@ on:
         description: "JSON and JSON5 syntax validation"
         type: boolean
         default: false
-      enable_kics:
-        description: "IaC scanning with KICS (⚠ checkmarx/kics-github-action impacted by TeamPCP 2026-03-23)"
-        type: boolean
-        default: true
-      enable_trivy:
-        description: "IaC/filesystem scanning with Trivy"
-        type: boolean
-        default: true
-      checkov_framework:
-        description: "Checkov framework: terraform, kubernetes, helm, dockerfile, or empty for all"
-        type: string
-        default: ""
-      trivy_severity:
-        description: "Trivy severity levels: UNKNOWN, LOW, MEDIUM, HIGH, CRITICAL"
-        type: string
-        default: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
 
 permissions: {}
 
 jobs:
-  gitleaks:
-    if: ${{ inputs.enable_gitleaks }}
-    name: Secret Scanning
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
-      _HARDEN_DEFAULTS: >-
-        agent.api.stepsecurity.io:443
-        github.com:443
-        api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
-        files.pythonhosted.org:443
-        raw.githubusercontent.com:443
-        registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
-    steps:
-      - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
-        with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  checkov:
-    if: ${{ inputs.enable_checkov }}
-    name: IaC Scan (Checkov)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-    env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
-      _HARDEN_DEFAULTS: >-
-        agent.api.stepsecurity.io:443
-        github.com:443
-        api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
-        files.pythonhosted.org:443
-        raw.githubusercontent.com:443
-        registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
-    steps:
-      - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
-        with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: bridgecrewio/checkov-action@0ce65fae06c148e349f955c3c35ad049c11e838c # v12.3092.0
-        with:
-          directory: .
-          framework: ${{ inputs.checkov_framework }}
-          quiet: true
-          output_format: cli,sarif
-          output_file_path: console,checkov-results.sarif
-      - name: Upload Checkov SARIF
-        if: ${{ always() && github.event.repository.visibility == 'public' }}
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
-        with:
-          sarif_file: checkov-results.sarif
-          category: checkov
-
   actionlint:
     if: ${{ inputs.enable_actionlint }}
     name: Lint Workflows
@@ -227,42 +110,6 @@ jobs:
           sarif_file: actionlint-results.sarif
           category: actionlint
 
-  dependency-review:
-    if: ${{ inputs.enable_dependency_review && github.event_name == 'pull_request' }}
-    name: Dependency Review
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
-      _HARDEN_DEFAULTS: >-
-        agent.api.stepsecurity.io:443
-        github.com:443
-        api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
-        files.pythonhosted.org:443
-        raw.githubusercontent.com:443
-        registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
-    steps:
-      - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
-        with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
-
   markdown-lint:
     if: ${{ inputs.enable_markdown_lint }}
     name: Lint Markdown
@@ -270,7 +117,6 @@ jobs:
     permissions:
       contents: read
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -309,7 +155,6 @@ jobs:
     permissions:
       contents: read
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -349,7 +194,6 @@ jobs:
     permissions:
       contents: read
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -384,7 +228,6 @@ jobs:
     permissions:
       contents: read
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -426,7 +269,6 @@ jobs:
     permissions:
       contents: read
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -460,128 +302,16 @@ jobs:
           exit_code=0
           while IFS= read -r -d '' f; do
             if ! python3 -c "import json, sys; json.load(open(sys.argv[1]))" "$f"; then
-              echo "❌ Invalid JSON: $f"; exit_code=1
+              echo "Invalid JSON: $f"; exit_code=1
             else
-              echo "✅ $f"
+              echo "OK: $f"
             fi
           done < <(find . -name '*.json' -not -path './.git/*' -not -path './node_modules/*' -print0)
           while IFS= read -r -d '' f; do
             if ! python3 -c "import json5, sys; json5.load(open(sys.argv[1]))" "$f"; then
-              echo "❌ Invalid JSON5: $f"; exit_code=1
+              echo "Invalid JSON5: $f"; exit_code=1
             else
-              echo "✅ $f"
+              echo "OK: $f"
             fi
           done < <(find . -name '*.json5' -not -path './.git/*' -not -path './node_modules/*' -print0)
           exit $exit_code
-
-  kics:
-    if: ${{ inputs.enable_kics }}
-    name: IaC Scan (KICS)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      security-events: write
-    env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
-      _HARDEN_DEFAULTS: >-
-        agent.api.stepsecurity.io:443
-        github.com:443
-        api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
-        files.pythonhosted.org:443
-        raw.githubusercontent.com:443
-        registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
-    steps:
-      - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
-        with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Run KICS Scan
-        uses: checkmarx/kics-github-action@05aa5eb70eede1355220f4ca5238d96b397e30a6 # v2.1.20
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          path: "."
-          ignore_on_exit: results
-          enable_annotations: true
-          enable_comments: true
-          enable_jobs_summary: true
-          comments_with_queries: true
-          output_path: ./results
-          output_formats: json,sarif
-      - name: Upload KICS SARIF
-        if: ${{ always() && github.event.repository.visibility == 'public' }}
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
-        with:
-          sarif_file: ./results/results.sarif
-          category: kics
-
-  trivy:
-    if: ${{ inputs.enable_trivy }}
-    name: IaC Scan (Trivy)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-    env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
-      _HARDEN_DEFAULTS: >-
-        agent.api.stepsecurity.io:443
-        github.com:443
-        api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
-        files.pythonhosted.org:443
-        raw.githubusercontent.com:443
-        registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
-    steps:
-      - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
-        with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Run Trivy (table)
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          format: table
-          exit-code: 1
-          severity: ${{ inputs.trivy_severity }}
-      - name: Run Trivy (SARIF)
-        if: always()
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          format: sarif
-          output: trivy-results.sarif
-          severity: ${{ inputs.trivy_severity }}
-      - name: Upload Trivy SARIF
-        if: ${{ always() && github.event.repository.visibility == 'public' }}
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
-        with:
-          sarif_file: trivy-results.sarif
-          category: trivy

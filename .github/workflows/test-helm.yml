@@ -1,6 +1,6 @@
 name: Test Helm Workflows
 
-# Validates helm-ci.yml, helm-release.yml, and helm-pr-cleanup.yml using
+# Validates ci-helm.yml, release-helm.yml, and ci-helm-cleanup.yml using
 # the hello-world test fixture chart in tests/charts/.
 #
 # Triggered:
@@ -15,8 +15,8 @@ permissions: {}
 
 jobs:
   helm-ci:
-    name: Test helm-ci.yml
-    uses: ./.github/workflows/helm-ci.yml
+    name: Test ci-helm.yml
+    uses: ./.github/workflows/ci-helm.yml
     permissions:
       contents: write
       pull-requests: write
@@ -31,8 +31,8 @@ jobs:
       charts_dir: tests/charts
 
   helm-release:
-    name: Test helm-release.yml
-    uses: ./.github/workflows/helm-release.yml
+    name: Test release-helm.yml
+    uses: ./.github/workflows/release-helm.yml
     permissions:
       contents: write
       pages: write
@@ -41,9 +41,9 @@ jobs:
       charts_dir: tests/charts
 
   helm-pr-cleanup:
-    name: Test helm-pr-cleanup.yml
+    name: Test ci-helm-cleanup.yml
     needs: [helm-ci]
-    uses: ./.github/workflows/helm-pr-cleanup.yml
+    uses: ./.github/workflows/ci-helm-cleanup.yml
     permissions:
       contents: write
       pull-requests: write

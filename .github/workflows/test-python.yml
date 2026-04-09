@@ -1,6 +1,6 @@
 name: Test Python Workflow
 
-# Validates python.yml (test + lint) using the calculator fixture
+# Validates ci-python.yml (test + lint) using the calculator fixture
 # in tests/python/.
 #
 # Triggered:
@@ -15,8 +15,8 @@ permissions: {}
 
 jobs:
   python:
-    name: Test python.yml (test + lint)
-    uses: ./.github/workflows/python.yml
+    name: Test ci-python.yml (test + lint)
+    uses: ./.github/workflows/ci-python.yml
     permissions:
       contents: read
     with:

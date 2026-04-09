@@ -12,14 +12,17 @@ All external `uses:` references are pinned to full commit SHAs. Renovate manages
 
 | Workflow | Defaults on | Documentation |
 | --- | --- | --- |
-| [`quality.yml`](.github/workflows/quality.yml) | gitleaks, checkov, actionlint | [docs/quality.md](docs/quality.md) |
-| [`ha.yml`](.github/workflows/ha.yml) | — (all opt-in) | [docs/ha.md](docs/ha.md) |
-| [`python.yml`](.github/workflows/python.yml) | — (all opt-in) | [docs/python.md](docs/python.md) |
-| [`helm.yml`](.github/workflows/helm.yml) | — (all opt-in) | [docs/helm.md](docs/helm.md) |
-| [`docker.yml`](.github/workflows/docker.yml) | — (all opt-in) | [docs/docker.md](docs/docker.md) |
+| [`security.yml`](.github/workflows/security.yml) | gitleaks, kics | [docs/security.md](docs/security.md) |
+| [`lint.yml`](.github/workflows/lint.yml) | actionlint | [docs/lint.md](docs/lint.md) |
+| [`lint-renovate.yml`](.github/workflows/lint-renovate.yml) | — (all opt-in) | [docs/lint-renovate.md](docs/lint-renovate.md) |
+| [`ci-ha.yml`](.github/workflows/ci-ha.yml) | — (all opt-in) | [docs/ci-ha.md](docs/ci-ha.md) |
+| [`ci-python.yml`](.github/workflows/ci-python.yml) | — (all opt-in) | [docs/ci-python.md](docs/ci-python.md) |
+| [`ci-helm.yml`](.github/workflows/ci-helm.yml) | — (all opt-in) | [docs/helm.md](docs/helm.md) |
+| [`release-helm.yml`](.github/workflows/release-helm.yml) | — (all opt-in) | [docs/helm.md](docs/helm.md) |
+| [`ci-helm-cleanup.yml`](.github/workflows/ci-helm-cleanup.yml) | — (all opt-in) | [docs/helm.md](docs/helm.md) |
+| [`ci-docker.yml`](.github/workflows/ci-docker.yml) | — (all opt-in) | [docs/ci-docker.md](docs/ci-docker.md) |
 | [`release.yml`](.github/workflows/release.yml) | — (all opt-in) | [docs/release.md](docs/release.md) |
 | [`claude-code.yml`](.github/workflows/claude-code.yml) | — (all opt-in) | [docs/claude-code.md](docs/claude-code.md) |
-| [`validate-renovate.yml`](.github/workflows/validate-renovate.yml) | — (all opt-in) | [docs/validate-renovate.md](docs/validate-renovate.md) |
 
 ## Quick start
 
@@ -33,34 +36,36 @@ on: [pull_request]
 permissions: {}
 
 jobs:
-  quality:
-    uses: trowaflo/github-actions/.github/workflows/quality.yml@<sha> # vX.Y.Z
+  security:
+    uses: trowaflo/github-actions/.github/workflows/security.yml@<sha> # vX.Y.Z
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+
+  lint:
+    uses: trowaflo/github-actions/.github/workflows/lint.yml@<sha> # vX.Y.Z
     permissions:
       contents: read
       security-events: write
     with:
-      enable_ansible_lint: true  # opt-in extras as needed
+      enable_markdown_lint: true
+      enable_yamllint: true
 ```
 
 ## Defaults philosophy
 
-- **Security / universal quality** → `true` by default (opt-out): `enable_gitleaks`, `enable_checkov`, `enable_actionlint`, `enable_kics`, `enable_trivy`
-- **Domain-specific** → `false` by default (opt-in): everything else
-- **Triggers** — Quality/lint workflows should use `on: [pull_request]` only, not `push` to `main` (avoids running the same checks twice). Use `push` triggers for post-merge workflows: `release.yml`, `docker.yml` (publish), `helm.yml` (chart release)
+- **Security core** (`security.yml`): `enable_gitleaks`, `enable_kics` → `true` by default (opt-out); checkov, trivy, dependency-review → `false` (opt-in)
+- **Lint core** (`lint.yml`): `enable_actionlint` → `true` by default (opt-out); all others → `false` (opt-in)
+- **Domain-specific** (helm, HA, docker, python) → `false` by default (opt-in)
+- **Triggers** — Security/lint workflows should use `on: [pull_request]` only, not `push` to `main`. Use `push` triggers for post-merge workflows: `release.yml`, `ci-docker.yml` (publish), `release-helm.yml` (chart release)
 
 ## Security
 
 - All `uses:` are SHA-pinned — never tags (`@v4`) or branches (`@main`)
 - `ci.yml` enforces this with a `sha-check` job on every PR
-- **Checkov**, **Trivy**, **KICS** and **actionlint** upload results in SARIF format to **Security > Code scanning** — inline annotations on PRs
-- `enable_harden_runner` available on all workflows (default: `true`, egress `block`) — [StepSecurity harden-runner](https://github.com/step-security/harden-runner) blocks unauthorized network egress. Each workflow ships with built-in default endpoints. Start with `harden_runner_egress_policy: audit` to discover additional endpoints, then switch to `block`
-- KICS available in `quality.yml` via `enable_kics` (default: `true`) — ⚠ TeamPCP supply chain attack (2026-03-23), SHA pinned to pre-incident commit
-- Trivy IaC scanning available in `quality.yml` via `enable_trivy` (default: `true`); container scanning in `docker.yml`
+- **KICS**, **Trivy**, **Checkov**, and **actionlint** upload results in SARIF format to **Security > Code scanning** — inline annotations on PRs
+- `enable_harden_runner` available on all workflows (default: `true`, egress `audit`) — [StepSecurity harden-runner](https://github.com/step-security/harden-runner). Switch to `block` once endpoints are known
+- KICS in `security.yml` via `enable_kics` (default: `true`) — ⚠ TeamPCP supply chain attack (2026-03-23), SHA pinned to pre-incident commit
+- Trivy IaC scanning in `security.yml` via `enable_trivy` (default: `false`); container scanning in `ci-docker.yml`
 - Claude Code (`claude-code.yml`) — **requires access control on public repos**, restrict to `github.repository_owner` (see [docs](docs/claude-code.md))
-
-## Deprecated
-
-| Workflow | Replacement | Consumer |
-| --- | --- | --- |
-| `ha-integration.yml` | `ha.yml` + `python.yml` | frigate-event-manager |
-| `lint-markdown.yml` | `quality.yml` with `enable_markdown_lint: true` | frigate-event-manager |

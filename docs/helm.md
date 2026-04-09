@@ -2,12 +2,12 @@
 
 Helm Charts CI/CD — split into three focused reusable workflows.
 
-Tous les jobs sont **désactivés par défaut** (opt-in explicite), sauf `helm-pr-cleanup` qui
+Tous les jobs sont **désactivés par défaut** (opt-in explicite), sauf `ci-helm-cleanup` qui
 s'active dès que le workflow est appelé sur un événement `pull_request closed`.
 
 ---
 
-## helm-ci.yml — Pull Request CI
+## ci-helm.yml — Pull Request CI
 
 Lint, tests, bump de version, génération de docs, et packaging PR.
 
@@ -23,7 +23,7 @@ lint + unittest → bump → docs → docs-check
 ```yaml
 jobs:
   helm-ci:
-    uses: trowaflo/github-actions/.github/workflows/helm-ci.yml@<sha> # vX.Y.Z
+    uses: trowaflo/github-actions/.github/workflows/ci-helm.yml@<sha> # vX.Y.Z
     permissions:
       contents: write
       checks: write
@@ -43,7 +43,7 @@ jobs:
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` or `block` |
+| `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` or `block` |
 | `harden_runner_allowed_endpoints` | string | (built-in) | Extra endpoints merged with defaults |
 | `enable_lint` | boolean | `false` | Lint avec `ct lint` |
 | `enable_unittest` | boolean | `false` | Unit tests avec helm-unittest |
@@ -56,7 +56,7 @@ jobs:
 
 ---
 
-## helm-release.yml — Release
+## release-helm.yml — Release
 
 Release des charts via chart-releaser (push sur main).
 
@@ -65,7 +65,7 @@ Release des charts via chart-releaser (push sur main).
 ```yaml
 jobs:
   helm-release:
-    uses: trowaflo/github-actions/.github/workflows/helm-release.yml@<sha> # vX.Y.Z
+    uses: trowaflo/github-actions/.github/workflows/release-helm.yml@<sha> # vX.Y.Z
     permissions:
       contents: write
       pages: write
@@ -79,7 +79,7 @@ jobs:
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` or `block` |
+| `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` or `block` |
 | `harden_runner_allowed_endpoints` | string | (built-in) | Extra endpoints merged with defaults |
 | `enable_release` | boolean | `false` | Release via chart-releaser |
 | `charts_dir` | string | `"charts"` | Répertoire racine des charts |
@@ -87,7 +87,7 @@ jobs:
 
 ---
 
-## helm-pr-cleanup.yml — PR Cleanup
+## ci-helm-cleanup.yml — PR Cleanup
 
 Supprime les charts PR de la branche `pr-charts` quand une PR est mergée ou fermée.
 
@@ -98,7 +98,7 @@ Pas de flag — appeler ce workflow implique l'intention de cleanup.
 ```yaml
 jobs:
   helm-pr-cleanup:
-    uses: trowaflo/github-actions/.github/workflows/helm-pr-cleanup.yml@<sha> # vX.Y.Z
+    uses: trowaflo/github-actions/.github/workflows/ci-helm-cleanup.yml@<sha> # vX.Y.Z
     permissions:
       contents: write
       pull-requests: write
@@ -109,7 +109,7 @@ jobs:
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` or `block` |
+| `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` or `block` |
 | `harden_runner_allowed_endpoints` | string | (built-in) | Extra endpoints merged with defaults |
 
 ---

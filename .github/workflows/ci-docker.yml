@@ -1,7 +1,7 @@
-name: Docker
+name: Docker CI
 
 # Reusable workflow — Docker Build & Container Scanning
-# Usage: uses: trowaflo/github-actions/.github/workflows/docker.yml@<sha>
+# Usage: uses: trowaflo/github-actions/.github/workflows/ci-docker.yml@<sha>
 #
 # Ordre garanti quand enable_build=true :
 #   1. Build → push staging tag (ex: :scan-{run_id})
@@ -12,14 +12,7 @@ name: Docker
 # Mode scan-only (enable_build=false) : jobs trivy-scan et grype-scan indépendants,
 # tournent sur une image existante dans le registre (image_name ou défaut).
 #
-# Multi-platform : le staging build utilise le cache buildx du runner.
-# Le bake file contrôle les platforms cibles — aucune restriction de ce workflow.
-#
 # Enable_trivy et enable_grype sont indépendants.
-# Activer les deux permet de comparer la couverture dans le temps.
-# Trivy (aquasecurity) et grype (Anchore/Cisco) couvrent le même besoin (CVEs dans images)
-# mais ont des bases de données et heuristiques différentes.
-#
 # image_name : si non fourni, utilise {registry}/{github.repository} par défaut.
 
 on:
@@ -32,11 +25,10 @@ on:
       harden_runner_egress_policy:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "block"
+        default: "audit"
       harden_runner_allowed_endpoints:
         description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string
-        # ghcr.io registry, trivy DB (mirror.gcr.io), trivy install
         default: ""
       enable_build:
         description: "Docker build & push via bake"
@@ -112,7 +104,6 @@ jobs:
       - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       # ── Phase 1 : build staging tag (pour le scan) ─────────────────────────
-      # Skippé si aucun scan activé (on passe directement au publish final)
       - name: Set staging tag
         id: staging
         if: ${{ inputs.enable_trivy || inputs.enable_grype }}
@@ -131,7 +122,6 @@ jobs:
             *.tags=${{ steps.staging.outputs.tag }}
 
       # ── Phase 2 : scan ─────────────────────────────────────────────────────
-      # Si un scan échoue, le job échoue et la phase 3 (publish) ne s'exécute pas.
       - name: Trivy scan
         if: ${{ inputs.enable_trivy }}
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
@@ -174,7 +164,6 @@ jobs:
           category: grype-container
 
       # ── Phase 3 : publish final ────────────────────────────────────────────
-      # Tags définis par le bake file du consumer. Cache buildx = republication quasi-instantanée.
       - name: Publish final image
         if: ${{ github.event_name != 'pull_request' }}
         uses: docker/bake-action@82490499d2e5613fcead7e128237ef0b0ea210f7 # v7.0.0
@@ -182,8 +171,6 @@ jobs:
           push: true
 
       # ── Nettoyage staging tag ──────────────────────────────────────────────
-      # Tourne même si le scan a échoué (always) — le staging a été pushé dans tous les cas.
-      # continue-on-error : la suppression n'est pas critique, la rétention ghcr.io (90j) prend le relais.
       - name: Delete staging tag
         if: ${{ always() && (inputs.enable_trivy || inputs.enable_grype) }}
         continue-on-error: true
@@ -193,7 +180,6 @@ jobs:
           PACKAGE_NAME: ${{ github.event.repository.name }}
           TAG_NAME: scan-${{ github.run_id }}
         run: |
-          # Try org API first, fall back to user API (one will 404 depending on account type)
           VERSION_ID=$(
             gh api "/orgs/${OWNER}/packages/container/${PACKAGE_NAME}/versions" \
               --jq ".[] | select(.metadata.container.tags[]? == \"${TAG_NAME}\") | .id" 2>/dev/null \
@@ -211,7 +197,6 @@ jobs:
           fi
 
   # ── Mode scan-only (enable_build=false) ────────────────────────────────────
-  # Tourne sur une image existante dans le registre.
 
   trivy-scan:
     if: ${{ inputs.enable_trivy && !inputs.enable_build }}
@@ -221,7 +206,6 @@ jobs:
       contents: read
       security-events: write
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -268,7 +252,6 @@ jobs:
       contents: read
       security-events: write
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443

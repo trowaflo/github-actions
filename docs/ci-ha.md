@@ -1,23 +1,23 @@
-# ha.yml
+# ci-ha.yml
 
 Home Assistant CI — validation HACS, hassfest, config check.
 
 Tous les jobs sont **désactivés par défaut** (opt-in explicite).
 
-> **Tests Python et lint** : utiliser [`python.yml`](python.md) avec `extra_packages: "pytest-homeassistant-custom-component==0.13.316"`.
+> **Tests Python et lint** : utiliser [`ci-python.yml`](ci-python.md) avec `extra_packages: "pytest-homeassistant-custom-component==0.13.316"`.
 
 ## Usage
 
 ```yaml
 jobs:
   ha:
-    uses: trowaflo/github-actions/.github/workflows/ha.yml@<sha> # vX.Y.Z
+    uses: trowaflo/github-actions/.github/workflows/ci-ha.yml@<sha> # vX.Y.Z
     with:
       enable_hacs: true
       enable_hassfest: true
 
   python:
-    uses: trowaflo/github-actions/.github/workflows/python.yml@<sha> # vX.Y.Z
+    uses: trowaflo/github-actions/.github/workflows/ci-python.yml@<sha> # vX.Y.Z
     with:
       enable_test: true
       enable_lint: true
@@ -32,7 +32,7 @@ jobs:
 ```yaml
 jobs:
   ha:
-    uses: trowaflo/github-actions/.github/workflows/ha.yml@<sha> # vX.Y.Z
+    uses: trowaflo/github-actions/.github/workflows/ci-ha.yml@<sha> # vX.Y.Z
     with:
       enable_config_check: true
       ha_version: "2026.3.4"
@@ -48,7 +48,7 @@ jobs:
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
+| `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
 | `harden_runner_allowed_endpoints` | string | `(built-in)` | Allowed endpoints when block (space-separated) — extra endpoints merged with defaults |
 | `enable_hacs` | boolean | `false` | Validation HACS |
 | `enable_hassfest` | boolean | `false` | Validation hassfest |
@@ -61,7 +61,7 @@ jobs:
 
 ### Tests Python
 
-Les tests pytest et le lint ruff ont été extraits dans [`python.yml`](python.md). Ce workflow se concentre sur les validations spécifiques à l'écosystème HA (HACS, hassfest, config check).
+Les tests pytest et le lint ruff ont été extraits dans [`ci-python.yml`](ci-python.md). Ce workflow se concentre sur les validations spécifiques à l'écosystème HA (HACS, hassfest, config check).
 
 ### hassfest
 

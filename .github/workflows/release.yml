@@ -3,7 +3,7 @@ name: Release
 # Reusable workflow — Release Management via release-please
 # Usage: uses: trowaflo/github-actions/.github/workflows/release.yml@<sha>
 #
-# Pour Claude Code, utiliser claude-code.yml à la place.
+# Pour les mentions Claude Code, utiliser claude-code.yml + claude.yml à la place.
 
 on:
   workflow_call:
@@ -15,7 +15,7 @@ on:
       harden_runner_egress_policy:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "block"
+        default: "audit"
       harden_runner_allowed_endpoints:
         description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string

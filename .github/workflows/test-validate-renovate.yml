@@ -1,6 +1,6 @@
 name: Test Validate Renovate Workflow
 
-# Validates validate-renovate.yml using the renovate.json5 at repo root.
+# Validates lint-renovate.yml using the renovate.json5 at repo root.
 #
 # Triggered:
 #   - workflow_dispatch (manual)
@@ -14,7 +14,7 @@ permissions: {}
 
 jobs:
   validate-renovate:
-    name: Test validate-renovate.yml
-    uses: ./.github/workflows/validate-renovate.yml
+    name: Test lint-renovate.yml
+    uses: ./.github/workflows/lint-renovate.yml
     permissions:
       contents: read

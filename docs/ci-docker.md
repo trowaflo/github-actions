@@ -1,4 +1,4 @@
-# docker.yml
+# ci-docker.yml
 
 Docker Build & Container Scanning — build/push via bake, CVE scanning avec Trivy et grype.
 
@@ -22,7 +22,7 @@ Le tag staging (`:scan-{run_id}`) reste dans le registre après le workflow. Il 
 ```yaml
 jobs:
   docker:
-    uses: trowaflo/github-actions/.github/workflows/docker.yml@<sha> # vX.Y.Z
+    uses: trowaflo/github-actions/.github/workflows/ci-docker.yml@<sha> # vX.Y.Z
     with:
       enable_build: true
       enable_trivy: true
@@ -49,7 +49,7 @@ on:
 
 jobs:
   docker:
-    uses: trowaflo/github-actions/.github/workflows/docker.yml@<sha> # vX.Y.Z
+    uses: trowaflo/github-actions/.github/workflows/ci-docker.yml@<sha> # vX.Y.Z
     with:
       enable_trivy: true
       enable_grype: true
@@ -61,7 +61,7 @@ jobs:
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
+| `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
 | `harden_runner_allowed_endpoints` | string | `(built-in)` | Allowed endpoints when block (space-separated) — extra endpoints merged with defaults |
 | `enable_build` | boolean | `false` | Docker build & push via bake |
 | `enable_trivy` | boolean | `false` | CVE scan via Trivy (aquasecurity) |
@@ -69,6 +69,7 @@ jobs:
 | `registry` | string | `"ghcr.io"` | Registre Docker cible |
 | `image_name` | string | `""` | Nom de l'image — défaut : `{registry}/{github.repository}` |
 | `trivy_severity` | string | `""` | Sévérités Trivy à remonter (vide = toutes) |
+| `grype_severity_cutoff` | string | `""` | Sévérité minimale grype : `negligible`, `low`, `medium`, `high`, `critical` |
 
 ## Secrets
 

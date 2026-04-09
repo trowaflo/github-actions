@@ -1,6 +1,6 @@
 name: Test HA Workflow
 
-# Validates ha.yml using the minimal test integration fixture
+# Validates ci-ha.yml using the minimal test integration fixture
 # in custom_components/test_integration/.
 #
 # Triggered:
@@ -15,8 +15,8 @@ permissions: {}
 
 jobs:
   ha:
-    name: Test ha.yml (hacs + hassfest)
-    uses: ./.github/workflows/ha.yml
+    name: Test ci-ha.yml (hacs + hassfest)
+    uses: ./.github/workflows/ci-ha.yml
     permissions:
       contents: read
     with:

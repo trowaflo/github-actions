@@ -1,9 +1,9 @@
 name: Helm Release
 
 # Reusable workflow — Helm Charts Release (push to main)
-# Usage: uses: trowaflo/github-actions/.github/workflows/helm-release.yml@<sha>
+# Usage: uses: trowaflo/github-actions/.github/workflows/release-helm.yml@<sha>
 #
-# Docs are NOT regenerated here — they are committed during the PR cycle (helm-ci.yml).
+# Docs are NOT regenerated here — they are committed during the PR cycle (ci-helm.yml).
 
 on:
   workflow_call:
@@ -15,14 +15,13 @@ on:
       harden_runner_egress_policy:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "block"
+        default: "audit"
       harden_runner_allowed_endpoints:
         description: >-
           Extra endpoints to allow (merged with built-in defaults, space-separated).
           Note: chart dependencies may reference external Helm repositories —
           add those hosts here if charts declare external repository URLs.
         type: string
-        # setup-helm, chart-releaser, yq
         default: ""
       enable_release:
         description: "Release charts via chart-releaser (multi-dir support via release_charts_dirs)"
@@ -40,8 +39,6 @@ on:
 permissions: {}
 
 jobs:
-  # ─── Release ─────────────────────────────────────────────────────────────────
-
   helm-release:
     if: ${{ inputs.enable_release }}
     name: Helm Release
@@ -50,7 +47,6 @@ jobs:
       contents: write
       pages: write
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -85,7 +81,7 @@ jobs:
           if [ -n "$RELEASE_DIRS" ]; then
             count=$(echo "$RELEASE_DIRS" | wc -w | tr -d ' ')
             if [ "$count" -gt 2 ]; then
-              echo "::warning::release_charts_dirs contains $count directories but only 2 are supported. Extra directories will be ignored."
+              echo "::warning::release_charts_dirs contains $count directories but only 2 are supported."
             fi
             echo "first=$(echo "$RELEASE_DIRS" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
             echo "second=$(echo "$RELEASE_DIRS" | awk '{print $2}')" >> "$GITHUB_OUTPUT"
@@ -110,8 +106,6 @@ jobs:
           echo "${SHA256_HASH}  ${YQ_ASSET}" > "$TMP_DIR/${YQ_ASSET}.sha256"
           (cd "$TMP_DIR" && sha256sum -c "${YQ_ASSET}.sha256")
           install -m 0755 "$TMP_DIR/$YQ_ASSET" /usr/local/bin/yq
-      # NOTE: This step contacts external Helm repository hosts derived from Chart.yaml dependencies.
-      # With harden-runner egress-policy: block, you must add those hosts to harden_runner_allowed_endpoints.
       - name: Add external Helm repositories
         env:
           DIR_FIRST: ${{ steps.dirs.outputs.first }}
@@ -132,7 +126,6 @@ jobs:
             done
           done
           if [ "$repos_added" -gt 0 ]; then helm repo update; fi
-      # ── First directory ──
       - name: Build dependencies (first)
         env:
           DIR_FIRST: ${{ steps.dirs.outputs.first }}
@@ -150,7 +143,6 @@ jobs:
           CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_SKIP_EXISTING: true
           CR_GENERATE_RELEASE_NOTES: true
-      # ── Second directory (if provided) ──
       - name: Add self as Helm repository
         if: ${{ steps.dirs.outputs.second != '' }}
         env:

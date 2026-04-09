@@ -1,6 +1,6 @@
 name: Test Docker Workflow
 
-# Validates docker.yml using the hello-world test fixture in tests/docker/.
+# Validates ci-docker.yml using the hello-world test fixture in tests/docker/.
 # Builds the image, then runs both Trivy and grype scans on it.
 #
 # Triggered:
@@ -15,8 +15,8 @@ permissions: {}
 
 jobs:
   docker:
-    name: Test docker.yml (build + trivy + grype)
-    uses: ./.github/workflows/docker.yml
+    name: Test ci-docker.yml (build + trivy + grype)
+    uses: ./.github/workflows/ci-docker.yml
     permissions:
       contents: read
       packages: write

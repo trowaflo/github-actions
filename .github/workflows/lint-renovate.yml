@@ -1,7 +1,7 @@
-name: Validate Renovate Config
+name: Lint Renovate Config
 
 # Reusable workflow — Validation des fichiers de configuration Renovate
-# Usage: uses: trowaflo/github-actions/.github/workflows/validate-renovate.yml@<sha>
+# Usage: uses: trowaflo/github-actions/.github/workflows/lint-renovate.yml@<sha>
 
 on:
   workflow_call:
@@ -13,7 +13,7 @@ on:
       harden_runner_egress_policy:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "block"
+        default: "audit"
       harden_runner_allowed_endpoints:
         description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string

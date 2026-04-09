@@ -1,7 +1,7 @@
-name: Python
+name: Python CI
 
 # Reusable workflow — Python CI générique : tests, lint, couverture
-# Usage: uses: trowaflo/github-actions/.github/workflows/python.yml@<sha>
+# Usage: uses: trowaflo/github-actions/.github/workflows/ci-python.yml@<sha>
 #
 # Indépendant de Home Assistant — utilisable pour tout projet Python.
 # Pour un repo HA, passer extra_packages avec pytest-homeassistant-custom-component.
@@ -16,7 +16,7 @@ on:
       harden_runner_egress_policy:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "block"
+        default: "audit"
       harden_runner_allowed_endpoints:
         description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string

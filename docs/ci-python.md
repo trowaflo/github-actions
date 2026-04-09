@@ -1,4 +1,4 @@
-# python.yml
+# ci-python.yml
 
 Python CI générique — tests pytest, lint ruff, couverture codecov.
 
@@ -9,7 +9,7 @@ Indépendant de tout framework : fonctionne pour n'importe quel projet Python. P
 ```yaml
 jobs:
   python:
-    uses: trowaflo/github-actions/.github/workflows/python.yml@<sha> # vX.Y.Z
+    uses: trowaflo/github-actions/.github/workflows/ci-python.yml@<sha> # vX.Y.Z
     with:
       enable_test: true
       enable_lint: true
@@ -23,7 +23,7 @@ jobs:
 ```yaml
 jobs:
   python:
-    uses: trowaflo/github-actions/.github/workflows/python.yml@<sha> # vX.Y.Z
+    uses: trowaflo/github-actions/.github/workflows/ci-python.yml@<sha> # vX.Y.Z
     with:
       enable_test: true
       enable_lint: true
@@ -38,7 +38,7 @@ jobs:
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
+| `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
 | `harden_runner_allowed_endpoints` | string | `(built-in)` | Allowed endpoints when block (space-separated) — extra endpoints merged with defaults |
 | `enable_test` | boolean | `false` | Tests pytest + couverture codecov |
 | `enable_lint` | boolean | `false` | Lint ruff |

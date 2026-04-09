@@ -11,26 +11,22 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
 ```
 .github/workflows/
   # ─── Reusable workflows (call from other repos) ──────────────
-  quality.yml          # Security + Linting: gitleaks, checkov, actionlint, dependency-review,
-                       #   markdownlint, yamllint, ansible-lint, terraform-validate, kics, trivy, json-lint
-  ha.yml               # Home Assistant: hacs, hassfest, config-check
-  python.yml           # Python CI: pytest+ruff+codecov (generic — HA uses extra_packages)
-  helm-ci.yml          # Helm CI: lint, unittest, bump, docs, docs-check, pr-charts (pull_request)
-  helm-release.yml     # Helm Release: chart-releaser (push to main)
-  helm-pr-cleanup.yml  # Helm Cleanup: remove pr-charts on PR close
-  docker.yml           # Docker: build/push, trivy scan, grype scan
+  security.yml         # Security: gitleaks (on), kics (on), dependency-review (off), checkov (off), trivy (off)
+  lint.yml             # Lint/quality: actionlint (on), markdownlint, yamllint, json-lint, ansible-lint, terraform-validate (all off)
+  lint-renovate.yml    # Renovate: config file validation
+  ci-ha.yml            # Home Assistant CI: hacs, hassfest, config-check
+  ci-python.yml        # Python CI: pytest+ruff+codecov (generic — HA uses extra_packages)
+  ci-helm.yml          # Helm CI: lint, unittest, bump, docs, docs-check, pr-charts (pull_request)
+  ci-helm-cleanup.yml  # Helm Cleanup: remove pr-charts on PR close
+  ci-docker.yml        # Docker: build/push, trivy scan, grype scan
   release.yml          # Release: release-please
+  release-helm.yml     # Helm Release: chart-releaser (push to main)
   claude-code.yml      # Claude Code: @claude mentions + /review command
-  validate-renovate.yml # Renovate: config file validation
 
   # ─── Self-CI (this repo only) ────────────────────────────────
-  ci.yml               # Calls quality.yml locally + sha-check (enforces SHA pinning)
+  ci.yml               # Calls security.yml + lint.yml + lint-renovate.yml + sha-check
   claude.yml           # Claude Code — restricted to repository_owner only
   release-please.yml   # Creates tags and CHANGELOG on main push
-
-  # ─── Deprecated (kept for backward compat) ───────────────────
-  ha-integration.yml   # DEPRECATED → migrate to ha.yml + python.yml — consumer: frigate-event-manager
-  lint-markdown.yml    # DEPRECATED → migrate to quality.yml — consumer: frigate-event-manager
 
 ```
 
@@ -53,12 +49,13 @@ Dependency updates are managed by Renovate using the shared config at `github>tr
 
 ### Defaults philosophy
 
-- **Security / quality universelle** (gitleaks, checkov, actionlint, kics, trivy) → `true` by default (opt-out)
-- **Domain-specific** (ansible, terraform, helm, HA, docker) → `false` by default (opt-in)
+- **Security core** (`security.yml`): gitleaks, kics → `true` by default (opt-out); checkov, trivy, dependency-review → `false` (opt-in)
+- **Lint core** (`lint.yml`): actionlint → `true`; markdownlint, yamllint, json-lint, ansible-lint, terraform-validate → `false` (opt-in)
+- **Domain-specific** (helm, HA, docker, python) → `false` by default (opt-in)
 
 ### Harden Runner
 
-All reusable workflows enable [StepSecurity harden-runner](https://github.com/step-security/harden-runner) by default (`enable_harden_runner: true`). The default egress policy is `block` — all outbound network traffic is denied unless explicitly allowed.
+All reusable workflows enable [StepSecurity harden-runner](https://github.com/step-security/harden-runner) by default (`enable_harden_runner: true`). The default egress policy is `audit` — observe mode, no blocking. Switch to `block` once all endpoints are known.
 
 Each workflow ships with a **built-in list of allowed endpoints** covering its own dependencies (pip, npm, Docker registries, etc.). These built-in defaults are **always applied**. Consumers can pass extra endpoints via `harden_runner_allowed_endpoints` — they are **merged** (union) with the built-in defaults, not replaced.
 
@@ -79,15 +76,15 @@ with:
 
 ### KICS
 
-KICS is available in `quality.yml` via `enable_kics` (default: `true`). Note: `checkmarx/kics-github-action` was impacted by the TeamPCP supply chain attack (2026-03-23) — the current SHA is pinned to a pre-incident commit (`v2.1.20`, 2026-03-04).
+KICS is available in `security.yml` via `enable_kics` (default: `true`). Note: `checkmarx/kics-github-action` was impacted by the TeamPCP supply chain attack (2026-03-23) — the current SHA is pinned to a pre-incident commit (`v2.1.20`, 2026-03-04).
 
 ### IaC scanning (Trivy)
 
-`quality.yml` provides `enable_trivy` for IaC/filesystem scanning via `aquasecurity/trivy-action`. Severity is configurable via `trivy_severity` (default: all levels). This is independent from the container Trivy scan in `docker.yml`.
+`security.yml` provides `enable_trivy` for IaC/filesystem scanning via `aquasecurity/trivy-action`. Severity is configurable via `trivy_severity` (default: all levels). This is independent from the container Trivy scan in `ci-docker.yml`.
 
 ### Container scanning (Trivy vs grype)
 
-`docker.yml` provides two independent container scanning jobs:
+`ci-docker.yml` provides two independent container scanning jobs:
 
 - `enable_trivy` — aquasecurity/trivy-action, SHA-pinned post-incident
 - `enable_grype` — anchore/scan-action, never impacted by TeamPCP
@@ -104,25 +101,33 @@ on: [pull_request]
 permissions: {}
 
 jobs:
-  quality:
-    uses: trowaflo/github-actions/.github/workflows/quality.yml@<sha> # vX.Y.Z
+  security:
+    uses: trowaflo/github-actions/.github/workflows/security.yml@<sha> # vX.Y.Z
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+    with:
+      enable_dependency_review: true  # opt-in
+
+  lint:
+    uses: trowaflo/github-actions/.github/workflows/lint.yml@<sha> # vX.Y.Z
     permissions:
       contents: read
       security-events: write
     with:
-      enable_gitleaks: true      # default
-      enable_checkov: true       # default
-      enable_actionlint: true    # default
+      enable_markdown_lint: true
+      enable_yamllint: true
       enable_ansible_lint: true  # opt-in for ansible repos
 ```
 
 ### Triggers — `pull_request` only
 
-Quality/lint workflows should trigger on `pull_request` only — **not** on `push` to `main`. A push to `main` happens after a PR merge, so the same checks would run twice (once on the PR, once on the push). Use `push` triggers only for workflows that must run post-merge: `release.yml` (release-please), `docker.yml` (build & publish), `helm.yml` (chart release).
+Security/lint workflows should trigger on `pull_request` only — **not** on `push` to `main`. A push to `main` happens after a PR merge, so the same checks would run twice (once on the PR, once on the push). Use `push` triggers only for workflows that must run post-merge: `release.yml` (release-please), `ci-docker.yml` (build & publish), `release-helm.yml` (chart release).
 
 ## Inputs reference
 
-All inputs (including secrets) are documented inline in each workflow file — read the file directly for the full list. Shared across all workflows: `enable_harden_runner` (default: `true`), `harden_runner_egress_policy` (default: `"block"`), `harden_runner_allowed_endpoints` (extra endpoints merged with built-in defaults).
+All inputs (including secrets) are documented inline in each workflow file — read the file directly for the full list. Shared across all workflows: `enable_harden_runner` (default: `true`), `harden_runner_egress_policy` (default: `"audit"`), `harden_runner_allowed_endpoints` (extra endpoints merged with built-in defaults).
 
-Key files: `quality.yml`, `ha.yml`, `python.yml`, `helm-ci.yml`, `helm-release.yml`, `helm-pr-cleanup.yml`, `docker.yml`, `release.yml`, `claude-code.yml`, `validate-renovate.yml`
+Key files: `security.yml`, `lint.yml`, `lint-renovate.yml`, `ci-ha.yml`, `ci-python.yml`, `ci-helm.yml`, `ci-helm-cleanup.yml`, `ci-docker.yml`, `release.yml`, `release-helm.yml`, `claude-code.yml`
 
