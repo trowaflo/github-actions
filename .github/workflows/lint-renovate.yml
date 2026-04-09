@@ -36,7 +36,13 @@ jobs:
     permissions:
       contents: read
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # Built-in harden-runner allowed endpoints:
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — GitHub API (actions runtime)
+      #   github.com:443 — git clone, actions checkout
+      #   nodejs.org:443 — Node.js binary (actions/setup-node)
+      #   registry.npmjs.org:443 — npm packages (renovate-config-validator)
+      #   release-assets.githubusercontent.com:443 — GitHub release downloads
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443

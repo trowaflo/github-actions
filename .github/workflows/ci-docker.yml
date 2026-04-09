@@ -78,7 +78,21 @@ jobs:
       packages: write
       security-events: write
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # Built-in harden-runner allowed endpoints:
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — GitHub API (actions runtime, SARIF upload, staging cleanup)
+      #   auth.docker.io:443 — Docker Hub auth (setup-qemu-action)
+      #   check.trivy.dev:443 — Trivy version check (trivy-action)
+      #   get.anchore.io:443 — Grype DB download (scan-action)
+      #   get.trivy.dev:443 — Trivy install script (trivy-action)
+      #   ghcr.io:443 — GitHub Container Registry (push/pull images)
+      #   github.com:443 — git clone, actions checkout
+      #   mirror.gcr.io:443 — GCR mirror (Docker daemon)
+      #   pkg-containers.githubusercontent.com:443 — GHCR storage backend
+      #   production.cloudflare.docker.com:443 — Docker Hub CDN (setup-qemu-action)
+      #   raw.githubusercontent.com:443 — GitHub raw content (grype DB metadata)
+      #   registry-1.docker.io:443 — Docker Hub registry (setup-qemu-action pulls tonistiigi/binfmt)
+      #   release-assets.githubusercontent.com:443 — GitHub release downloads (trivy, grype binaries)
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         api.github.com:443
@@ -213,6 +227,7 @@ jobs:
       contents: read
       security-events: write
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         api.github.com:443
@@ -266,6 +281,7 @@ jobs:
       contents: read
       security-events: write
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         api.github.com:443

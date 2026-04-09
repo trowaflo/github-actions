@@ -36,6 +36,11 @@ jobs:
       contents: write
       pull-requests: write
     env:
+      # Built-in harden-runner allowed endpoints:
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — GitHub API (PR chart cleanup via github-script)
+      #   get.helm.sh:443 — Helm binary (azure/setup-helm)
+      #   github.com:443 — git clone, actions checkout
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443

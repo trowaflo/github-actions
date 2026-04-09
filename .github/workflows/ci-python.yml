@@ -65,7 +65,17 @@ jobs:
     permissions:
       contents: read
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # Built-in harden-runner allowed endpoints:
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — GitHub API (actions runtime)
+      #   cli.codecov.io:443 — Codecov CLI download
+      #   codecov.io:443 — Codecov API
+      #   files.pythonhosted.org:443 — pip packages (pytest, ruff, etc.)
+      #   github.com:443 — git clone, actions checkout
+      #   ingest.codecov.io:443 — Codecov upload endpoint
+      #   keybase.io:443 — Codecov GPG key verification
+      #   pypi.org:443 — pip index
+      #   storage.googleapis.com:443 — Codecov CLI binary storage
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -122,7 +132,7 @@ jobs:
     permissions:
       contents: read
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443

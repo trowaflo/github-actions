@@ -69,6 +69,20 @@ jobs:
     permissions:
       contents: read
     env:
+      # Built-in harden-runner allowed endpoints:
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — GitHub API (actions runtime, bump push, PR comments)
+      #   files.pythonhosted.org:443 — pip packages (chart-testing-action Python deps)
+      #   get.helm.sh:443 — Helm binary (azure/setup-helm)
+      #   ghcr.io:443 — OCI chart registries
+      #   github.com:443 — git clone, actions checkout
+      #   objects.githubusercontent.com:443 — GitHub release assets (helm-unittest, helm-docs)
+      #   pypi.org:443 — pip index (chart-testing-action)
+      #   quay.io:443 — chart-testing container (quay.io/helmpack/chart-testing)
+      #   registry.npmjs.org:443 — npm packages (setup-node)
+      #   rekor.sigstore.dev:443 — Sigstore transparency log (cosign verification)
+      #   release-assets.githubusercontent.com:443 — GitHub release downloads
+      #   tuf-repo-cdn.sigstore.dev:443 — Sigstore TUF metadata (cosign verification)
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         api.github.com:443
@@ -126,6 +140,7 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       has_charts: ${{ steps.set-matrix.outputs.has_charts }}
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -173,6 +188,7 @@ jobs:
       max-parallel: 5
       matrix: ${{ fromJson(needs.helm-unittest-matrix.outputs.matrix) }}
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -244,6 +260,7 @@ jobs:
     permissions:
       contents: write
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -356,6 +373,7 @@ jobs:
     permissions:
       contents: write
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -418,6 +436,7 @@ jobs:
     permissions:
       contents: read
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -482,6 +501,7 @@ jobs:
       contents: write
       pull-requests: write
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443

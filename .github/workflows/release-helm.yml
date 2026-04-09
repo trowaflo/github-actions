@@ -43,6 +43,16 @@ jobs:
       contents: write
       pages: write
     env:
+      # Built-in harden-runner allowed endpoints:
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — GitHub API (chart-releaser)
+      #   get.helm.sh:443 — Helm binary (azure/setup-helm)
+      #   github.com:443 — git clone, actions checkout
+      #   objects.githubusercontent.com:443 — GitHub release assets (yq binary)
+      #   rekor.sigstore.dev:443 — Sigstore transparency log (cosign verification)
+      #   release-assets.githubusercontent.com:443 — GitHub release downloads (yq checksums)
+      #   tuf-repo-cdn.sigstore.dev:443 — Sigstore TUF metadata (cosign verification)
+      #   uploads.github.com:443 — GitHub release uploads (chart-releaser)
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         api.github.com:443

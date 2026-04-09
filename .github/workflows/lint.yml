@@ -57,8 +57,24 @@ jobs:
       contents: read
       security-events: write
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
-      # 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com: KICS queries (Checkmarx R2 storage)
+      # Built-in harden-runner allowed endpoints:
+      #   9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443 — KICS queries (Checkmarx R2 storage) — security.yml shared
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — GitHub API (actions runtime, SARIF upload)
+      #   api0.prismacloud.io:443 — Checkov policies (Prisma Cloud) — security.yml shared
+      #   apk.cgr.dev:443 — Chainguard APK packages (ansible-lint container)
+      #   files.pythonhosted.org:443 — pip packages (yamllint, json5)
+      #   get.trivy.dev:443 — Trivy install — security.yml shared
+      #   ghcr.io:443 — container images (ansible-lint)
+      #   github.com:443 — git clone, actions checkout
+      #   kics.io:443 — KICS scanner — security.yml shared
+      #   mirror.gcr.io:443 — GCR mirror — security.yml shared
+      #   pkg-containers.githubusercontent.com:443 — GHCR storage (ansible-lint container)
+      #   pypi.org:443 — pip index (yamllint, json5)
+      #   raw.githubusercontent.com:443 — actionlint SARIF template download
+      #   registry.npmjs.org:443 — npm packages (markdownlint-cli2-action)
+      #   release-assets.githubusercontent.com:443 — GitHub release downloads (actionlint, tflint)
+      #   releases.hashicorp.com:443 — Terraform binary (hashicorp/setup-terraform)
       _HARDEN_DEFAULTS: >-
         9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
@@ -119,7 +135,7 @@ jobs:
     permissions:
       contents: read
     env:
-      # 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com: KICS queries (Checkmarx R2 storage)
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
@@ -159,7 +175,7 @@ jobs:
     permissions:
       contents: read
     env:
-      # 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com: KICS queries (Checkmarx R2 storage)
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
@@ -200,7 +216,7 @@ jobs:
     permissions:
       contents: read
     env:
-      # 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com: KICS queries (Checkmarx R2 storage)
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
@@ -236,7 +252,7 @@ jobs:
     permissions:
       contents: read
     env:
-      # 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com: KICS queries (Checkmarx R2 storage)
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
@@ -279,7 +295,7 @@ jobs:
     permissions:
       contents: read
     env:
-      # 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com: KICS queries (Checkmarx R2 storage)
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
