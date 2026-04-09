@@ -1,0 +1,6 @@
+*.tfstate
+.DS_Store
+.terraform*
+.decrypted~*
+.ansible
+.claude/settings.local.json

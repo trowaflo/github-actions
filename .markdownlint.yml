@@ -1,0 +1,20 @@
+# markdownlint configuration
+# https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+
+# Disable line length — documentation uses long lines for readability
+MD013: false
+
+# Allow inline HTML (badges, anchors)
+MD033: false
+
+# Allow multiple consecutive blank lines (release-please CHANGELOG)
+MD012: false
+
+# Allow fenced code blocks without language (file trees, text output)
+MD040: false
+
+# Allow duplicate headings (release-please CHANGELOG has repeated section names per version)
+MD024: false
+
+# Disable table column style — helm-docs auto-generates tables with its own format
+MD060: false

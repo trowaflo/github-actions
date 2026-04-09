@@ -1,0 +1,17 @@
+---
+extends: default
+
+ignore: |
+  tests/charts/**/templates/**
+  tests/charts/**/*.tpl
+
+rules:
+  line-length:
+    max: 200
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+  comments:
+    min-spaces-from-content: 1
+  truthy:
+    check-keys: false
+  document-start: disable
