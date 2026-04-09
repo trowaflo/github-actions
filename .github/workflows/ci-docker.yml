@@ -5,14 +5,13 @@ name: Docker CI
 #
 # Ordre garanti quand enable_build=true :
 #   1. Build → push staging tag (ex: :scan-{run_id})
-#   2. Scan Trivy et/ou grype sur le staging tag
+#   2. Scan Trivy sur le staging tag
 #   3. Publish final (bake avec les tags originaux du bake file, depuis le cache)
-# Si un scan échoue, le job échoue → le publish final ne s'exécute pas.
+# Si le scan échoue, le job échoue → le publish final ne s'exécute pas.
 #
-# Mode scan-only (enable_build=false) : jobs trivy-scan et grype-scan indépendants,
-# tournent sur une image existante dans le registre (image_name ou défaut).
+# Mode scan-only (enable_build=false) : job trivy-scan indépendant,
+# tourne sur une image existante dans le registre (image_name ou défaut).
 #
-# Enable_trivy et enable_grype sont indépendants.
 # image_name : si non fourni, utilise {registry}/{github.repository} par défaut.
 
 on:
@@ -20,10 +19,6 @@ on:
     inputs:
       enable_build:
         description: "Docker build & push via bake"
-        type: boolean
-        default: false
-      enable_grype:
-        description: "CVE scan via grype (Anchore/Cisco)"
         type: boolean
         default: false
       enable_harden_runner:
@@ -34,10 +29,6 @@ on:
         description: "CVE scan via Trivy (aquasecurity)"
         type: boolean
         default: false
-      grype_severity_cutoff:
-        description: "Grype minimum severity to fail build (negligible, low, medium, high, critical)"
-        type: string
-        default: "negligible"
       harden_runner_allowed_endpoints:
         description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string
@@ -83,27 +74,23 @@ jobs:
       #   api.github.com:443 — GitHub API (actions runtime, SARIF upload, staging cleanup)
       #   auth.docker.io:443 — Docker Hub auth (setup-qemu-action)
       #   check.trivy.dev:443 — Trivy version check (trivy-action)
-      #   get.anchore.io:443 — Grype DB download (scan-action)
       #   get.trivy.dev:443 — Trivy install script (trivy-action)
       #   ghcr.io:443 — GitHub Container Registry (push/pull images)
       #   github.com:443 — git clone, actions checkout
-      #   grype.anchore.io:443 — Grype DB listing endpoint (scan-action)
       #   mirror.gcr.io:443 — GCR mirror (Docker daemon)
       #   pkg-containers.githubusercontent.com:443 — GHCR storage backend
       #   production.cloudflare.docker.com:443 — Docker Hub CDN (setup-qemu-action)
-      #   raw.githubusercontent.com:443 — GitHub raw content (grype DB metadata)
+      #   raw.githubusercontent.com:443 — GitHub raw content
       #   registry-1.docker.io:443 — Docker Hub registry (setup-qemu-action pulls tonistiigi/binfmt)
-      #   release-assets.githubusercontent.com:443 — GitHub release downloads (trivy, grype binaries)
+      #   release-assets.githubusercontent.com:443 — GitHub release downloads (trivy binaries)
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         api.github.com:443
         auth.docker.io:443
         check.trivy.dev:443
-        get.anchore.io:443
         get.trivy.dev:443
         ghcr.io:443
         github.com:443
-        grype.anchore.io:443
         mirror.gcr.io:443
         pkg-containers.githubusercontent.com:443
         production.cloudflare.docker.com:443
@@ -129,7 +116,7 @@ jobs:
       # ── Phase 1 : build staging tag (pour le scan) ─────────────────────────
       - name: Set staging tag
         id: staging
-        if: ${{ inputs.enable_trivy || inputs.enable_grype }}
+        if: ${{ inputs.enable_trivy }}
         env:
           REGISTRY: ${{ inputs.registry }}
           REPOSITORY: ${{ github.repository }}
@@ -137,7 +124,7 @@ jobs:
         run: echo "tag=${REGISTRY}/${REPOSITORY}:scan-${RUN_ID}" >> "$GITHUB_OUTPUT"
 
       - name: Build staging image
-        if: ${{ inputs.enable_trivy || inputs.enable_grype }}
+        if: ${{ inputs.enable_trivy }}
         uses: docker/bake-action@82490499d2e5613fcead7e128237ef0b0ea210f7 # v7.0.0
         with:
           push: true
@@ -170,22 +157,6 @@ jobs:
           sarif_file: trivy-results.sarif
           category: trivy-container
 
-      - name: Grype scan
-        if: ${{ inputs.enable_grype }}
-        id: grype
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
-        with:
-          image: ${{ steps.staging.outputs.tag }}
-          fail-build: true
-          severity-cutoff: ${{ inputs.grype_severity_cutoff }}
-
-      - name: Upload Grype SARIF
-        if: ${{ always() && inputs.enable_grype }}
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
-        with:
-          sarif_file: ${{ steps.grype.outputs.sarif }}
-          category: grype-container
-
       # ── Phase 3 : publish final ────────────────────────────────────────────
       - name: Publish final image
         if: ${{ github.event_name != 'pull_request' }}
@@ -195,7 +166,7 @@ jobs:
 
       # ── Nettoyage staging tag ──────────────────────────────────────────────
       - name: Delete staging tag
-        if: ${{ always() && (inputs.enable_trivy || inputs.enable_grype) }}
+        if: ${{ always() && inputs.enable_trivy }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -235,11 +206,9 @@ jobs:
         api.github.com:443
         auth.docker.io:443
         check.trivy.dev:443
-        get.anchore.io:443
         get.trivy.dev:443
         ghcr.io:443
         github.com:443
-        grype.anchore.io:443
         mirror.gcr.io:443
         pkg-containers.githubusercontent.com:443
         production.cloudflare.docker.com:443
@@ -275,50 +244,3 @@ jobs:
         with:
           sarif_file: trivy-results.sarif
           category: trivy-container
-
-  grype-scan:
-    if: ${{ inputs.enable_grype && !inputs.enable_build }}
-    name: Container Scan (grype)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-    env:
-      # Built-in endpoints — see first job above
-      _HARDEN_DEFAULTS: >-
-        agent.api.stepsecurity.io:443
-        api.github.com:443
-        auth.docker.io:443
-        check.trivy.dev:443
-        get.anchore.io:443
-        get.trivy.dev:443
-        ghcr.io:443
-        github.com:443
-        grype.anchore.io:443
-        mirror.gcr.io:443
-        pkg-containers.githubusercontent.com:443
-        production.cloudflare.docker.com:443
-        raw.githubusercontent.com:443
-        registry-1.docker.io:443
-        release-assets.githubusercontent.com:443
-    steps:
-      - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
-        with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Grype scan
-        id: grype
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
-        with:
-          image: "${{ inputs.image_name != '' && inputs.image_name || format('{0}/{1}', inputs.registry, github.repository) }}"
-          fail-build: true
-          severity-cutoff: ${{ inputs.grype_severity_cutoff }}
-      - name: Upload Grype SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
-        with:
-          sarif_file: ${{ steps.grype.outputs.sarif }}
-          category: grype-container
