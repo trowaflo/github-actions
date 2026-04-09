@@ -84,6 +84,7 @@ jobs:
         api.github.com:443
         auth.docker.io:443
         check.trivy.dev:443
+        get.anchore.io:443
         get.trivy.dev:443
         ghcr.io:443
         github.com:443
@@ -92,6 +93,7 @@ jobs:
         production.cloudflare.docker.com:443
         raw.githubusercontent.com:443
         registry-1.docker.io:443
+        release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -216,6 +218,7 @@ jobs:
         api.github.com:443
         auth.docker.io:443
         check.trivy.dev:443
+        get.anchore.io:443
         get.trivy.dev:443
         ghcr.io:443
         github.com:443
@@ -224,6 +227,7 @@ jobs:
         production.cloudflare.docker.com:443
         raw.githubusercontent.com:443
         registry-1.docker.io:443
+        release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -267,6 +271,7 @@ jobs:
         api.github.com:443
         auth.docker.io:443
         check.trivy.dev:443
+        get.anchore.io:443
         get.trivy.dev:443
         ghcr.io:443
         github.com:443
@@ -275,6 +280,7 @@ jobs:
         production.cloudflare.docker.com:443
         raw.githubusercontent.com:443
         registry-1.docker.io:443
+        release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
