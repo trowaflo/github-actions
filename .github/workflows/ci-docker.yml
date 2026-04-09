@@ -90,6 +90,7 @@ jobs:
         mirror.gcr.io:443
         pkg-containers.githubusercontent.com:443
         production.cloudflare.docker.com:443
+        raw.githubusercontent.com:443
         registry-1.docker.io:443
     steps:
       - name: Harden Runner
@@ -221,6 +222,7 @@ jobs:
         mirror.gcr.io:443
         pkg-containers.githubusercontent.com:443
         production.cloudflare.docker.com:443
+        raw.githubusercontent.com:443
         registry-1.docker.io:443
     steps:
       - name: Harden Runner
@@ -271,6 +273,7 @@ jobs:
         mirror.gcr.io:443
         pkg-containers.githubusercontent.com:443
         production.cloudflare.docker.com:443
+        raw.githubusercontent.com:443
         registry-1.docker.io:443
     steps:
       - name: Harden Runner
