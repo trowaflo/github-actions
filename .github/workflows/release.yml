@@ -1,0 +1,68 @@
+name: Release
+
+# Reusable workflow — Release Management via release-please
+# Usage: uses: trowaflo/github-actions/.github/workflows/release.yml@<sha>
+#
+# Pour les mentions Claude Code, utiliser claude-code.yml + claude.yml à la place.
+
+on:
+  workflow_call:
+    inputs:
+      enable_harden_runner:
+        description: "Runtime security via StepSecurity harden-runner"
+        type: boolean
+        default: true
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
+      harden_runner_allowed_endpoints:
+        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
+        type: string
+        default: ""
+      enable_release_please:
+        description: "Automated releases via release-please"
+        type: boolean
+        default: false
+      release_config_file:
+        description: "Path to release-please-config.json"
+        type: string
+        default: ""
+      release_manifest_file:
+        description: "Path to .release-please-manifest.json"
+        type: string
+        default: ""
+    secrets:
+      release_token:
+        description: "PAT for release-please (optional — uses GITHUB_TOKEN if absent)"
+        required: false
+
+permissions: {}
+
+jobs:
+  release-please:
+    if: ${{ inputs.enable_release_please }}
+    name: Release Please
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
+        if: ${{ github.event_name != 'pull_request' }}
+        with:
+          token: ${{ secrets.release_token || secrets.GITHUB_TOKEN }}
+          config-file: ${{ inputs.release_config_file || 'release-please-config.json' }}
+          manifest-file: ${{ inputs.release_manifest_file || '.release-please-manifest.json' }}

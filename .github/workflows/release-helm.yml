@@ -1,0 +1,171 @@
+name: Helm Release
+
+# Reusable workflow — Helm Charts Release (push to main)
+# Usage: uses: trowaflo/github-actions/.github/workflows/release-helm.yml@<sha>
+#
+# Docs are NOT regenerated here — they are committed during the PR cycle (ci-helm.yml).
+
+on:
+  workflow_call:
+    inputs:
+      enable_harden_runner:
+        description: "Runtime security via StepSecurity harden-runner"
+        type: boolean
+        default: true
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
+      harden_runner_allowed_endpoints:
+        description: >-
+          Extra endpoints to allow (merged with built-in defaults, space-separated).
+          Note: chart dependencies may reference external Helm repositories —
+          add those hosts here if charts declare external repository URLs.
+        type: string
+        default: ""
+      enable_release:
+        description: "Release charts via chart-releaser (multi-dir support via release_charts_dirs)"
+        type: boolean
+        default: false
+      charts_dir:
+        description: "Root directory for Helm charts"
+        type: string
+        default: "charts"
+      release_charts_dirs:
+        description: "Space-separated ordered chart directories to release (max 2, e.g., 'charts/library charts/apps'). If empty, uses charts_dir."
+        type: string
+        default: ""
+
+permissions: {}
+
+jobs:
+  helm-release:
+    if: ${{ inputs.enable_release }}
+    name: Helm Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+    env:
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        uploads.github.com:443
+        release-assets.githubusercontent.com:443
+        objects.githubusercontent.com:443
+        get.helm.sh:443
+        tuf-repo-cdn.sigstore.dev:443
+        rekor.sigstore.dev:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+      - name: Determine release directories
+        id: dirs
+        env:
+          RELEASE_DIRS: ${{ inputs.release_charts_dirs }}
+          CHARTS_DIR: ${{ inputs.charts_dir }}
+        run: |
+          if [ -n "$RELEASE_DIRS" ]; then
+            count=$(echo "$RELEASE_DIRS" | wc -w | tr -d ' ')
+            if [ "$count" -gt 2 ]; then
+              echo "::warning::release_charts_dirs contains $count directories but only 2 are supported."
+            fi
+            echo "first=$(echo "$RELEASE_DIRS" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+            echo "second=$(echo "$RELEASE_DIRS" | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+          else
+            echo "first=$CHARTS_DIR" >> "$GITHUB_OUTPUT"
+            echo "second=" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install yq with checksum verification
+        run: |
+          set -euo pipefail
+          # renovate: datasource=github-releases depName=mikefarah/yq
+          YQ_VERSION="v4.44.2"
+          YQ_ASSET="yq_linux_amd64"
+          BASE_URL="https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}"
+          TMP_DIR="$(mktemp -d)"
+          trap 'rm -rf "$TMP_DIR"' EXIT
+          curl -fsSL -o "$TMP_DIR/$YQ_ASSET" "${BASE_URL}/${YQ_ASSET}"
+          curl -fsSL -o "$TMP_DIR/checksums" "${BASE_URL}/checksums"
+          curl -fsSL -o "$TMP_DIR/checksums_hashes_order" "${BASE_URL}/checksums_hashes_order"
+          SHA256_COL=$(( $(grep -n '^SHA-256$' "$TMP_DIR/checksums_hashes_order" | cut -d: -f1) + 1 ))
+          SHA256_HASH=$(grep "^${YQ_ASSET}[[:space:]]" "$TMP_DIR/checksums" | sed 's/  /\t/g' | cut -f"$SHA256_COL")
+          echo "${SHA256_HASH}  ${YQ_ASSET}" > "$TMP_DIR/${YQ_ASSET}.sha256"
+          (cd "$TMP_DIR" && sha256sum -c "${YQ_ASSET}.sha256")
+          install -m 0755 "$TMP_DIR/$YQ_ASSET" /usr/local/bin/yq
+      - name: Add external Helm repositories
+        env:
+          DIR_FIRST: ${{ steps.dirs.outputs.first }}
+          DIR_SECOND: ${{ steps.dirs.outputs.second }}
+        run: |
+          repos_added=0
+          for dir in $DIR_FIRST $DIR_SECOND; do
+            [ -z "$dir" ] && continue
+            for chart_dir in "$dir"/*/; do
+              chart_file="$chart_dir/Chart.yaml"
+              [ -f "$chart_file" ] || continue
+              while IFS=$'\t' read -r repo_name repo_url; do
+                if [ -n "$repo_name" ] && [ -n "$repo_url" ] && [ "$repo_url" != "null" ]; then
+                  helm repo add "$repo_name" "$repo_url" 2>/dev/null || true
+                  repos_added=$((repos_added + 1))
+                fi
+              done < <(yq '.dependencies[] | select(.repository | test("^https?://")) | [.name, .repository] | @tsv' "$chart_file" 2>/dev/null || true)
+            done
+          done
+          if [ "$repos_added" -gt 0 ]; then helm repo update; fi
+      - name: Build dependencies (first)
+        env:
+          DIR_FIRST: ${{ steps.dirs.outputs.first }}
+        run: |
+          for chart in "$DIR_FIRST"/*/; do
+            if [ -f "$chart/Chart.yaml" ]; then helm dependency build "$chart"; fi
+          done
+      - name: Release first directory
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1.7.0
+        with:
+          charts_dir: ${{ steps.dirs.outputs.first }}
+          skip_existing: true
+        env:
+          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_SKIP_EXISTING: true
+          CR_GENERATE_RELEASE_NOTES: true
+      - name: Add self as Helm repository
+        if: ${{ steps.dirs.outputs.second != '' }}
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          helm repo add self "https://${REPO_OWNER}.github.io/${REPO_NAME}" || true
+          helm repo update
+      - name: Build dependencies (second)
+        if: ${{ steps.dirs.outputs.second != '' }}
+        env:
+          DIR_SECOND: ${{ steps.dirs.outputs.second }}
+        run: |
+          for chart in "$DIR_SECOND"/*/; do
+            if [ -f "$chart/Chart.yaml" ]; then helm dependency build "$chart"; fi
+          done
+      - name: Release second directory
+        if: ${{ steps.dirs.outputs.second != '' && github.event_name != 'pull_request' }}
+        uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1.7.0
+        with:
+          charts_dir: ${{ steps.dirs.outputs.second }}
+          skip_existing: true
+        env:
+          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_SKIP_EXISTING: true
+          CR_GENERATE_RELEASE_NOTES: true

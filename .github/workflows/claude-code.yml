@@ -1,0 +1,116 @@
+name: Claude Code
+
+# Reusable workflow — Claude Code + Claude Code Review
+# Usage: uses: trowaflo/github-actions/.github/workflows/claude-code.yml@<sha>
+#
+# Le consumer définit les triggers (issue_comment, pull_request_review_comment, etc.)
+# et appelle ce workflow. Les conditions `if:` des jobs filtrent ensuite selon l'event.
+#
+# IMPORTANT sécurité — repos publics :
+# Ajouter une condition sur l'auteur côté consumer pour éviter les déclenchements non autorisés.
+# Exemple :
+#   if: |
+#     github.event.comment.author_association == 'OWNER' ||
+#     github.event.comment.author_association == 'MEMBER' ||
+#     github.event.comment.author_association == 'COLLABORATOR'
+
+on:
+  workflow_call:
+    inputs:
+      enable_harden_runner:
+        description: "Runtime security via StepSecurity harden-runner"
+        type: boolean
+        default: true
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
+      harden_runner_allowed_endpoints:
+        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
+        type: string
+        default: ""
+    secrets:
+      claude_code_oauth_token:
+        description: "Claude Code OAuth token"
+        required: true
+
+permissions: {}
+
+jobs:
+  claude:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+      actions: read # Required for Claude to read CI results on PRs
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        api.anthropic.com:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@1eddb334cfa79fdb21ecbe2180ca1a016e8e7d47 # v1.0.88
+        with:
+          claude_code_oauth_token: ${{ secrets.claude_code_oauth_token }}
+          # This is an optional setting that allows Claude to read CI results on PRs
+          additional_permissions: |
+            actions: read
+
+  claude-review:
+    # Auto-review disabled to control costs — trigger manually via /review comment
+    if: |
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '/review')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+    env:
+      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        github.com:443
+        api.github.com:443
+        api.anthropic.com:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@1eddb334cfa79fdb21ecbe2180ca1a016e8e7d47 # v1.0.88
+        with:
+          claude_code_oauth_token: ${{ secrets.claude_code_oauth_token }}
+          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+          plugins: 'code-review@claude-code-plugins'
+          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.issue.number }}'
