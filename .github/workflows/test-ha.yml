@@ -26,3 +26,4 @@ jobs:
       ha_version: "stable"
       config_check_setup: "cp tests/ha/configuration.yaml ."
       hacs_ignore: "brands topics"
+      harden_runner_egress_policy: block

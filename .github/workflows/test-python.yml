@@ -25,3 +25,4 @@ jobs:
       test_path: "tests/python/"
       coverage_path: "tests/python"
       coverage_threshold: "80"
+      harden_runner_egress_policy: block

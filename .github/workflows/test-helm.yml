@@ -29,6 +29,7 @@ jobs:
       enable_docs_check: true
       enable_pr_charts: true
       charts_dir: tests/charts
+      harden_runner_egress_policy: block
 
   helm-release:
     name: Test release-helm.yml
@@ -39,6 +40,7 @@ jobs:
     with:
       enable_release: true
       charts_dir: tests/charts
+      harden_runner_egress_policy: block
 
   helm-pr-cleanup:
     name: Test ci-helm-cleanup.yml
@@ -49,3 +51,4 @@ jobs:
       pull-requests: write
     with:
       skip_event_check: true
+      harden_runner_egress_policy: block

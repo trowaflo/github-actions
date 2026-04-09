@@ -18,3 +18,5 @@ jobs:
     uses: ./.github/workflows/lint-renovate.yml
     permissions:
       contents: read
+    with:
+      harden_runner_egress_policy: block
