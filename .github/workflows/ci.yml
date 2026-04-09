@@ -18,6 +18,8 @@ jobs:
     with:
       enable_harden_runner: true
       enable_dependency_review: true
+      enable_checkov: true
+      enable_trivy: true
 
   lint:
     uses: ./.github/workflows/lint.yml
