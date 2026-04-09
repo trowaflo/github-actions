@@ -31,6 +31,8 @@ jobs:
       enable_markdown_lint: true
       enable_yamllint: true
       enable_json_lint: true
+      enable_ansible_lint: true
+      enable_terraform_validate: true
 
   lint-renovate:
     uses: ./.github/workflows/lint-renovate.yml

@@ -29,8 +29,7 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
   release-please.yml   # Creates tags and CHANGELOG on main push
 
   # ─── Test workflows (validate each reusable workflow) ────────
-  test-security.yml    # Tests security.yml opt-in: checkov, trivy IaC
-  test-lint.yml        # Tests lint.yml opt-in: ansible-lint, terraform-validate
+  # security.yml + lint.yml are fully tested by ci.yml (self-CI)
   test-ha.yml          # Tests ci-ha.yml: hacs, hassfest, config-check
   test-python.yml      # Tests ci-python.yml: pytest, ruff
   test-helm.yml        # Tests ci-helm.yml + release-helm.yml + ci-helm-cleanup.yml
