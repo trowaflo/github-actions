@@ -6,27 +6,27 @@ name: Lint Renovate Config
 on:
   workflow_call:
     inputs:
-      enable_harden_runner:
-        description: "Runtime security via StepSecurity harden-runner"
-        type: boolean
-        default: true
-      harden_runner_egress_policy:
-        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
-        type: string
-        default: "audit"
-      harden_runner_allowed_endpoints:
-        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
-        type: string
-        default: ""
-      node_version:
-        description: "Node.js version for renovate-config-validator"
-        type: string
-        default: "24"
       config_files:
         description: "Glob pattern of files to validate (default: *.json *.json5 at root)"
         type: string
         default: ""
 
+      enable_harden_runner:
+        description: "Runtime security via StepSecurity harden-runner"
+        type: boolean
+        default: true
+      harden_runner_allowed_endpoints:
+        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
+        type: string
+        default: ""
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
+      node_version:
+        description: "Node.js version for renovate-config-validator"
+        type: string
+        default: "24"
 permissions: {}
 
 jobs:

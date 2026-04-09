@@ -12,14 +12,14 @@ on:
         description: "Runtime security via StepSecurity harden-runner"
         type: boolean
         default: true
-      harden_runner_egress_policy:
-        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
-        type: string
-        default: "audit"
       harden_runner_allowed_endpoints:
         description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string
         default: ""
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
       skip_event_check:
         description: "Skip event.action == closed check (for testing only)"
         type: boolean

@@ -9,43 +9,43 @@ name: Lint
 on:
   workflow_call:
     inputs:
-      enable_harden_runner:
-        description: "Runtime security via StepSecurity harden-runner"
-        type: boolean
-        default: true
-      harden_runner_egress_policy:
-        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
-        type: string
-        default: "audit"
-      harden_runner_allowed_endpoints:
-        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
-        type: string
-        default: ""
       enable_actionlint:
         description: "Lint GitHub Actions workflow files"
         type: boolean
         default: true
-      enable_markdown_lint:
-        description: "Lint Markdown with markdownlint-cli2"
-        type: boolean
-        default: false
-      enable_yamllint:
-        description: "Lint YAML with yamllint (auto-detects .yamllint.yml)"
-        type: boolean
-        default: false
       enable_ansible_lint:
         description: "Lint Ansible with ansible-lint"
+        type: boolean
+        default: false
+      enable_harden_runner:
+        description: "Runtime security via StepSecurity harden-runner"
+        type: boolean
+        default: true
+      enable_json_lint:
+        description: "JSON and JSON5 syntax validation"
+        type: boolean
+        default: false
+
+      enable_markdown_lint:
+        description: "Lint Markdown with markdownlint-cli2"
         type: boolean
         default: false
       enable_terraform_validate:
         description: "Terraform validation: fmt check + tflint"
         type: boolean
         default: false
-      enable_json_lint:
-        description: "JSON and JSON5 syntax validation"
+      enable_yamllint:
+        description: "Lint YAML with yamllint (auto-detects .yamllint.yml)"
         type: boolean
         default: false
-
+      harden_runner_allowed_endpoints:
+        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
+        type: string
+        default: ""
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
 permissions: {}
 
 jobs:

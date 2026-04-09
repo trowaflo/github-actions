@@ -18,54 +18,54 @@ name: Docker CI
 on:
   workflow_call:
     inputs:
-      enable_harden_runner:
-        description: "Runtime security via StepSecurity harden-runner"
-        type: boolean
-        default: true
-      harden_runner_egress_policy:
-        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
-        type: string
-        default: "audit"
-      harden_runner_allowed_endpoints:
-        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
-        type: string
-        default: ""
       enable_build:
         description: "Docker build & push via bake"
-        type: boolean
-        default: false
-      enable_trivy:
-        description: "CVE scan via Trivy (aquasecurity)"
         type: boolean
         default: false
       enable_grype:
         description: "CVE scan via grype (Anchore/Cisco)"
         type: boolean
         default: false
-      registry:
-        description: "Target Docker registry"
-        type: string
-        default: "ghcr.io"
-      image_name:
-        description: "Image name (e.g., owner/image) — defaults to {registry}/{github.repository}"
-        type: string
-        default: ""
-      trivy_severity:
-        description: "Trivy severity levels (empty = all)"
-        type: string
-        default: ""
+      enable_harden_runner:
+        description: "Runtime security via StepSecurity harden-runner"
+        type: boolean
+        default: true
+      enable_trivy:
+        description: "CVE scan via Trivy (aquasecurity)"
+        type: boolean
+        default: false
       grype_severity_cutoff:
         description: "Grype minimum severity to fail build (negligible, low, medium, high, critical)"
         type: string
         default: "negligible"
+      harden_runner_allowed_endpoints:
+        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
+        type: string
+        default: ""
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
+      image_name:
+        description: "Image name (e.g., owner/image) — defaults to {registry}/{github.repository}"
+        type: string
+        default: ""
+      registry:
+        description: "Target Docker registry"
+        type: string
+        default: "ghcr.io"
+      trivy_severity:
+        description: "Trivy severity levels (empty = all)"
+        type: string
+        default: ""
     secrets:
-      registry_username:
-        description: "Docker registry username (optional — uses GITHUB_TOKEN for ghcr.io)"
-        required: false
       registry_password:
         description: "Docker registry password (optional — uses GITHUB_TOKEN for ghcr.io)"
         required: false
 
+      registry_username:
+        description: "Docker registry username (optional — uses GITHUB_TOKEN for ghcr.io)"
+        required: false
 permissions: {}
 
 jobs:

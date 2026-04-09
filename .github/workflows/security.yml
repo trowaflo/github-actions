@@ -9,42 +9,42 @@ name: Security
 on:
   workflow_call:
     inputs:
-      enable_harden_runner:
-        description: "Runtime security via StepSecurity harden-runner"
-        type: boolean
-        default: true
-      harden_runner_egress_policy:
-        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
-        type: string
-        default: "audit"
-      harden_runner_allowed_endpoints:
-        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
+      checkov_framework:
+        description: "Checkov framework: terraform, kubernetes, helm, dockerfile, or empty for all"
         type: string
         default: ""
+      enable_checkov:
+        description: "IaC misconfiguration scanning with Checkov"
+        type: boolean
+        default: false
+      enable_dependency_review:
+        description: "Dependency review on PR — requires pull_request event"
+        type: boolean
+        default: false
       enable_gitleaks:
         description: "Secret scanning with gitleaks"
+        type: boolean
+        default: true
+      enable_harden_runner:
+        description: "Runtime security via StepSecurity harden-runner"
         type: boolean
         default: true
       enable_kics:
         description: "IaC scanning with KICS"
         type: boolean
         default: true
-      enable_dependency_review:
-        description: "Dependency review on PR — requires pull_request event"
-        type: boolean
-        default: false
-      enable_checkov:
-        description: "IaC misconfiguration scanning with Checkov"
-        type: boolean
-        default: false
-      checkov_framework:
-        description: "Checkov framework: terraform, kubernetes, helm, dockerfile, or empty for all"
-        type: string
-        default: ""
       enable_trivy:
         description: "IaC/filesystem scanning with Trivy"
         type: boolean
         default: false
+      harden_runner_allowed_endpoints:
+        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
+        type: string
+        default: ""
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
       trivy_severity:
         description: "Trivy severity levels: UNKNOWN, LOW, MEDIUM, HIGH, CRITICAL"
         type: string

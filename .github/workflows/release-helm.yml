@@ -12,10 +12,10 @@ on:
         description: "Runtime security via StepSecurity harden-runner"
         type: boolean
         default: true
-      harden_runner_egress_policy:
-        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
-        type: string
-        default: "audit"
+      enable_release:
+        description: "Release charts via chart-releaser (multi-dir support via release_charts_dirs)"
+        type: boolean
+        default: false
       harden_runner_allowed_endpoints:
         description: >-
           Extra endpoints to allow (merged with built-in defaults, space-separated).
@@ -23,16 +23,12 @@ on:
           add those hosts here if charts declare external repository URLs.
         type: string
         default: ""
-      enable_release:
-        description: "Release charts via chart-releaser (multi-dir support via release_charts_dirs)"
-        type: boolean
-        default: false
-      charts_dir:
-        description: "Root directory for Helm charts"
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "charts"
+        default: "audit"
       release_charts_dirs:
-        description: "Space-separated ordered chart directories to release (max 2, e.g., 'charts/library charts/apps'). If empty, uses charts_dir."
+        description: "Space-separated ordered chart directories to release (max 2, e.g., 'charts/library charts/apps'). Defaults to 'charts'."
         type: string
         default: ""
 
@@ -49,14 +45,14 @@ jobs:
     env:
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        uploads.github.com:443
-        release-assets.githubusercontent.com:443
-        objects.githubusercontent.com:443
         get.helm.sh:443
-        tuf-repo-cdn.sigstore.dev:443
+        github.com:443
+        objects.githubusercontent.com:443
         rekor.sigstore.dev:443
+        release-assets.githubusercontent.com:443
+        tuf-repo-cdn.sigstore.dev:443
+        uploads.github.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -76,19 +72,14 @@ jobs:
         id: dirs
         env:
           RELEASE_DIRS: ${{ inputs.release_charts_dirs }}
-          CHARTS_DIR: ${{ inputs.charts_dir }}
         run: |
-          if [ -n "$RELEASE_DIRS" ]; then
-            count=$(echo "$RELEASE_DIRS" | wc -w | tr -d ' ')
-            if [ "$count" -gt 2 ]; then
-              echo "::warning::release_charts_dirs contains $count directories but only 2 are supported."
-            fi
-            echo "first=$(echo "$RELEASE_DIRS" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
-            echo "second=$(echo "$RELEASE_DIRS" | awk '{print $2}')" >> "$GITHUB_OUTPUT"
-          else
-            echo "first=$CHARTS_DIR" >> "$GITHUB_OUTPUT"
-            echo "second=" >> "$GITHUB_OUTPUT"
+          DIRS="${RELEASE_DIRS:-charts}"
+          count=$(echo "$DIRS" | wc -w | tr -d ' ')
+          if [ "$count" -gt 2 ]; then
+            echo "::warning::release_charts_dirs contains $count directories but only 2 are supported."
           fi
+          echo "first=$(echo "$DIRS" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          echo "second=$(echo "$DIRS" | awk '{print $2}')" >> "$GITHUB_OUTPUT"
       - name: Install yq with checksum verification
         run: |
           set -euo pipefail

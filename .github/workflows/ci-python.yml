@@ -9,47 +9,47 @@ name: Python CI
 on:
   workflow_call:
     inputs:
+      coverage_path:
+        description: "Coverage path for pytest-cov (e.g., custom_components/my_component)"
+        type: string
+        default: "."
+      coverage_threshold:
+        description: "Minimum coverage threshold (%)"
+        type: string
+        default: "80"
       enable_harden_runner:
         description: "Runtime security via StepSecurity harden-runner"
         type: boolean
         default: true
-      harden_runner_egress_policy:
-        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+      enable_lint:
+        description: "Python linting with ruff"
+        type: boolean
+        default: false
+      enable_test:
+        description: "pytest tests + codecov coverage"
+        type: boolean
+        default: false
+      extra_packages:
+        description: "Additional pip packages before tests (e.g., pytest-homeassistant-custom-component==0.13.316)"
         type: string
-        default: "audit"
+        default: ""
       harden_runner_allowed_endpoints:
         description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string
         # pip install (pypi + pythonhosted), codecov upload
         default: ""
-      enable_test:
-        description: "pytest tests + codecov coverage"
-        type: boolean
-        default: false
-      enable_lint:
-        description: "Python linting with ruff"
-        type: boolean
-        default: false
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
       python_version:
         description: "Python version"
         type: string
         default: "3.13"
-      coverage_threshold:
-        description: "Minimum coverage threshold (%)"
-        type: string
-        default: "80"
       test_path:
         description: "Test directory"
         type: string
         default: "tests/"
-      coverage_path:
-        description: "Coverage path for pytest-cov (e.g., custom_components/my_component)"
-        type: string
-        default: "."
-      extra_packages:
-        description: "Additional pip packages before tests (e.g., pytest-homeassistant-custom-component==0.13.316)"
-        type: string
-        default: ""
     secrets:
       codecov_token:
         description: "Codecov token (optional — works without for public repos)"

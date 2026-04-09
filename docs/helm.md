@@ -71,7 +71,6 @@ jobs:
       pages: write
     with:
       enable_release: true
-      charts_dir: "charts"
 ```
 
 ### Inputs
@@ -82,8 +81,7 @@ jobs:
 | `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` or `block` |
 | `harden_runner_allowed_endpoints` | string | (built-in) | Extra endpoints merged with defaults |
 | `enable_release` | boolean | `false` | Release via chart-releaser |
-| `charts_dir` | string | `"charts"` | Répertoire racine des charts |
-| `release_charts_dirs` | string | `""` | Répertoires de charts à releaser (max 2, space-separated) |
+| `release_charts_dirs` | string | `""` | Répertoires de charts à releaser (max 2, space-separated). Defaults to `charts` |
 
 ---
 
