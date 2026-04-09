@@ -21,14 +21,14 @@ on:
         description: "Runtime security via StepSecurity harden-runner"
         type: boolean
         default: true
-      harden_runner_egress_policy:
-        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
-        type: string
-        default: "audit"
       harden_runner_allowed_endpoints:
         description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string
         default: ""
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
     secrets:
       claude_code_oauth_token:
         description: "Claude Code OAuth token"
@@ -51,7 +51,11 @@ jobs:
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # Built-in harden-runner allowed endpoints:
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.anthropic.com:443 — Claude API (claude-code-action)
+      #   api.github.com:443 — GitHub API (PR comments, code review)
+      #   github.com:443 — git clone, actions checkout
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -89,7 +93,7 @@ jobs:
       issues: read
       id-token: write
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443

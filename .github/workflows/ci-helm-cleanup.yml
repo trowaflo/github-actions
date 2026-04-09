@@ -12,14 +12,14 @@ on:
         description: "Runtime security via StepSecurity harden-runner"
         type: boolean
         default: true
-      harden_runner_egress_policy:
-        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
-        type: string
-        default: "audit"
       harden_runner_allowed_endpoints:
         description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string
         default: ""
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
       skip_event_check:
         description: "Skip event.action == closed check (for testing only)"
         type: boolean
@@ -36,6 +36,11 @@ jobs:
       contents: write
       pull-requests: write
     env:
+      # Built-in harden-runner allowed endpoints:
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — GitHub API (PR chart cleanup via github-script)
+      #   get.helm.sh:443 — Helm binary (azure/setup-helm)
+      #   github.com:443 — git clone, actions checkout
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443

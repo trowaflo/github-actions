@@ -9,29 +9,15 @@ name: Helm CI
 on:
   workflow_call:
     inputs:
-      enable_harden_runner:
-        description: "Runtime security via StepSecurity harden-runner"
-        type: boolean
-        default: true
-      harden_runner_egress_policy:
-        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+      bump_skip_actors:
+        description: "Comma-separated actors to skip for version bumping (e.g., 'renovate[bot]')"
         type: string
-        default: "audit"
-      harden_runner_allowed_endpoints:
-        description: >-
-          Extra endpoints to allow (merged with built-in defaults, space-separated).
-          Note: enable_pr_charts adds Helm repo endpoints dynamically from Chart.yaml
-          dependencies — add those hosts here if charts reference external repositories.
+        default: "renovate[bot]"
+
+      charts_dir:
+        description: "Root directory for Helm charts"
         type: string
-        default: ""
-      enable_lint:
-        description: "Lint charts with chart-testing (ct lint)"
-        type: boolean
-        default: false
-      enable_unittest:
-        description: "Helm unit tests with helm-unittest (matrix per chart)"
-        type: boolean
-        default: false
+        default: "charts"
       enable_bump:
         description: "Auto-bump chart versions on PR using conventional commits (major/minor/patch)"
         type: boolean
@@ -44,19 +30,33 @@ on:
         description: "Validate documentation is up-to-date (dry-run, fails if outdated)"
         type: boolean
         default: false
+      enable_harden_runner:
+        description: "Runtime security via StepSecurity harden-runner"
+        type: boolean
+        default: true
+      enable_lint:
+        description: "Lint charts with chart-testing (ct lint)"
+        type: boolean
+        default: false
       enable_pr_charts:
         description: "Package modified charts on PR and publish to pr-charts branch"
         type: boolean
         default: false
-      charts_dir:
-        description: "Root directory for Helm charts"
+      enable_unittest:
+        description: "Helm unit tests with helm-unittest (matrix per chart)"
+        type: boolean
+        default: false
+      harden_runner_allowed_endpoints:
+        description: >-
+          Extra endpoints to allow (merged with built-in defaults, space-separated).
+          Note: enable_pr_charts adds Helm repo endpoints dynamically from Chart.yaml
+          dependencies — add those hosts here if charts reference external repositories.
         type: string
-        default: "charts"
-      bump_skip_actors:
-        description: "Comma-separated actors to skip for version bumping (e.g., 'renovate[bot]')"
+        default: ""
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "renovate[bot]"
-
+        default: "audit"
 permissions: {}
 
 jobs:
@@ -69,18 +69,35 @@ jobs:
     permissions:
       contents: read
     env:
+      # Built-in harden-runner allowed endpoints:
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — GitHub API (actions runtime, bump push, PR comments)
+      #   files.pythonhosted.org:443 — pip packages (chart-testing-action Python deps)
+      #   get.helm.sh:443 — Helm binary (azure/setup-helm)
+      #   ghcr.io:443 — OCI chart registries
+      #   github.com:443 — git clone, actions checkout
+      #   objects.githubusercontent.com:443 — GitHub release assets (helm-unittest, helm-docs)
+      #   pypi.org:443 — pip index (chart-testing-action)
+      #   quay.io:443 — chart-testing container (quay.io/helmpack/chart-testing)
+      #   registry.npmjs.org:443 — npm packages (setup-node)
+      #   rekor.sigstore.dev:443 — Sigstore transparency log (cosign verification)
+      #   release-assets.githubusercontent.com:443 — GitHub release downloads
+      #   tuf-repo-cdn.sigstore.dev:443 — Sigstore TUF metadata (cosign verification)
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        registry.npmjs.org:443
-        objects.githubusercontent.com:443
-        get.helm.sh:443
-        pypi.org:443
         files.pythonhosted.org:443
-        tuf-repo-cdn.sigstore.dev:443
+        get.helm.sh:443
+        get.helm.sh:443
+        ghcr.io:443
+        github.com:443
+        objects.githubusercontent.com:443
+        pypi.org:443
+        quay.io:443
+        registry.npmjs.org:443
         rekor.sigstore.dev:443
+        release-assets.githubusercontent.com:443
+        tuf-repo-cdn.sigstore.dev:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -123,6 +140,7 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       has_charts: ${{ steps.set-matrix.outputs.has_charts }}
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -170,6 +188,7 @@ jobs:
       max-parallel: 5
       matrix: ${{ fromJson(needs.helm-unittest-matrix.outputs.matrix) }}
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -241,6 +260,7 @@ jobs:
     permissions:
       contents: write
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -353,6 +373,7 @@ jobs:
     permissions:
       contents: write
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -415,6 +436,7 @@ jobs:
     permissions:
       contents: read
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -479,6 +501,7 @@ jobs:
       contents: write
       pull-requests: write
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443

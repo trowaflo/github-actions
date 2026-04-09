@@ -11,35 +11,6 @@ name: Home Assistant CI
 on:
   workflow_call:
     inputs:
-      enable_harden_runner:
-        description: "Runtime security via StepSecurity harden-runner"
-        type: boolean
-        default: true
-      harden_runner_egress_policy:
-        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
-        type: string
-        default: "audit"
-      harden_runner_allowed_endpoints:
-        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
-        type: string
-        # HA actions pull Docker images from ghcr.io
-        default: ""
-      enable_hacs:
-        description: "HACS validation"
-        type: boolean
-        default: false
-      enable_hassfest:
-        description: "hassfest validation"
-        type: boolean
-        default: false
-      enable_config_check:
-        description: "HA config check"
-        type: boolean
-        default: false
-      ha_version:
-        description: "Home Assistant version — required if enable_config_check (e.g. 2026.3.4, stable, beta)"
-        type: string
-        default: ""
       config_check_secrets:
         description: "Path to a secrets file for config check (e.g. secrets.fake.yaml)"
         type: string
@@ -48,11 +19,40 @@ on:
         description: "Shell commands to run before config check (e.g. install custom components)"
         type: string
         default: ""
+      enable_config_check:
+        description: "HA config check"
+        type: boolean
+        default: false
+      enable_hacs:
+        description: "HACS validation"
+        type: boolean
+        default: false
+      enable_harden_runner:
+        description: "Runtime security via StepSecurity harden-runner"
+        type: boolean
+        default: true
+      enable_hassfest:
+        description: "hassfest validation"
+        type: boolean
+        default: false
+      ha_version:
+        description: "Home Assistant version — required if enable_config_check (e.g. 2026.3.4, stable, beta)"
+        type: string
+        default: ""
       hacs_ignore:
         description: "Space-separated HACS checks to skip (e.g. 'brands topics')"
         type: string
         default: ""
 
+      harden_runner_allowed_endpoints:
+        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
+        type: string
+        # HA actions pull Docker images from ghcr.io
+        default: ""
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
 permissions: {}
 
 jobs:
@@ -63,7 +63,14 @@ jobs:
     permissions:
       contents: read
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # Built-in harden-runner allowed endpoints:
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — GitHub API (actions runtime)
+      #   brands.home-assistant.io:443 — HA brands validation (HACS)
+      #   ghcr.io:443 — HA container images (hassfest, config-check)
+      #   github.com:443 — git clone, actions checkout
+      #   pkg-containers.githubusercontent.com:443 — GHCR storage backend
+      #   raw.githubusercontent.com:443 — GitHub raw content (HACS validation)
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -92,7 +99,7 @@ jobs:
     permissions:
       contents: read
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -118,7 +125,7 @@ jobs:
     permissions:
       contents: read
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443

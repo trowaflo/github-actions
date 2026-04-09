@@ -18,7 +18,7 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
   ci-python.yml        # Python CI: pytest+ruff+codecov (generic — HA uses extra_packages)
   ci-helm.yml          # Helm CI: lint, unittest, bump, docs, docs-check, pr-charts (pull_request)
   ci-helm-cleanup.yml  # Helm Cleanup: remove pr-charts on PR close
-  ci-docker.yml        # Docker: build/push, trivy scan, grype scan
+  ci-docker.yml        # Docker: build/push, trivy scan
   release.yml          # Release: release-please
   release-helm.yml     # Helm Release: chart-releaser (push to main)
   claude-code.yml      # Claude Code: @claude mentions + /review command
@@ -33,7 +33,7 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
   test-ha.yml          # Tests ci-ha.yml: hacs, hassfest, config-check
   test-python.yml      # Tests ci-python.yml: pytest, ruff
   test-helm.yml        # Tests ci-helm.yml + release-helm.yml + ci-helm-cleanup.yml
-  test-docker.yml      # Tests ci-docker.yml: build, trivy (container), grype
+  test-docker.yml      # Tests ci-docker.yml: build, trivy (container)
   test-validate-renovate.yml  # Tests lint-renovate.yml
   test-release.yml     # Tests release.yml (dry-run mode)
 
@@ -103,14 +103,9 @@ KICS is available in `security.yml` via `enable_kics` (default: `true`). Note: `
 
 `security.yml` provides `enable_trivy` for IaC/filesystem scanning via `aquasecurity/trivy-action`. Severity is configurable via `trivy_severity` (default: all levels). This is independent from the container Trivy scan in `ci-docker.yml`.
 
-### Container scanning (Trivy vs grype)
+### Container scanning (Trivy)
 
-`ci-docker.yml` provides two independent container scanning jobs:
-
-- `enable_trivy` — aquasecurity/trivy-action, SHA-pinned post-incident
-- `enable_grype` — anchore/scan-action, never impacted by TeamPCP
-
-Both are `false` by default. Enable one, both, or neither depending on the repo.
+`ci-docker.yml` provides Trivy container scanning via `aquasecurity/trivy-action`. Trivy outputs a readable table in logs and uploads SARIF for Code Scanning integration. It is `false` by default — enable with `enable_trivy: true`.
 
 ## Consumer usage example
 
@@ -151,4 +146,8 @@ Security/lint workflows should trigger on `pull_request` only — **not** on `pu
 All inputs (including secrets) are documented inline in each workflow file — read the file directly for the full list. Shared across all workflows: `enable_harden_runner` (default: `true`), `harden_runner_egress_policy` (default: `"audit"`), `harden_runner_allowed_endpoints` (extra endpoints merged with built-in defaults).
 
 Key files: `security.yml`, `lint.yml`, `lint-renovate.yml`, `ci-ha.yml`, `ci-python.yml`, `ci-helm.yml`, `ci-helm-cleanup.yml`, `ci-docker.yml`, `release.yml`, `release-helm.yml`, `claude-code.yml`
+
+## Documentation
+
+Every reusable workflow has a matching doc file in `docs/` (e.g. `ci-docker.yml` → `docs/ci-docker.md`). **When modifying a workflow, always update the corresponding doc file** — inputs table, usage examples, and notes must stay in sync. Also update `CLAUDE.md` if the change affects architecture, conventions, or the repository structure section.
 

@@ -9,42 +9,42 @@ name: Security
 on:
   workflow_call:
     inputs:
-      enable_harden_runner:
-        description: "Runtime security via StepSecurity harden-runner"
-        type: boolean
-        default: true
-      harden_runner_egress_policy:
-        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
-        type: string
-        default: "audit"
-      harden_runner_allowed_endpoints:
-        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
+      checkov_framework:
+        description: "Checkov framework: terraform, kubernetes, helm, dockerfile, or empty for all"
         type: string
         default: ""
+      enable_checkov:
+        description: "IaC misconfiguration scanning with Checkov"
+        type: boolean
+        default: false
+      enable_dependency_review:
+        description: "Dependency review on PR — requires pull_request event"
+        type: boolean
+        default: false
       enable_gitleaks:
         description: "Secret scanning with gitleaks"
+        type: boolean
+        default: true
+      enable_harden_runner:
+        description: "Runtime security via StepSecurity harden-runner"
         type: boolean
         default: true
       enable_kics:
         description: "IaC scanning with KICS"
         type: boolean
         default: true
-      enable_dependency_review:
-        description: "Dependency review on PR — requires pull_request event"
-        type: boolean
-        default: false
-      enable_checkov:
-        description: "IaC misconfiguration scanning with Checkov"
-        type: boolean
-        default: false
-      checkov_framework:
-        description: "Checkov framework: terraform, kubernetes, helm, dockerfile, or empty for all"
-        type: string
-        default: ""
       enable_trivy:
         description: "IaC/filesystem scanning with Trivy"
         type: boolean
         default: false
+      harden_runner_allowed_endpoints:
+        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
+        type: string
+        default: ""
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
       trivy_severity:
         description: "Trivy severity levels: UNKNOWN, LOW, MEDIUM, HIGH, CRITICAL"
         type: string
@@ -61,24 +61,40 @@ jobs:
       contents: read
       pull-requests: write
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # Built-in harden-runner allowed endpoints:
+      #   9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443 — KICS queries (Checkmarx R2 storage)
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — GitHub API (actions runtime, SARIF upload, dependency-review)
+      #   api0.prismacloud.io:443 — Checkov policies (Prisma Cloud API)
+      #   apk.cgr.dev:443 — Chainguard APK packages (KICS container)
+      #   files.pythonhosted.org:443 — pip packages (checkov)
+      #   get.trivy.dev:443 — Trivy install script (trivy-action)
+      #   ghcr.io:443 — container images (KICS, gitleaks)
+      #   github.com:443 — git clone, actions checkout
+      #   kics.io:443 — KICS scanner queries download
+      #   mirror.gcr.io:443 — GCR mirror (Docker daemon)
+      #   pkg-containers.githubusercontent.com:443 — GHCR storage backend
+      #   pypi.org:443 — pip index (checkov)
+      #   raw.githubusercontent.com:443 — GitHub raw content (gitleaks config)
+      #   registry.npmjs.org:443 — npm packages (dependency-review-action)
+      #   release-assets.githubusercontent.com:443 — GitHub release downloads
       _HARDEN_DEFAULTS: >-
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
+        api0.prismacloud.io:443
+        apk.cgr.dev:443
         files.pythonhosted.org:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        kics.io:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
+        release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -102,24 +118,24 @@ jobs:
       pull-requests: write
       security-events: write
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
+        api0.prismacloud.io:443
+        apk.cgr.dev:443
         files.pythonhosted.org:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        kics.io:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
+        release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -155,24 +171,24 @@ jobs:
       contents: read
       pull-requests: write
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
+        api0.prismacloud.io:443
+        apk.cgr.dev:443
         files.pythonhosted.org:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        kics.io:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
+        release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -191,24 +207,24 @@ jobs:
       contents: read
       security-events: write
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
+        api0.prismacloud.io:443
+        apk.cgr.dev:443
         files.pythonhosted.org:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        kics.io:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
+        release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -239,24 +255,24 @@ jobs:
       contents: read
       security-events: write
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
+        api0.prismacloud.io:443
+        apk.cgr.dev:443
         files.pythonhosted.org:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        kics.io:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
+        release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}

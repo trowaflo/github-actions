@@ -1,7 +1,7 @@
 name: Test Docker Workflow
 
 # Validates ci-docker.yml using the hello-world test fixture in tests/docker/.
-# Builds the image, then runs both Trivy and grype scans on it.
+# Builds the image, then runs Trivy scan on it.
 #
 # Triggered:
 #   - workflow_dispatch (manual)
@@ -15,16 +15,12 @@ permissions: {}
 
 jobs:
   docker:
-    name: Test ci-docker.yml (build + trivy + grype)
+    name: Test ci-docker.yml (build + trivy)
     uses: ./.github/workflows/ci-docker.yml
     permissions:
       contents: read
       packages: write
       security-events: write
     with:
-      enable_build: true
       enable_trivy: true
-      enable_grype: true
-      grype_severity_cutoff: high
-      # audit mode: observe egress without blocking — surface any missing endpoints
-      harden_runner_egress_policy: audit
+      harden_runner_egress_policy: block

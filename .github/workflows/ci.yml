@@ -17,6 +17,7 @@ jobs:
       security-events: write
     with:
       enable_harden_runner: true
+      harden_runner_egress_policy: block
       enable_dependency_review: true
       enable_checkov: true
       enable_trivy: true
@@ -28,6 +29,7 @@ jobs:
       security-events: write
     with:
       enable_harden_runner: true
+      harden_runner_egress_policy: block
       enable_markdown_lint: true
       enable_yamllint: true
       enable_json_lint: true
@@ -40,6 +42,7 @@ jobs:
       contents: read
     with:
       enable_harden_runner: true
+      harden_runner_egress_policy: block
 
   sha-check:
     name: SHA Pinning Check

@@ -9,43 +9,43 @@ name: Lint
 on:
   workflow_call:
     inputs:
-      enable_harden_runner:
-        description: "Runtime security via StepSecurity harden-runner"
-        type: boolean
-        default: true
-      harden_runner_egress_policy:
-        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
-        type: string
-        default: "audit"
-      harden_runner_allowed_endpoints:
-        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
-        type: string
-        default: ""
       enable_actionlint:
         description: "Lint GitHub Actions workflow files"
         type: boolean
         default: true
-      enable_markdown_lint:
-        description: "Lint Markdown with markdownlint-cli2"
-        type: boolean
-        default: false
-      enable_yamllint:
-        description: "Lint YAML with yamllint (auto-detects .yamllint.yml)"
-        type: boolean
-        default: false
       enable_ansible_lint:
         description: "Lint Ansible with ansible-lint"
+        type: boolean
+        default: false
+      enable_harden_runner:
+        description: "Runtime security via StepSecurity harden-runner"
+        type: boolean
+        default: true
+      enable_json_lint:
+        description: "JSON and JSON5 syntax validation"
+        type: boolean
+        default: false
+
+      enable_markdown_lint:
+        description: "Lint Markdown with markdownlint-cli2"
         type: boolean
         default: false
       enable_terraform_validate:
         description: "Terraform validation: fmt check + tflint"
         type: boolean
         default: false
-      enable_json_lint:
-        description: "JSON and JSON5 syntax validation"
+      enable_yamllint:
+        description: "Lint YAML with yamllint (auto-detects .yamllint.yml)"
         type: boolean
         default: false
-
+      harden_runner_allowed_endpoints:
+        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
+        type: string
+        default: ""
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
 permissions: {}
 
 jobs:
@@ -57,24 +57,42 @@ jobs:
       contents: read
       security-events: write
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # Built-in harden-runner allowed endpoints:
+      #   9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443 — KICS queries (Checkmarx R2 storage) — security.yml shared
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — GitHub API (actions runtime, SARIF upload)
+      #   api0.prismacloud.io:443 — Checkov policies (Prisma Cloud) — security.yml shared
+      #   apk.cgr.dev:443 — Chainguard APK packages (ansible-lint container)
+      #   files.pythonhosted.org:443 — pip packages (yamllint, json5)
+      #   get.trivy.dev:443 — Trivy install — security.yml shared
+      #   ghcr.io:443 — container images (ansible-lint)
+      #   github.com:443 — git clone, actions checkout
+      #   kics.io:443 — KICS scanner — security.yml shared
+      #   mirror.gcr.io:443 — GCR mirror — security.yml shared
+      #   pkg-containers.githubusercontent.com:443 — GHCR storage (ansible-lint container)
+      #   pypi.org:443 — pip index (yamllint, json5)
+      #   raw.githubusercontent.com:443 — actionlint SARIF template download
+      #   registry.npmjs.org:443 — npm packages (markdownlint-cli2-action)
+      #   release-assets.githubusercontent.com:443 — GitHub release downloads (actionlint, tflint)
+      #   releases.hashicorp.com:443 — Terraform binary (hashicorp/setup-terraform)
       _HARDEN_DEFAULTS: >-
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
+        api0.prismacloud.io:443
+        apk.cgr.dev:443
         files.pythonhosted.org:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        kics.io:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
+        release-assets.githubusercontent.com:443
+        releases.hashicorp.com:443
       # renovate: datasource=github-releases depName=rhysd/actionlint
       ACTIONLINT_VERSION: "1.7.12"
     steps:
@@ -117,23 +135,25 @@ jobs:
     permissions:
       contents: read
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
+        api0.prismacloud.io:443
+        apk.cgr.dev:443
         files.pythonhosted.org:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        kics.io:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
+        release-assets.githubusercontent.com:443
+        releases.hashicorp.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -155,23 +175,25 @@ jobs:
     permissions:
       contents: read
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
+        api0.prismacloud.io:443
+        apk.cgr.dev:443
         files.pythonhosted.org:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        kics.io:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
+        release-assets.githubusercontent.com:443
+        releases.hashicorp.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -194,23 +216,25 @@ jobs:
     permissions:
       contents: read
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
+        api0.prismacloud.io:443
+        apk.cgr.dev:443
         files.pythonhosted.org:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        kics.io:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
+        release-assets.githubusercontent.com:443
+        releases.hashicorp.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -228,23 +252,25 @@ jobs:
     permissions:
       contents: read
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
+        api0.prismacloud.io:443
+        apk.cgr.dev:443
         files.pythonhosted.org:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        kics.io:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
+        release-assets.githubusercontent.com:443
+        releases.hashicorp.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -269,23 +295,25 @@ jobs:
     permissions:
       contents: read
     env:
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
+        api0.prismacloud.io:443
+        apk.cgr.dev:443
         files.pythonhosted.org:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        kics.io:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
+        release-assets.githubusercontent.com:443
+        releases.hashicorp.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}

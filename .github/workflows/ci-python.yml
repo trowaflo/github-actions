@@ -9,47 +9,47 @@ name: Python CI
 on:
   workflow_call:
     inputs:
+      coverage_path:
+        description: "Coverage path for pytest-cov (e.g., custom_components/my_component)"
+        type: string
+        default: "."
+      coverage_threshold:
+        description: "Minimum coverage threshold (%)"
+        type: string
+        default: "80"
       enable_harden_runner:
         description: "Runtime security via StepSecurity harden-runner"
         type: boolean
         default: true
-      harden_runner_egress_policy:
-        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+      enable_lint:
+        description: "Python linting with ruff"
+        type: boolean
+        default: false
+      enable_test:
+        description: "pytest tests + codecov coverage"
+        type: boolean
+        default: false
+      extra_packages:
+        description: "Additional pip packages before tests (e.g., pytest-homeassistant-custom-component==0.13.316)"
         type: string
-        default: "audit"
+        default: ""
       harden_runner_allowed_endpoints:
         description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string
         # pip install (pypi + pythonhosted), codecov upload
         default: ""
-      enable_test:
-        description: "pytest tests + codecov coverage"
-        type: boolean
-        default: false
-      enable_lint:
-        description: "Python linting with ruff"
-        type: boolean
-        default: false
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
       python_version:
         description: "Python version"
         type: string
         default: "3.13"
-      coverage_threshold:
-        description: "Minimum coverage threshold (%)"
-        type: string
-        default: "80"
       test_path:
         description: "Test directory"
         type: string
         default: "tests/"
-      coverage_path:
-        description: "Coverage path for pytest-cov (e.g., custom_components/my_component)"
-        type: string
-        default: "."
-      extra_packages:
-        description: "Additional pip packages before tests (e.g., pytest-homeassistant-custom-component==0.13.316)"
-        type: string
-        default: ""
     secrets:
       codecov_token:
         description: "Codecov token (optional — works without for public repos)"
@@ -65,7 +65,17 @@ jobs:
     permissions:
       contents: read
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # Built-in harden-runner allowed endpoints:
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — GitHub API (actions runtime)
+      #   cli.codecov.io:443 — Codecov CLI download
+      #   codecov.io:443 — Codecov API
+      #   files.pythonhosted.org:443 — pip packages (pytest, ruff, etc.)
+      #   github.com:443 — git clone, actions checkout
+      #   ingest.codecov.io:443 — Codecov upload endpoint
+      #   keybase.io:443 — Codecov GPG key verification
+      #   pypi.org:443 — pip index
+      #   storage.googleapis.com:443 — Codecov CLI binary storage
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
@@ -122,7 +132,7 @@ jobs:
     permissions:
       contents: read
     env:
-      # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
