@@ -58,23 +58,25 @@ jobs:
       security-events: write
     env:
       # Built-in defaults — always applied, merged with inputs.harden_runner_allowed_endpoints
+      # 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com: KICS queries (Checkmarx R2 storage)
       _HARDEN_DEFAULTS: >-
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
+        api0.prismacloud.io:443
+        apk.cgr.dev:443
         files.pythonhosted.org:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        kics.io:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
+        release-assets.githubusercontent.com:443
+        releases.hashicorp.com:443
       # renovate: datasource=github-releases depName=rhysd/actionlint
       ACTIONLINT_VERSION: "1.7.12"
     steps:
@@ -117,23 +119,25 @@ jobs:
     permissions:
       contents: read
     env:
+      # 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com: KICS queries (Checkmarx R2 storage)
       _HARDEN_DEFAULTS: >-
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
+        api0.prismacloud.io:443
+        apk.cgr.dev:443
         files.pythonhosted.org:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        kics.io:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
+        release-assets.githubusercontent.com:443
+        releases.hashicorp.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -155,23 +159,25 @@ jobs:
     permissions:
       contents: read
     env:
+      # 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com: KICS queries (Checkmarx R2 storage)
       _HARDEN_DEFAULTS: >-
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
+        api0.prismacloud.io:443
+        apk.cgr.dev:443
         files.pythonhosted.org:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        kics.io:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
+        release-assets.githubusercontent.com:443
+        releases.hashicorp.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -194,23 +200,25 @@ jobs:
     permissions:
       contents: read
     env:
+      # 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com: KICS queries (Checkmarx R2 storage)
       _HARDEN_DEFAULTS: >-
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
+        api0.prismacloud.io:443
+        apk.cgr.dev:443
         files.pythonhosted.org:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        kics.io:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
+        release-assets.githubusercontent.com:443
+        releases.hashicorp.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -228,23 +236,25 @@ jobs:
     permissions:
       contents: read
     env:
+      # 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com: KICS queries (Checkmarx R2 storage)
       _HARDEN_DEFAULTS: >-
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
+        api0.prismacloud.io:443
+        apk.cgr.dev:443
         files.pythonhosted.org:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        kics.io:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
+        release-assets.githubusercontent.com:443
+        releases.hashicorp.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -269,23 +279,25 @@ jobs:
     permissions:
       contents: read
     env:
+      # 9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com: KICS queries (Checkmarx R2 storage)
       _HARDEN_DEFAULTS: >-
+        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        release-assets.githubusercontent.com:443
-        pypi.org:443
+        api0.prismacloud.io:443
+        apk.cgr.dev:443
         files.pythonhosted.org:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        kics.io:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         registry.npmjs.org:443
-        ghcr.io:443
-        pkg-containers.githubusercontent.com:443
-        get.trivy.dev:443
-        mirror.gcr.io:443
-        kics.io:443
-        apk.cgr.dev:443
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
-        api0.prismacloud.io:443
+        release-assets.githubusercontent.com:443
+        releases.hashicorp.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
