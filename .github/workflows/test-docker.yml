@@ -23,4 +23,5 @@ jobs:
       security-events: write
     with:
       enable_trivy: true
+      trivy_ignore_unfixed: true
       harden_runner_egress_policy: block

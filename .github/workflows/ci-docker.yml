@@ -32,6 +32,10 @@ on:
         description: "Target Docker registry"
         type: string
         default: "ghcr.io"
+      trivy_ignore_unfixed:
+        description: "Ignore unfixed/unpatched vulnerabilities in Trivy scan"
+        type: boolean
+        default: false
       trivy_severity:
         description: "Trivy severity levels (empty = all)"
         type: string
@@ -125,6 +129,7 @@ jobs:
           image-ref: ${{ steps.staging.outputs.tag }}
           format: table
           severity: ${{ inputs.trivy_severity }}
+          ignore-unfixed: ${{ inputs.trivy_ignore_unfixed }}
           exit-code: "1"
 
       - name: Trivy scan (SARIF)
@@ -135,6 +140,7 @@ jobs:
           format: sarif
           output: trivy-results.sarif
           severity: ${{ inputs.trivy_severity }}
+          ignore-unfixed: ${{ inputs.trivy_ignore_unfixed }}
 
       - name: Upload Trivy SARIF
         if: ${{ always() && inputs.enable_trivy }}
