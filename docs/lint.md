@@ -30,6 +30,8 @@ jobs:
 | `enable_yamllint` | boolean | `false` | Lint YAML avec yamllint |
 | `enable_json_lint` | boolean | `false` | Validation syntaxe JSON et JSON5 |
 | `enable_ansible_lint` | boolean | `false` | Lint Ansible avec ansible-lint |
+| `enable_shellcheck` | boolean | `false` | Lint scripts shell (bash/sh/zsh) avec shellcheck via reviewdog (inline PR comments) |
+| `enable_shfmt` | boolean | `false` | Vérification du formatage des scripts shell avec shfmt via reviewdog (inline PR suggestions) |
 | `enable_terraform_validate` | boolean | `false` | `terraform fmt` + `tflint` |
 
 ## Permissions requises
@@ -38,6 +40,7 @@ jobs:
 | --- | --- |
 | `contents: read` | Tous les jobs (checkout) |
 | `security-events: write` | actionlint (upload SARIF) |
+| `pull-requests: write` | shellcheck, shfmt (reviewdog inline comments) |
 
 ## Secrets
 
@@ -58,6 +61,20 @@ Valide la syntaxe de tous les fichiers `*.json` (via `json.load`) et `*.json5` (
 ### yamllint
 
 Créer un `.yamllint.yml` à la racine du repo pour surcharger la configuration par défaut.
+
+### shellcheck
+
+Analyse statique des scripts shell (bash/sh/zsh) via [`reviewdog/action-shellcheck`](https://github.com/reviewdog/action-shellcheck). Détecte les erreurs courantes et les problèmes de sécurité (variables non quotées, injections via `eval`, etc.).
+
+Résultats postés en inline review comments sur la PR. Seuls les fichiers modifiés par la PR sont analysés (`filter_mode: added`).
+
+Par défaut, scanne les fichiers `*.sh`. Pour inclure aussi les scripts sans extension mais avec un shebang, activer `check_all_files_with_shebangs` via `shellcheck_flags`.
+
+### shfmt
+
+Vérification du formatage des scripts shell via [`reviewdog/action-shfmt`](https://github.com/reviewdog/action-shfmt). Poste des suggestions de correction directement dans la PR (inline suggestions applicables en un clic).
+
+Par défaut : indentation 2 espaces, `case` indenté (`-i 2 -ci`). Configurable via l'input `shfmt_flags` si nécessaire.
 
 ### harden-runner
 

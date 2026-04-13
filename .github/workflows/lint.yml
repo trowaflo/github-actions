@@ -4,7 +4,7 @@ name: Lint
 # Usage: uses: trowaflo/github-actions/.github/workflows/lint.yml@<sha>
 #
 # Defaults on : actionlint = true (opt-out)
-# Defaults opt-in : markdown, yaml, ansible, terraform, json = false
+# Defaults opt-in : markdown, yaml, ansible, terraform, json, shellcheck, shfmt = false
 
 on:
   workflow_call:
@@ -28,6 +28,14 @@ on:
 
       enable_markdown_lint:
         description: "Lint Markdown with markdownlint-cli2"
+        type: boolean
+        default: false
+      enable_shellcheck:
+        description: "Lint shell scripts (bash/sh/zsh) with shellcheck via reviewdog (inline PR comments)"
+        type: boolean
+        default: false
+      enable_shfmt:
+        description: "Check shell script formatting with shfmt via reviewdog (inline PR comments)"
         type: boolean
         default: false
       enable_terraform_validate:
@@ -343,3 +351,66 @@ jobs:
             fi
           done < <(find . -name '*.json5' -not -path './.git/*' -not -path './node_modules/*' -print0)
           exit $exit_code
+
+  shellcheck:
+    if: ${{ inputs.enable_shellcheck }}
+    name: Lint Shell (shellcheck)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      # Built-in harden-runner allowed endpoints:
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443            — reviewdog posts PR review comments
+      #   github.com:443                — checkout + shellcheck + reviewdog binaries
+      #   release-assets.githubusercontent.com:443 — binary downloads
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        api.github.com:443
+        github.com:443
+        release-assets.githubusercontent.com:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: reviewdog/action-shellcheck@4c07458293ac342d477251099501a718ae5ef86e # v1.32.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-review
+          filter_mode: added
+
+  shfmt:
+    if: ${{ inputs.enable_shfmt }}
+    name: Format Shell (shfmt)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      # Built-in harden-runner allowed endpoints:
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443            — reviewdog posts PR suggestions
+      #   github.com:443                — checkout + shfmt + reviewdog binaries
+      #   release-assets.githubusercontent.com:443 — binary downloads
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        api.github.com:443
+        github.com:443
+        release-assets.githubusercontent.com:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: reviewdog/action-shfmt@d8f080930b9be5847b4f97e9f4122b81a82aaeac # v1.0.4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          filter_mode: added
