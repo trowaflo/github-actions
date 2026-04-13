@@ -59,3 +59,22 @@ QEMU est configuré automatiquement. Les platforms cibles sont définies dans le
 ### ghcr.io
 
 Pour pousser vers `ghcr.io`, aucun secret nécessaire si le repo est dans la même organisation GitHub. Le `GITHUB_TOKEN` suffit avec la permission `packages: write`.
+
+### Harden-runner en mode `block`
+
+En mode `block`, seuls les endpoints explicitement autorisés sont accessibles. Le workflow embarque des endpoints par défaut (GitHub API, Docker Hub, Trivy, ghcr.io…), mais **les endpoints spécifiques à l'image buildée ne sont pas inclus**. Si le Dockerfile installe des paquets (ex. `apk update`, `apt-get update`), il faut autoriser les CDN correspondants :
+
+```yaml
+with:
+  harden_runner_egress_policy: block
+  harden_runner_allowed_endpoints: >
+    dl-cdn.alpinelinux.org:443
+```
+
+Exemples d'endpoints courants par base image :
+
+| Base image | Endpoint(s) à ajouter |
+| --- | --- |
+| Alpine | `dl-cdn.alpinelinux.org:443` |
+| Debian / Ubuntu | `deb.debian.org:443` `archive.ubuntu.com:80` |
+| Python (pip) | `pypi.org:443` `files.pythonhosted.org:443` |

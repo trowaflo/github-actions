@@ -23,4 +23,7 @@ jobs:
       security-events: write
     with:
       enable_trivy: true
+      trivy_ignore_unfixed: false
       harden_runner_egress_policy: block
+      harden_runner_allowed_endpoints: >
+        dl-cdn.alpinelinux.org:443
