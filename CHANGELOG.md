@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/trowaflo/github-actions/compare/v1.1.0...v1.2.0) (2026-04-13)
+
+
+### Features
+
+* add shellcheck and shfmt linters to lint.yml via reviewdog ([fec84c5](https://github.com/trowaflo/github-actions/commit/fec84c501f12a10e31d2f1a39067ce476b9408cb))
+
 ## [1.1.0](https://github.com/trowaflo/github-actions/compare/v1.0.0...v1.1.0) (2026-04-09)
 
 
