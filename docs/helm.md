@@ -91,6 +91,12 @@ Supprime les charts PR de la branche `pr-charts` quand une PR est mergée ou fer
 
 Pas de flag — appeler ce workflow implique l'intention de cleanup.
 
+**Réconciliation auto** : à chaque exécution, le workflow scanne tous les `*-pr<N>.tgz`
+présents sur la branche et supprime ceux dont le PR est `closed` (mergé ou non),
+pas seulement le PR courant. Cela rattrape automatiquement les orphelins issus
+de runs précédents qui auraient échoué (ex. egress block, runner indisponible).
+La branche est uniquement modifiée si au moins un orphelin a été retiré.
+
 ### Usage
 
 ```yaml
