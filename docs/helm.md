@@ -50,9 +50,22 @@ jobs:
 | `enable_bump` | boolean | `false` | Auto-bump de version des charts modifiés sur PR |
 | `enable_docs` | boolean | `false` | Génération doc avec helm-docs (après bump) |
 | `enable_docs_check` | boolean | `false` | Valide que les docs sont à jour |
-| `enable_pr_charts` | boolean | `false` | Package les charts modifiés et poste un commentaire |
+| `enable_pr_charts` | boolean | `false` | Package les charts modifiés et publie sur la branche `pr-charts` |
+| `enable_oci_pr_charts` | boolean | `false` | Publie aussi sur GHCR OCI (`oci://ghcr.io/<owner>/<chart>`). Indépendant de `enable_pr_charts` — activer les deux pour dual-publish |
 | `charts_dir` | string | `"charts"` | Répertoire racine des charts |
 | `bump_skip_actors` | string | `"renovate[bot]"` | Acteurs à ignorer pour le bump |
+
+### Permissions requises pour `enable_oci_pr_charts`
+
+Le job déclare déjà `packages: write`. Côté consumer, ajouter :
+
+```yaml
+permissions:
+  contents: write
+  packages: write       # publication OCI sur GHCR
+  pull-requests: write
+  checks: write
+```
 
 ---
 
@@ -115,9 +128,35 @@ jobs:
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
 | `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` or `block` |
 | `harden_runner_allowed_endpoints` | string | (built-in) | Extra endpoints merged with defaults |
+| `enable_oci_cleanup` | boolean | `false` | Supprime aussi les versions OCI taguées `*-pr<N>` sur GHCR pour les PRs closed |
+
+### OCI cleanup et permissions
+
+Pour les **org-owned repos** : `GITHUB_TOKEN` avec `packages: write` suffit pour delete.
+
+Pour les **user-owned repos** : l'API `/user/packages/...` requiert un PAT avec scope `delete:packages`.
+Fournir le PAT via `secrets.OCI_CLEANUP_TOKEN` :
+
+```yaml
+jobs:
+  helm-pr-cleanup:
+    uses: trowaflo/github-actions/.github/workflows/ci-helm-cleanup.yml@<sha>
+    permissions:
+      contents: write
+      packages: write
+      pull-requests: write
+    with:
+      enable_oci_cleanup: true
+    secrets:
+      OCI_CLEANUP_TOKEN: ${{ secrets.GHCR_DELETE_PAT }}
+```
+
+Sans PAT sur un user-owned repo, le step émet un `::warning::` mais ne casse pas le workflow.
 
 ---
 
 ## Secrets
 
-Aucun — utilise `GITHUB_TOKEN` pour toutes les opérations.
+| Secret | Workflow | Required | Description |
+| --- | --- | --- | --- |
+| `OCI_CLEANUP_TOKEN` | `ci-helm-cleanup.yml` | Optional | PAT avec `delete:packages` — uniquement requis pour user-owned repos quand `enable_oci_cleanup: true` |
