@@ -45,8 +45,9 @@ on:
       enable_oci_pr_charts:
         description: >-
           Additionally publish PR chart packages to GHCR OCI registry
-          (oci://ghcr.io/<owner>/<chart>). Independent of enable_pr_charts —
-          enable both to dual-publish during the migration period.
+          (oci://ghcr.io/<owner>/<repo>/<chart>). The repo namespace prevents
+          collisions across repos under the same owner. Independent of
+          enable_pr_charts — enable both to dual-publish during the migration period.
         type: boolean
         default: false
       enable_unittest:

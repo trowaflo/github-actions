@@ -51,11 +51,13 @@ jobs:
       contents: write
       pull-requests: write
     # Note: enable_oci_cleanup is intentionally NOT enabled here.
-    # The reconciliation step lists every container package of the owner without
-    # filtering by source repo (GHCR has no strict repo->package binding), so
-    # enabling it under the github-actions test repo could scan/delete versions
-    # belonging to other repos under the same owner (e.g. trowaflo/helm-charts).
-    # The pilot in trowaflo/helm-charts#238 covers the cleanup path end-to-end.
+    # Even though the cleanup step filters by the "<repo>/" GHCR namespace prefix
+    # (so it would only target packages produced by this repo's helm-pr-charts),
+    # exercising it from test-helm.yml means every test PR on github-actions
+    # would issue real DELETE calls against GHCR for any "<repo>/<chart>" version
+    # whose tag matches a closed PR. We prefer to cover the cleanup path
+    # end-to-end via the pilot in trowaflo/helm-charts#238 where the namespace
+    # is dedicated to a real Helm repo.
     with:
       skip_event_check: true
       harden_runner_egress_policy: block
