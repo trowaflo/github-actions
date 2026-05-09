@@ -652,11 +652,12 @@ jobs:
         if: ${{ inputs.enable_oci_pr_charts && steps.package.outputs.packaged != '' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
           OWNER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
           owner_lc=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
-          echo "$GITHUB_TOKEN" | helm registry login ghcr.io --username "$OWNER" --password-stdin
+          echo "$GITHUB_TOKEN" | helm registry login ghcr.io --username "$ACTOR" --password-stdin
           trap 'helm registry logout ghcr.io >/dev/null 2>&1 || true' EXIT
           for tgz in /tmp/pr-charts/*.tgz; do
             [ -f "$tgz" ] || continue

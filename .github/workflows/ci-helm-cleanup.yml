@@ -134,12 +134,19 @@ jobs:
         if: ${{ inputs.enable_oci_cleanup }}
         env:
           REPO: "${{ github.repository }}"
-          GH_TOKEN: "${{ secrets.OCI_CLEANUP_TOKEN || github.token }}"
+          # Repo/PR reads always go through github.token (full repo:read scope).
+          # OCI_CLEANUP_TOKEN may be a PAT scoped only to delete:packages and
+          # would fail on /repos and /pulls reads, so we use it ONLY on DELETE.
+          GH_TOKEN: "${{ github.token }}"
+          DELETE_TOKEN: "${{ secrets.OCI_CLEANUP_TOKEN || github.token }}"
         run: |
           set -euo pipefail
           owner="${REPO%%/*}"
           owner_lc=$(echo "$owner" | tr '[:upper:]' '[:lower:]')
-          owner_type=$(gh api "/repos/${REPO}" --jq '.owner.type')
+          if ! owner_type=$(gh api "/repos/${REPO}" --jq '.owner.type' 2>/dev/null); then
+            echo "::warning::Failed to fetch owner type for ${REPO}. Skipping OCI cleanup (best-effort)."
+            exit 0
+          fi
           if [ "$owner_type" != "User" ]; then
             echo "::warning::OCI cleanup is only implemented for user-owned repositories (got owner_type=${owner_type}). Skipping to avoid touching organization packages."
             exit 0
@@ -161,7 +168,7 @@ jobs:
                 state=$(gh api "/repos/${REPO}/pulls/${pr_num}" --jq '.state' 2>/dev/null || echo "unknown")
                 if [ "$state" = "closed" ]; then
                   echo "Deleting ${pkg}:${tag} (PR #${pr_num} closed)"
-                  if gh api --method DELETE "${delete_base}/container/${pkg}/versions/${vid}" 2>&1; then
+                  if GH_TOKEN="$DELETE_TOKEN" gh api --method DELETE "${delete_base}/container/${pkg}/versions/${vid}" 2>&1; then
                     orphans=$((orphans + 1))
                   else
                     echo "::warning::Failed to delete ${pkg}:${tag} — a PAT with delete:packages scope is required (secrets.OCI_CLEANUP_TOKEN)"
