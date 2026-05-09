@@ -42,6 +42,14 @@ on:
         description: "Package modified charts on PR and publish to pr-charts branch"
         type: boolean
         default: false
+      enable_oci_pr_charts:
+        description: >-
+          Additionally publish PR chart packages to GHCR OCI registry
+          (oci://ghcr.io/<owner>/<repo>/<chart>). The repo namespace prevents
+          collisions across repos under the same owner. Independent of
+          enable_pr_charts — enable both to dual-publish during the migration period.
+        type: boolean
+        default: false
       enable_unittest:
         description: "Helm unit tests with helm-unittest (matrix per chart)"
         type: boolean
@@ -492,20 +500,22 @@ jobs:
   helm-pr-charts:
     needs: [helm-bump]
     if: >-
-      ${{ inputs.enable_pr_charts &&
+      ${{ (inputs.enable_pr_charts || inputs.enable_oci_pr_charts) &&
           github.event_name == 'pull_request' &&
           (needs.helm-bump.result == 'success' || needs.helm-bump.result == 'skipped') }}
     name: PR Chart Packages
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      packages: write
       pull-requests: write
     env:
-      # Built-in endpoints — see first job above
+      # Built-in endpoints — see first job above; adds ghcr.io for OCI publish
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         github.com:443
         api.github.com:443
+        ghcr.io:443
         release-assets.githubusercontent.com:443
         registry.npmjs.org:443
         objects.githubusercontent.com:443
@@ -617,7 +627,7 @@ jobs:
           path: /tmp/pr-artifacts/*.tgz
           retention-days: 30
       - name: Publish to pr-charts branch
-        if: steps.package.outputs.packaged != ''
+        if: ${{ inputs.enable_pr_charts && steps.package.outputs.packaged != '' }}
         env:
           PR_NUM: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
@@ -639,15 +649,41 @@ jobs:
           git add ./*.tgz index.yaml
           git commit -m "Add PR #${PR_NUM} charts" || echo "No changes to commit"
           git push origin pr-charts
+      - name: Publish to OCI registry (GHCR)
+        if: ${{ inputs.enable_oci_pr_charts && steps.package.outputs.packaged != '' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          owner_lc=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
+          repo_name_lc=$(echo "${REPO#*/}" | tr '[:upper:]' '[:lower:]')
+          target="oci://ghcr.io/${owner_lc}/${repo_name_lc}"
+          echo "$GITHUB_TOKEN" | helm registry login ghcr.io --username "$ACTOR" --password-stdin
+          trap 'helm registry logout ghcr.io >/dev/null 2>&1 || true' EXIT
+          for tgz in /tmp/pr-charts/*.tgz; do
+            [ -f "$tgz" ] || continue
+            echo "Pushing $(basename "$tgz") → ${target}"
+            helm push "$tgz" "${target}"
+          done
       - name: Comment on PR
         if: steps.package.outputs.packaged != ''
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         env:
           PACKAGED: ${{ steps.package.outputs.packaged }}
           REPO_FULL: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          ENABLE_BRANCH: ${{ inputs.enable_pr_charts }}
+          ENABLE_OCI: ${{ inputs.enable_oci_pr_charts }}
         with:
           script: |
             const packaged = process.env.PACKAGED.trim().split(' ');
+            const enableBranch = process.env.ENABLE_BRANCH === 'true';
+            const enableOci = process.env.ENABLE_OCI === 'true';
+            const ownerLc = process.env.OWNER.toLowerCase();
+            const repoNameLc = process.env.REPO_FULL.split('/')[1].toLowerCase();
             let chartsList = '';
             packaged.forEach(item => {
               if (item) {
@@ -655,18 +691,28 @@ jobs:
                 chartsList += `- \`${name}\` version \`${version}\`\n`;
               }
             });
-            const repoUrl = `https://raw.githubusercontent.com/${process.env.REPO_FULL}/pr-charts`;
-            const body = [
-              '## PR Charts Available for Testing\n',
-              chartsList,
-              '### Testing with Helm\n',
-              '```bash',
-              `helm repo add pr-charts ${repoUrl}`,
-              'helm repo update',
-              'helm install test-release pr-charts/<chart-name> --version <version>',
-              '```\n',
-              '> Charts are automatically removed when this PR is merged or closed.'
-            ].join('\n');
+            const sections = ['## PR Charts Available for Testing\n', chartsList];
+            if (enableBranch) {
+              const repoUrl = `https://raw.githubusercontent.com/${process.env.REPO_FULL}/pr-charts`;
+              sections.push(
+                '### Install via Helm repository (branch `pr-charts`)\n',
+                '```bash',
+                `helm repo add pr-charts ${repoUrl}`,
+                'helm repo update',
+                'helm install test-release pr-charts/<chart-name> --version <version>',
+                '```\n'
+              );
+            }
+            if (enableOci) {
+              sections.push(
+                '### Install via OCI registry (GHCR)\n',
+                '```bash',
+                `helm install test-release oci://ghcr.io/${ownerLc}/${repoNameLc}/<chart-name> --version <version>`,
+                '```\n'
+              );
+            }
+            sections.push('> Charts are automatically removed when this PR is merged or closed.');
+            const body = sections.join('\n');
             const comments = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
