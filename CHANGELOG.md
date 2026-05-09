@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/trowaflo/github-actions/compare/v2.0.0...v2.1.0) (2026-05-09)
+
+
+### Features
+
+* **release-helm:** add enable_oci_release toggle for GHCR dual-publish on main ([#57](https://github.com/trowaflo/github-actions/issues/57)) ([d47f6a2](https://github.com/trowaflo/github-actions/commit/d47f6a2ac14adf7b45c3952c21e4272d62d92988))
+
 ## [2.0.0](https://github.com/trowaflo/github-actions/compare/v1.2.0...v2.0.0) (2026-05-09)
 
 
