@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.0.0](https://github.com/trowaflo/github-actions/compare/v1.2.0...v2.0.0) (2026-05-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **github-actions:** Update GitHub Actions (major) (DavidAnson/markdownlint-cli2-action v23.0.0, azure/setup-helm v5, azure/setup-helm v5, azure/setup-helm v5, azure/setup-helm v5, azure/setup-helm v5, codecov/codecov-action v6) (major) ([#51](https://github.com/trowaflo/github-actions/issues/51))
+
+### Features
+
+* **ci-helm:** dual-publish PR charts to branch and OCI/GHCR ([#55](https://github.com/trowaflo/github-actions/issues/55)) ([69096df](https://github.com/trowaflo/github-actions/commit/69096df4ba9eb3e23332eb3d5e54acb38df2b825))
+
+
+### Bug Fixes
+
+* **ci-helm-cleanup:** reconcile orphan PR charts on every run ([#54](https://github.com/trowaflo/github-actions/issues/54)) ([60ccdb3](https://github.com/trowaflo/github-actions/commit/60ccdb3d0518dc9aa922f605ca889dd3c8584aee))
+* use github-actions[bot] identity in helm publish workflows ([#52](https://github.com/trowaflo/github-actions/issues/52)) ([33a8b42](https://github.com/trowaflo/github-actions/commit/33a8b42edfe8afa9b2aa7f7d58f9225a8d4ec31a))
+
+
+### Continuous Integration
+
+* **github-actions:** Update GitHub Actions (major) (DavidAnson/markdownlint-cli2-action v23.0.0, azure/setup-helm v5, azure/setup-helm v5, azure/setup-helm v5, azure/setup-helm v5, azure/setup-helm v5, codecov/codecov-action v6) (major) ([#51](https://github.com/trowaflo/github-actions/issues/51)) ([dabb2d7](https://github.com/trowaflo/github-actions/commit/dabb2d7e5832ca678725214bb32fc56efb82a47b))
+
 ## [1.2.0](https://github.com/trowaflo/github-actions/compare/v1.1.0...v1.2.0) (2026-04-13)
 
 
