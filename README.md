@@ -22,6 +22,7 @@ All external `uses:` references are pinned to full commit SHAs. Renovate manages
 | [`release-helm.yml`](.github/workflows/release-helm.yml) | — (all opt-in) | [docs/helm.md](docs/helm.md) |
 | [`ci-helm-cleanup.yml`](.github/workflows/ci-helm-cleanup.yml) | — (all opt-in) | [docs/helm.md](docs/helm.md) |
 | [`ci-docker.yml`](.github/workflows/ci-docker.yml) | — (all opt-in) | [docs/ci-docker.md](docs/ci-docker.md) |
+| [`ci-terraform.yml`](.github/workflows/ci-terraform.yml) | apply on push | [docs/ci-terraform.md](docs/ci-terraform.md) |
 | [`release.yml`](.github/workflows/release.yml) | — (all opt-in) | [docs/release.md](docs/release.md) |
 | [`claude-code.yml`](.github/workflows/claude-code.yml) | — (all opt-in) | [docs/claude-code.md](docs/claude-code.md) |
 

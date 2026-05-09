@@ -1,0 +1,208 @@
+name: Terraform CI
+
+# Reusable workflow — Terraform validate / plan / apply
+# Usage: uses: trowaflo/github-actions/.github/workflows/ci-terraform.yml@<sha>
+#
+# Plan job runs on pull_request, apply job runs on push to apply_branch.
+# Format check + tflint are intentionally NOT here — use lint.yml with
+# enable_terraform_validate: true for those (avoid duplication).
+
+on:
+  workflow_call:
+    inputs:
+      apply_branch:
+        description: "Branch on which apply runs (push event)"
+        type: string
+        default: "main"
+      apply_environment:
+        description: "GitHub deployment environment for the apply job (empty = no environment)"
+        type: string
+        default: ""
+      comment_plan_on_pr:
+        description: "Post the terraform plan as a comment on the PR (same-repo PRs only)"
+        type: boolean
+        default: true
+      enable_apply:
+        description: "Run terraform apply on push to apply_branch"
+        type: boolean
+        default: true
+      enable_harden_runner:
+        description: "Runtime security via StepSecurity harden-runner"
+        type: boolean
+        default: true
+      enable_sops:
+        description: "Configure SOPS with an age key (sops_age_key secret required if true)"
+        type: boolean
+        default: false
+      harden_runner_allowed_endpoints:
+        description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
+        type: string
+        default: ""
+      harden_runner_egress_policy:
+        description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
+        type: string
+        default: "audit"
+      terraform_version:
+        description: "Terraform version (or version constraint)"
+        type: string
+        default: "1.12.x"
+      working_directory:
+        description: "Directory containing Terraform code"
+        type: string
+        default: "."
+    secrets:
+      sops_age_key:
+        description: "Age private key for SOPS decryption (required if enable_sops)"
+        required: false
+      tf_api_token:
+        description: "Token for the Terraform backend (HCP Terraform / Terraform Cloud)"
+        required: false
+
+permissions: {}
+
+jobs:
+  plan:
+    if: ${{ github.event_name == 'pull_request' }}
+    name: Plan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+    env:
+      # Built-in harden-runner allowed endpoints:
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — GitHub API (actions runtime, github-script PR comment)
+      #   app.terraform.io:443 — Terraform Cloud / HCP Terraform backend
+      #   checkpoint-api.hashicorp.com:443 — Terraform CLI version check
+      #   github.com:443 — git clone, actions checkout, sops release
+      #   objects.githubusercontent.com:443 — release downloads
+      #   registry.terraform.io:443 — Terraform provider downloads
+      #   release-assets.githubusercontent.com:443 — Action releases
+      #   releases.hashicorp.com:443 — Terraform binary
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        api.github.com:443
+        app.terraform.io:443
+        checkpoint-api.hashicorp.com:443
+        github.com:443
+        objects.githubusercontent.com:443
+        registry.terraform.io:443
+        release-assets.githubusercontent.com:443
+        releases.hashicorp.com:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup SOPS
+        if: ${{ inputs.enable_sops }}
+        uses: nhedger/setup-sops@358bac533e4e92f9ce9f9da563d6265929c88cda # v2.0.6
+      - name: Configure age key
+        if: ${{ inputs.enable_sops }}
+        working-directory: ${{ github.workspace }}
+        env:
+          AGE_KEY: ${{ secrets.sops_age_key }}
+        run: |
+          mkdir -p ~/.config/sops/age
+          printf '%s' "$AGE_KEY" > ~/.config/sops/age/keys.txt
+          chmod 600 ~/.config/sops/age/keys.txt
+      - uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+          cli_config_credentials_token: ${{ secrets.tf_api_token }}
+      - name: Terraform init
+        run: terraform init -input=false
+      - name: Terraform validate
+        run: terraform validate
+      - name: Terraform plan
+        id: plan
+        env:
+          SOPS_AGE_KEY_FILE: /home/runner/.config/sops/age/keys.txt
+        run: |
+          set +e
+          terraform plan -no-color -input=false -out=tfplan 2>&1 | tee plan.txt
+          exit_code=${PIPESTATUS[0]}
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          exit "$exit_code"
+      - name: Comment plan on PR
+        if: ${{ always() && inputs.comment_plan_on_pr && github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v8.0.0
+        env:
+          PLAN_EXIT_CODE: ${{ steps.plan.outputs.exit_code }}
+          WORKING_DIR: ${{ inputs.working_directory }}
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const planPath = path.join(process.env.WORKING_DIR, 'plan.txt');
+            let plan = fs.readFileSync(planPath, 'utf8');
+            if (plan.length > 60000) {
+              plan = plan.slice(0, 60000) + '\n\n... (truncated)';
+            }
+            const exitCode = process.env.PLAN_EXIT_CODE;
+            const status = exitCode === '0' ? '✅' : '❌';
+            const body = `### Terraform Plan ${status}\n\n\`\`\`hcl\n${plan}\n\`\`\``;
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
+
+  apply:
+    if: ${{ inputs.enable_apply && github.event_name == 'push' && github.ref == format('refs/heads/{0}', inputs.apply_branch) }}
+    name: Apply
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.apply_environment }}
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+    env:
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        api.github.com:443
+        app.terraform.io:443
+        checkpoint-api.hashicorp.com:443
+        github.com:443
+        objects.githubusercontent.com:443
+        registry.terraform.io:443
+        release-assets.githubusercontent.com:443
+        releases.hashicorp.com:443
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup SOPS
+        if: ${{ inputs.enable_sops }}
+        uses: nhedger/setup-sops@358bac533e4e92f9ce9f9da563d6265929c88cda # v2.0.6
+      - name: Configure age key
+        if: ${{ inputs.enable_sops }}
+        working-directory: ${{ github.workspace }}
+        env:
+          AGE_KEY: ${{ secrets.sops_age_key }}
+        run: |
+          mkdir -p ~/.config/sops/age
+          printf '%s' "$AGE_KEY" > ~/.config/sops/age/keys.txt
+          chmod 600 ~/.config/sops/age/keys.txt
+      - uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+          cli_config_credentials_token: ${{ secrets.tf_api_token }}
+      - name: Terraform init
+        run: terraform init -input=false
+      - name: Terraform apply
+        env:
+          SOPS_AGE_KEY_FILE: /home/runner/.config/sops/age/keys.txt
+        run: terraform apply -auto-approve -input=false
