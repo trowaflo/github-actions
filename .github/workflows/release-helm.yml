@@ -56,7 +56,7 @@ jobs:
       #   agent.api.stepsecurity.io:443 — harden-runner agent
       #   api.github.com:443 — GitHub API (chart-releaser)
       #   get.helm.sh:443 — Helm binary (azure/setup-helm)
-      #   ghcr.io:443 — OCI registry (only when enable_oci_release is true)
+      #   ghcr.io:443 — OCI chart registry (used when enable_oci_release is true)
       #   github.com:443 — git clone, actions checkout
       #   objects.githubusercontent.com:443 — GitHub release assets (yq binary)
       #   rekor.sigstore.dev:443 — Sigstore transparency log (cosign verification)
