@@ -175,11 +175,17 @@ jobs:
       - name: Comment on merged PR
         if: steps.check.outputs.exists == 'true' && github.event.pull_request.merged == true
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          OCI_ENABLED: ${{ inputs.enable_oci_cleanup }}
         with:
           script: |
+            const ociEnabled = process.env.OCI_ENABLED === 'true';
+            const targets = ociEnabled
+              ? 'the `pr-charts` branch and the GHCR OCI registry'
+              : 'the `pr-charts` branch';
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '## PR Charts Cleaned Up\n\nThe test charts for this PR have been removed from the `pr-charts` branch.'
+              body: `## PR Charts Cleaned Up\n\nThe test charts for this PR have been removed from ${targets}.`
             });
