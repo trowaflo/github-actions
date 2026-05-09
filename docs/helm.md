@@ -130,9 +130,11 @@ jobs:
 | `harden_runner_allowed_endpoints` | string | (built-in) | Extra endpoints merged with defaults |
 | `enable_oci_cleanup` | boolean | `false` | Supprime aussi les versions OCI taguées `*-pr<N>` sur GHCR pour les PRs closed |
 
-### OCI cleanup et permissions
+### OCI cleanup — limité aux repos user-owned
 
-Pour les **org-owned repos** : `GITHUB_TOKEN` avec `packages: write` suffit pour delete.
+Le step ne traite **que** les comptes user-owned. Si l'owner est une Organization, le step
+émet un `::warning::` et skip — pour ne pas toucher de packages d'orgs avec un workflow
+qui n'a été validé que sur du user-owned.
 
 Pour les **user-owned repos** : l'API `/user/packages/...` requiert un PAT avec scope `delete:packages`.
 Fournir le PAT via `secrets.OCI_CLEANUP_TOKEN` :

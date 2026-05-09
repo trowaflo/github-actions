@@ -140,13 +140,12 @@ jobs:
           owner="${REPO%%/*}"
           owner_lc=$(echo "$owner" | tr '[:upper:]' '[:lower:]')
           owner_type=$(gh api "/repos/${REPO}" --jq '.owner.type')
-          if [ "$owner_type" = "Organization" ]; then
-            list_base="/orgs/${owner_lc}/packages"
-            delete_base="/orgs/${owner_lc}/packages"
-          else
-            list_base="/users/${owner_lc}/packages"
-            delete_base="/user/packages"
+          if [ "$owner_type" != "User" ]; then
+            echo "::warning::OCI cleanup is only implemented for user-owned repositories (got owner_type=${owner_type}). Skipping to avoid touching organization packages."
+            exit 0
           fi
+          list_base="/users/${owner_lc}/packages"
+          delete_base="/user/packages"
           packages=$(gh api "${list_base}?package_type=container&per_page=100" --paginate --jq '.[].name' 2>/dev/null || true)
           if [ -z "$packages" ]; then
             echo "No container packages for ${owner_lc}, nothing to reconcile."
@@ -165,7 +164,7 @@ jobs:
                   if gh api --method DELETE "${delete_base}/container/${pkg}/versions/${vid}" 2>&1; then
                     orphans=$((orphans + 1))
                   else
-                    echo "::warning::Failed to delete ${pkg}:${tag} — for user-owned repos a PAT with delete:packages scope is required (secrets.OCI_CLEANUP_TOKEN)"
+                    echo "::warning::Failed to delete ${pkg}:${tag} — a PAT with delete:packages scope is required (secrets.OCI_CLEANUP_TOKEN)"
                   fi
                   break
                 fi
