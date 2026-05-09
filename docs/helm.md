@@ -94,7 +94,14 @@ jobs:
 | `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` or `block` |
 | `harden_runner_allowed_endpoints` | string | (built-in) | Extra endpoints merged with defaults |
 | `enable_release` | boolean | `false` | Release via chart-releaser |
+| `enable_oci_release` | boolean | `false` | Publie aussi les charts releasés sur GHCR OCI (`oci://ghcr.io/<owner>/<repo>/<chart>:<version>`). Mirror du pattern `enable_oci_pr_charts` côté `ci-helm.yml`. |
 | `release_charts_dirs` | string | `""` | Répertoires de charts à releaser (max 2, space-separated). Defaults to `charts` |
+
+### Permissions requises pour `enable_oci_release`
+
+Le caller doit accorder `packages: write` au job pour que `helm push` puisse écrire
+sur GHCR. Le `GITHUB_TOKEN` standard est suffisant — pas de PAT nécessaire (les
+release charts sont immuables, donc pas de delete).
 
 ---
 
