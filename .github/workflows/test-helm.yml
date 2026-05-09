@@ -39,8 +39,10 @@ jobs:
     permissions:
       contents: write
       pages: write
+      packages: write
     with:
       enable_release: true
+      enable_oci_release: true
       harden_runner_egress_policy: block
 
   helm-pr-cleanup:

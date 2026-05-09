@@ -16,6 +16,14 @@ on:
         description: "Release charts via chart-releaser (multi-dir support via release_charts_dirs)"
         type: boolean
         default: false
+      enable_oci_release:
+        description: >-
+          Additionally publish released charts to GHCR OCI registry
+          (oci://ghcr.io/<owner>/<repo>/<chart>:<version>). The repo namespace prevents
+          collisions across repos under the same owner. Mirrors the pattern of
+          enable_oci_pr_charts in ci-helm.yml.
+        type: boolean
+        default: false
       harden_runner_allowed_endpoints:
         description: >-
           Extra endpoints to allow (merged with built-in defaults, space-separated).
@@ -42,11 +50,13 @@ jobs:
     permissions:
       contents: write
       pages: write
+      packages: write
     env:
       # Built-in harden-runner allowed endpoints:
       #   agent.api.stepsecurity.io:443 — harden-runner agent
       #   api.github.com:443 — GitHub API (chart-releaser)
       #   get.helm.sh:443 — Helm binary (azure/setup-helm)
+      #   ghcr.io:443 — OCI registry (only when enable_oci_release is true)
       #   github.com:443 — git clone, actions checkout
       #   objects.githubusercontent.com:443 — GitHub release assets (yq binary)
       #   rekor.sigstore.dev:443 — Sigstore transparency log (cosign verification)
@@ -57,6 +67,7 @@ jobs:
         agent.api.stepsecurity.io:443
         api.github.com:443
         get.helm.sh:443
+        ghcr.io:443
         github.com:443
         objects.githubusercontent.com:443
         rekor.sigstore.dev:443
@@ -135,6 +146,7 @@ jobs:
             if [ -f "$chart/Chart.yaml" ]; then helm dependency build "$chart"; fi
           done
       - name: Release first directory
+        id: release_first
         if: ${{ github.event_name != 'pull_request' }}
         uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1.7.0
         with:
@@ -144,6 +156,31 @@ jobs:
           CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_SKIP_EXISTING: true
           CR_GENERATE_RELEASE_NOTES: true
+      - name: Publish first directory to OCI registry (GHCR)
+        if: ${{ inputs.enable_oci_release && github.event_name != 'pull_request' && steps.release_first.outcome == 'success' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          pkg_dir=".cr-release-packages"
+          if [ ! -d "$pkg_dir" ] || [ -z "$(ls -A "$pkg_dir" 2>/dev/null)" ]; then
+            echo "No release packages produced by chart-releaser — nothing to push to OCI."
+            exit 0
+          fi
+          owner_lc=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
+          repo_name_lc=$(echo "${REPO#*/}" | tr '[:upper:]' '[:lower:]')
+          target="oci://ghcr.io/${owner_lc}/${repo_name_lc}"
+          echo "$GITHUB_TOKEN" | helm registry login ghcr.io --username "$ACTOR" --password-stdin
+          trap 'helm registry logout ghcr.io >/dev/null 2>&1 || true' EXIT
+          for tgz in "$pkg_dir"/*.tgz; do
+            [ -f "$tgz" ] || continue
+            echo "Pushing $(basename "$tgz") → ${target}"
+            helm push "$tgz" "${target}"
+          done
+          rm -rf "$pkg_dir"
       - name: Add self as Helm repository
         if: ${{ steps.dirs.outputs.second != '' }}
         env:
@@ -161,6 +198,7 @@ jobs:
             if [ -f "$chart/Chart.yaml" ]; then helm dependency build "$chart"; fi
           done
       - name: Release second directory
+        id: release_second
         if: ${{ steps.dirs.outputs.second != '' && github.event_name != 'pull_request' }}
         uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1.7.0
         with:
@@ -170,3 +208,28 @@ jobs:
           CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_SKIP_EXISTING: true
           CR_GENERATE_RELEASE_NOTES: true
+      - name: Publish second directory to OCI registry (GHCR)
+        if: ${{ inputs.enable_oci_release && steps.dirs.outputs.second != '' && github.event_name != 'pull_request' && steps.release_second.outcome == 'success' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          pkg_dir=".cr-release-packages"
+          if [ ! -d "$pkg_dir" ] || [ -z "$(ls -A "$pkg_dir" 2>/dev/null)" ]; then
+            echo "No release packages produced by chart-releaser — nothing to push to OCI."
+            exit 0
+          fi
+          owner_lc=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
+          repo_name_lc=$(echo "${REPO#*/}" | tr '[:upper:]' '[:lower:]')
+          target="oci://ghcr.io/${owner_lc}/${repo_name_lc}"
+          echo "$GITHUB_TOKEN" | helm registry login ghcr.io --username "$ACTOR" --password-stdin
+          trap 'helm registry logout ghcr.io >/dev/null 2>&1 || true' EXIT
+          for tgz in "$pkg_dir"/*.tgz; do
+            [ -f "$tgz" ] || continue
+            echo "Pushing $(basename "$tgz") → ${target}"
+            helm push "$tgz" "${target}"
+          done
+          rm -rf "$pkg_dir"
