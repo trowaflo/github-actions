@@ -143,6 +143,8 @@ jobs:
           set -euo pipefail
           owner="${REPO%%/*}"
           owner_lc=$(echo "$owner" | tr '[:upper:]' '[:lower:]')
+          repo_name_lc=$(echo "${REPO#*/}" | tr '[:upper:]' '[:lower:]')
+          prefix="${repo_name_lc}/"
           if ! owner_type=$(gh api "/repos/${REPO}" --jq '.owner.type' 2>/dev/null); then
             echo "::warning::Failed to fetch owner type for ${REPO}. Skipping OCI cleanup (best-effort)."
             exit 0
@@ -153,13 +155,20 @@ jobs:
           fi
           list_base="/users/${owner_lc}/packages"
           delete_base="/user/packages"
-          packages=$(gh api "${list_base}?package_type=container&per_page=100" --paginate --jq '.[].name' 2>/dev/null || true)
+          # Only consider packages whose name starts with "<repo>/" — packages produced
+          # by ci-helm.yml use the path oci://ghcr.io/<owner>/<repo>/<chart>, so they
+          # land in GHCR as "<repo>/<chart>". This prevents touching versions that
+          # belong to other repos under the same owner.
+          packages=$(gh api "${list_base}?package_type=container&per_page=100" --paginate \
+            --jq ".[] | select(.name | startswith(\"${prefix}\")) | .name" 2>/dev/null || true)
           if [ -z "$packages" ]; then
-            echo "No container packages for ${owner_lc}, nothing to reconcile."
+            echo "No container packages under ${owner_lc}/${prefix}*, nothing to reconcile."
             exit 0
           fi
           orphans=0
           for pkg in $packages; do
+            # Package names contain "/", which must be URL-encoded in API paths.
+            encoded_pkg=$(printf '%s' "$pkg" | sed 's|/|%2F|g')
             while IFS=$'\t' read -r vid tags; do
               [ -z "$vid" ] && continue
               for tag in $tags; do
@@ -168,7 +177,7 @@ jobs:
                 state=$(gh api "/repos/${REPO}/pulls/${pr_num}" --jq '.state' 2>/dev/null || echo "unknown")
                 if [ "$state" = "closed" ]; then
                   echo "Deleting ${pkg}:${tag} (PR #${pr_num} closed)"
-                  if GH_TOKEN="$DELETE_TOKEN" gh api --method DELETE "${delete_base}/container/${pkg}/versions/${vid}" 2>&1; then
+                  if GH_TOKEN="$DELETE_TOKEN" gh api --method DELETE "${delete_base}/container/${encoded_pkg}/versions/${vid}" 2>&1; then
                     orphans=$((orphans + 1))
                   else
                     echo "::warning::Failed to delete ${pkg}:${tag} — a PAT with delete:packages scope is required (secrets.OCI_CLEANUP_TOKEN)"
@@ -176,7 +185,7 @@ jobs:
                   break
                 fi
               done
-            done < <(gh api "${list_base}/container/${pkg}/versions?per_page=100" --paginate --jq '.[] | "\(.id)\t\(.metadata.container.tags // [] | join(" "))"' 2>/dev/null || true)
+            done < <(gh api "${list_base}/container/${encoded_pkg}/versions?per_page=100" --paginate --jq '.[] | "\(.id)\t\(.metadata.container.tags // [] | join(" "))"' 2>/dev/null || true)
           done
           echo "Removed ${orphans} OCI version(s)."
       - name: Comment on merged PR

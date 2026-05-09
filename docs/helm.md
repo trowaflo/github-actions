@@ -51,7 +51,7 @@ jobs:
 | `enable_docs` | boolean | `false` | Génération doc avec helm-docs (après bump) |
 | `enable_docs_check` | boolean | `false` | Valide que les docs sont à jour |
 | `enable_pr_charts` | boolean | `false` | Package les charts modifiés et publie sur la branche `pr-charts` |
-| `enable_oci_pr_charts` | boolean | `false` | Publie aussi sur GHCR OCI (`oci://ghcr.io/<owner>/<chart>`). Indépendant de `enable_pr_charts` — activer les deux pour dual-publish |
+| `enable_oci_pr_charts` | boolean | `false` | Publie aussi sur GHCR OCI (`oci://ghcr.io/<owner>/<repo>/<chart>`). Indépendant de `enable_pr_charts` — activer les deux pour dual-publish |
 | `charts_dir` | string | `"charts"` | Répertoire racine des charts |
 | `bump_skip_actors` | string | `"renovate[bot]"` | Acteurs à ignorer pour le bump |
 
@@ -130,11 +130,22 @@ jobs:
 | `harden_runner_allowed_endpoints` | string | (built-in) | Extra endpoints merged with defaults |
 | `enable_oci_cleanup` | boolean | `false` | Supprime aussi les versions OCI taguées `*-pr<N>` sur GHCR pour les PRs closed |
 
-### OCI cleanup — limité aux repos user-owned
+### OCI cleanup — limité aux repos user-owned et scopé par repo
 
-Le step ne traite **que** les comptes user-owned. Si l'owner est une Organization, le step
-émet un `::warning::` et skip — pour ne pas toucher de packages d'orgs avec un workflow
-qui n'a été validé que sur du user-owned.
+**Limite owner** : le step ne traite **que** les comptes user-owned. Si l'owner est une
+Organization, le step émet un `::warning::` et skip — pour ne pas toucher de packages
+d'orgs avec un workflow qui n'a été validé que sur du user-owned.
+
+**Limite scope (lié au format de publication)** : le job `helm-pr-charts` publie en
+`oci://ghcr.io/<owner>/<repo>/<chart>`, ce qui crée des packages GHCR nommés
+`<repo>/<chart>`. Le cleanup filtre **strictement** sur le préfixe `<repo>/` du repo
+courant — il ne touche jamais aux packages d'un autre repo du même owner, même si un
+chart d'un autre repo a un tag `*-pr<N>` qui collide avec un PR fermé du repo courant.
+
+> ⚠️ Si tu as historiquement publié des charts en `oci://ghcr.io/<owner>/<chart>` (sans
+> namespace repo), ces packages legacy ne seront **pas** matchés par le filtre actuel —
+> ils doivent être nettoyés manuellement. Tous les charts publiés via la version
+> namespacée tombent dans le bon scope.
 
 Pour les **user-owned repos** : l'API `/user/packages/...` requiert un PAT avec scope `delete:packages`.
 Fournir le PAT via `secrets.OCI_CLEANUP_TOKEN` :

@@ -654,15 +654,18 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           ACTOR: ${{ github.actor }}
           OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           owner_lc=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
+          repo_name_lc=$(echo "${REPO#*/}" | tr '[:upper:]' '[:lower:]')
+          target="oci://ghcr.io/${owner_lc}/${repo_name_lc}"
           echo "$GITHUB_TOKEN" | helm registry login ghcr.io --username "$ACTOR" --password-stdin
           trap 'helm registry logout ghcr.io >/dev/null 2>&1 || true' EXIT
           for tgz in /tmp/pr-charts/*.tgz; do
             [ -f "$tgz" ] || continue
-            echo "Pushing $(basename "$tgz") → oci://ghcr.io/${owner_lc}"
-            helm push "$tgz" "oci://ghcr.io/${owner_lc}"
+            echo "Pushing $(basename "$tgz") → ${target}"
+            helm push "$tgz" "${target}"
           done
       - name: Comment on PR
         if: steps.package.outputs.packaged != ''
@@ -679,6 +682,7 @@ jobs:
             const enableBranch = process.env.ENABLE_BRANCH === 'true';
             const enableOci = process.env.ENABLE_OCI === 'true';
             const ownerLc = process.env.OWNER.toLowerCase();
+            const repoNameLc = process.env.REPO_FULL.split('/')[1].toLowerCase();
             let chartsList = '';
             packaged.forEach(item => {
               if (item) {
@@ -702,7 +706,7 @@ jobs:
               sections.push(
                 '### Install via OCI registry (GHCR)\n',
                 '```bash',
-                `helm install test-release oci://ghcr.io/${ownerLc}/<chart-name> --version <version>`,
+                `helm install test-release oci://ghcr.io/${ownerLc}/${repoNameLc}/<chart-name> --version <version>`,
                 '```\n'
               );
             }
