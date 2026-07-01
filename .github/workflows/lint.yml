@@ -106,7 +106,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -131,7 +131,7 @@ jobs:
           ./actionlint -format "$SARIF_TEMPLATE" > actionlint-results.sarif || true
       - name: Upload actionlint SARIF
         if: ${{ always() && github.event.repository.visibility == 'public' }}
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
         with:
           sarif_file: actionlint-results.sarif
           category: actionlint
@@ -165,12 +165,12 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: DavidAnson/markdownlint-cli2-action@ce4853d43830c74c1753b39f3cf40f71c2031eb9 # v23.0.0
+      - uses: DavidAnson/markdownlint-cli2-action@ded1f9488f68a970bc66ea5619e13e9b52e601cd # v23.2.0
         with:
           globs: |
             **/*.md
@@ -205,7 +205,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -246,7 +246,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -282,12 +282,12 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
       - uses: terraform-linters/setup-tflint@b480b8fcdaa6f2c577f8e4fa799e89e756bb7c93 # v6.2.2
       - name: Terraform format check
         run: terraform fmt -check -recursive
@@ -325,7 +325,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -373,7 +373,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -405,7 +405,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}

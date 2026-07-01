@@ -109,7 +109,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -164,7 +164,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -212,19 +212,19 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5
       - name: Cache Helm plugins
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.local/share/helm/plugins
           key: helm-unittest-${{ runner.os }}
       - name: Cache Helm dependencies
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             ${{ matrix.chart }}/charts
@@ -284,7 +284,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -292,7 +292,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.head_ref }}
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "24"
       - name: Install semver
@@ -397,7 +397,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -460,7 +460,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -527,7 +527,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -621,7 +621,7 @@ jobs:
           echo "packaged=$packaged_charts" >> "$GITHUB_OUTPUT"
       - name: Upload artifacts
         if: steps.package.outputs.packaged != ''
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: helm-charts-pr-${{ github.event.pull_request.number }}
           path: /tmp/pr-artifacts/*.tgz

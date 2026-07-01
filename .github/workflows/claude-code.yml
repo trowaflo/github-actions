@@ -64,7 +64,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -74,7 +74,7 @@ jobs:
           fetch-depth: 1
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@26ddc358fe3befff50c5ec2f80304c90c763f6f8 # v1.0.90
+        uses: anthropics/claude-code-action@787c5a0ce96a9a6cfb050ea0c8f4c05f2447c251 # v1.0.133
         with:
           claude_code_oauth_token: ${{ secrets.claude_code_oauth_token }}
           # This is an optional setting that allows Claude to read CI results on PRs
@@ -102,7 +102,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -112,7 +112,7 @@ jobs:
           fetch-depth: 1
       - name: Run Claude Code Review
         id: claude-review
-        uses: anthropics/claude-code-action@26ddc358fe3befff50c5ec2f80304c90c763f6f8 # v1.0.90
+        uses: anthropics/claude-code-action@787c5a0ce96a9a6cfb050ea0c8f4c05f2447c251 # v1.0.133
         with:
           claude_code_oauth_token: ${{ secrets.claude_code_oauth_token }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
