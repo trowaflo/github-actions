@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.0.0](https://github.com/trowaflo/github-actions/compare/v2.1.0...v3.0.0) (2026-08-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* **security:** harden_runner_egress_policy now defaults to "block" instead of "audit". A consumer whose jobs reach an endpoint outside the allowlist will fail until that endpoint is added via harden_runner_allowed_endpoints. Set the input back to "audit" explicitly to restore the previous behaviour.
+
+### Features
+
+* **security:** default harden-runner egress policy to block ([#63](https://github.com/trowaflo/github-actions/issues/63)) ([7a490d2](https://github.com/trowaflo/github-actions/commit/7a490d299c22a4c84efc83ef70a103a74b77ae6d))
+
+
+### Bug Fixes
+
+* **ci:** complete the reusable workflow permission contracts ([#64](https://github.com/trowaflo/github-actions/issues/64)) ([4d7758b](https://github.com/trowaflo/github-actions/commit/4d7758ba0c682685c408580826ce7bd93bc304e1))
+
 ## [2.1.0](https://github.com/trowaflo/github-actions/compare/v2.0.0...v2.1.0) (2026-05-09)
 
 
