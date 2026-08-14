@@ -22,10 +22,10 @@ jobs:
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
+| `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
 | `harden_runner_allowed_endpoints` | string | `(built-in)` | Allowed endpoints when block (space-separated) — extra endpoints merged with defaults |
 | `enable_gitleaks` | boolean | `true` | Secret scanning avec gitleaks |
-| `enable_kics` | boolean | `true` | Scan IaC avec KICS (⚠ TeamPCP 2026-03-23 — SHA pinné pré-incident) |
+| `enable_kics` | boolean | `true` | Scan IaC avec KICS (SHA `05aa5eb` = v2.1.20, release officielle vérifiée post-TeamPCP) |
 | `enable_dependency_review` | boolean | `false` | Revue CVE sur PR — **nécessite event `pull_request`** |
 | `enable_checkov` | boolean | `false` | Scan IaC misconfigurations avec Checkov |
 | `enable_trivy` | boolean | `false` | Scan IaC/filesystem avec Trivy |
@@ -74,6 +74,6 @@ with:
 
 ### harden-runner
 
-[StepSecurity harden-runner](https://github.com/step-security/harden-runner) sécurise le réseau de chaque job. Par défaut, la politique egress est `audit` — le trafic sortant est observé sans blocage. Passer à `block` une fois les endpoints connus.
+[StepSecurity harden-runner](https://github.com/step-security/harden-runner) sécurise le réseau de chaque job. Depuis le 2026-08-14, la politique egress par défaut est `block` : tout trafic sortant hors allowlist est coupé. C'est la parade au vecteur TeamPCP, dont le canal d'exfiltration primaire était un POST vers un domaine tiers. Repasser à `audit` sur un repo dont les endpoints ne sont pas encore connus, jamais comme réglage durable.
 
 Le workflow inclut une liste d'endpoints par défaut couvrant ses dépendances internes. Le consumer peut ajouter des endpoints via `harden_runner_allowed_endpoints` — ils sont **fusionnés** avec la liste par défaut.
