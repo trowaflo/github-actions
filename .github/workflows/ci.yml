@@ -27,6 +27,11 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      # Requis par les jobs shellcheck et shfmt de lint.yml, qui postent via reviewdog.
+      # Ils sont désactivés par défaut et ne tournent pas ici, mais GitHub valide le
+      # contrat de permissions de TOUS les jobs du workflow appelé au démarrage,
+      # avant d'évaluer le moindre `if:`. Sans cette ligne, startup_failure.
+      pull-requests: write
     with:
       enable_harden_runner: true
       harden_runner_egress_policy: block

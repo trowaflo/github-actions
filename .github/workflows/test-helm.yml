@@ -52,6 +52,12 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      # Requis par le job helm-pr-cleanup de ci-helm-cleanup.yml, qui le déclare.
+      # Le contrat de permissions d'un workflow appelé est validé au démarrage,
+      # indépendamment de enable_oci_cleanup et de tout `if:`. Sans cette ligne,
+      # startup_failure. Aucun DELETE GHCR n'est émis pour autant, voir la note
+      # ci-dessous : c'est enable_oci_cleanup qui commande cette étape.
+      packages: write
     # Note: enable_oci_cleanup is intentionally NOT enabled here.
     # Even though the cleanup step filters by the "<repo>/" GHCR namespace prefix
     # (so it would only target packages produced by this repo's helm-pr-charts),
