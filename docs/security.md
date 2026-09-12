@@ -30,8 +30,8 @@ jobs:
 | `enable_checkov` | boolean | `false` | Scan IaC misconfigurations avec Checkov |
 | `enable_trivy` | boolean | `false` | Scan IaC/filesystem avec Trivy |
 | `checkov_framework` | string | `""` | Framework Checkov : `terraform`, `kubernetes`, `helm`, `dockerfile`, `""` = tout |
-| `gitleaks_scan_mode` | string | `"event"` | Portée gitleaks : `event` (commits de l'event) ou `full` (historique complet) |
-| `kics_fail_on` | string | `"high,medium"` | Sévérités KICS qui font échouer le job (`high`, `medium`, `low`, `info`) ; `""` n'échoue jamais |
+| `gitleaks_scan_mode` | string | `"full"` | Portée gitleaks : `full` (historique complet) ou `event` (commits de l'event seulement) |
+| `kics_fail_on` | string | `"high,medium,low"` | Sévérités KICS qui font échouer le job (`high`, `medium`, `low`, `info`) ; `""` n'échoue jamais |
 | `trivy_severity` | string | `"UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"` | Niveaux de sévérité Trivy |
 
 ## Permissions requises
@@ -52,7 +52,11 @@ Aucun — utilise `GITHUB_TOKEN` implicitement.
 
 KICS est disponible via `enable_kics: true` (défaut).
 
-**Depuis le 2026-09-12, le job barre.** `kics_fail_on` liste les sévérités qui font sortir KICS en code non nul, que l'action transforme en `core.setFailed()`. Le défaut est `high,medium` : `low` et `info` restent remontés en annotations, commentaire de PR et job summary, sans bloquer.
+**Depuis le 2026-09-12, le job barre.** `kics_fail_on` liste les sévérités qui font sortir KICS en code non nul, que l'action transforme en `core.setFailed()`. Le défaut est `high,medium,low`. `info` reste remonté en annotations, commentaire de PR et job summary, sans bloquer.
+
+Le partage se fait sur un critère, pas sur un volume. Les findings `low` mesurés sur les appelants sont des points de durcissement : `Image Without Digest`, `Secrets As Environment Variables`, `No Drop Capabilities for Containers`, `Root Container Not Mounted Read-only`, `Missing AppArmor Profile`. Les findings `info` sont de l'hygiène d'exploitation : `Liveness Probe Is Not Defined`, `Pod or Container Without LimitRange`, `Ensure Administrative Boundaries Between Resources`. Une sonde de vie manquante n'a pas sa place dans une barrière de sécurité.
+
+Chiffres du 2026-09-12 sur les appelants lisibles : 13 findings `low` et 4 `info`, répartis sur trois dépôts qui sont **déjà** rouges en `high` ou `medium`. Barrer sur `low` ne met donc aucun appelant supplémentaire au rouge aujourd'hui.
 
 Avant cette date le workflow passait `ignore_on_exit: results`, qui force le code de sortie à zéro quelles que soient les trouvailles. Le job restait vert avec 15 findings dont 8 HIGH (mesuré sur `argocd`, run 34169168650). Les deux drapeaux sont exclusifs : `--ignore-on-exit results` écrase `--fail-on`.
 
@@ -97,7 +101,9 @@ with:
   gitleaks_scan_mode: full
 ```
 
-Le coût est réel : un secret déjà présent dans l'historique, tourné ou non, garde chaque run rouge jusqu'à ce que son empreinte entre dans `.gitleaksignore`. C'est pourquoi `event` reste le défaut.
+Le coût de run est négligeable, mesuré le 2026-09-12 sur les plus gros historiques d'appelants : 6,3 s pour `argocd` (1393 commits scannés), 12,5 s pour `home-assistant` (916), 5,8 s pour `helm-charts` (764).
+
+Le coût réel est ailleurs : un secret déjà présent dans l'historique garde chaque run rouge tant qu'il n'est pas retiré de l'historique. C'est de la remédiation, pas du bruit, et c'est la raison d'être du mode. Un appelant qui a besoin de temps pose `gitleaks_scan_mode: event` explicitement, avec son motif.
 
 Un `.gitleaks.toml` à la racine du repo caller est chargé et étendu par-dessus les règles par défaut dans les deux modes. Aucune licence n'est requise sur un compte individuel.
 

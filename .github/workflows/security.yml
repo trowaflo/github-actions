@@ -38,9 +38,9 @@ on:
         type: boolean
         default: false
       gitleaks_scan_mode:
-        description: "Gitleaks scan scope: event (commits of the event) or full (whole history)"
+        description: "Gitleaks scan scope: full (whole history) or event (commits of the event only)"
         type: string
-        default: "event"
+        default: "full"
       harden_runner_allowed_endpoints:
         description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string
@@ -52,7 +52,7 @@ on:
       kics_fail_on:
         description: "KICS severities that fail the job (comma-separated high, medium, low, info; empty never fails)"
         type: string
-        default: "high,medium"
+        default: "high,medium,low"
       trivy_severity:
         description: "Trivy severity levels: UNKNOWN, LOW, MEDIUM, HIGH, CRITICAL"
         type: string
@@ -136,8 +136,11 @@ jobs:
       # only one that sees the history predating the adoption of this workflow.
       # No install and no new pin: the step above runs core.addPath() on the gitleaks
       # binary it fetched, so the same pinned version is already on PATH here.
-      # Cost: a secret already in the history, rotated or not, keeps every run red
-      # until its fingerprint lands in .gitleaksignore. That is why event is default.
+      # Measured cost on the largest caller histories, 2026-09-12: 6.3 s for argocd
+      # (1393 commits), 12.5 s for home-assistant (916), 5.8 s for helm-charts (764).
+      # Runtime is not an argument. The real cost is that a secret already in the
+      # history keeps every run red until it is removed from the history, which is
+      # remediation, not noise. event stays available for a caller that names it.
       - name: Gitleaks, full history
         if: ${{ inputs.gitleaks_scan_mode == 'full' }}
         run: gitleaks detect --redact --no-banner -v
