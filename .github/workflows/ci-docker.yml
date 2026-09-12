@@ -70,6 +70,7 @@ jobs:
       #   mirror.gcr.io:443 — GCR mirror (Docker daemon)
       #   pkg-containers.githubusercontent.com:443 — GHCR storage backend
       #   production.cloudflare.docker.com:443 — Docker Hub CDN (setup-qemu-action)
+      #   production.cloudfront.docker.com:443 — Docker Hub CDN, blobs (voir note docs/ci-docker.md)
       #   raw.githubusercontent.com:443 — GitHub raw content
       #   registry-1.docker.io:443 — Docker Hub registry (setup-qemu-action pulls tonistiigi/binfmt)
       #   release-assets.githubusercontent.com:443 — GitHub release downloads (trivy binaries)
@@ -84,6 +85,7 @@ jobs:
         mirror.gcr.io:443
         pkg-containers.githubusercontent.com:443
         production.cloudflare.docker.com:443
+        production.cloudfront.docker.com:443
         raw.githubusercontent.com:443
         registry-1.docker.io:443
         release-assets.githubusercontent.com:443
