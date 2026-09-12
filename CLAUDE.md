@@ -103,7 +103,7 @@ A scanner bars, or it is decoration. `kics_fail_on` (default `high,medium`) list
 
 ### gitleaks scan scope
 
-`gitleaks_scan_mode` (default `event`) selects the scope. `event` leaves the range to `gitleaks-action`, which on `pull_request` reads `GET /pulls/{n}/commits` without `per_page`: the REST page caps at 30, so a pull request of 31 commits or more is scanned only up to its 30th. `full` drops the range and scans the whole history, at the cost of staying red on any historical finding until its fingerprint enters `.gitleaksignore`. This repo's own CI runs `full`.
+`gitleaks_scan_mode` (default `event`) selects the scope. `event` leaves the range to `gitleaks-action`, which on `pull_request` reads `GET /pulls/{n}/commits` without `per_page`: the REST page caps at 30, so a pull request of 31 commits or more is scanned only up to its 30th. `full` adds a second pass with no range, reading the whole history, at the cost of staying red on any historical finding until its fingerprint enters `.gitleaksignore`. It installs nothing: the action puts its pinned gitleaks binary on the job `PATH`, and the extra step reuses it. Do not try to reach the same result by setting `GITHUB_EVENT_NAME` on the action step: the runner refuses to overwrite a `GITHUB_*` default, the override is silently dropped and the scan stays event-scoped (measured on run 34701083982). This repo's own CI runs `full`.
 
 ### IaC scanning (Trivy)
 

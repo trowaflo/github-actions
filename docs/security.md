@@ -88,7 +88,9 @@ Le piège est sur `pull_request` : l'action appelle `GET /repos/{owner}/{repo}/p
 
 Mesuré le 2026-09-12 sur `portfolio-sync` : la PR #2 porte 44 commits, l'endpoint en rend 30 ; la PR #1 en porte 40, il en rend 30. Une PR de 21 commits, elle, est bien scannée en entier (run 34571455867, `21 commits scanned`).
 
-`gitleaks_scan_mode: full` supprime la plage et scanne tout l'historique. C'est la seule portée qui couvre une PR longue, et la seule qui voie l'historique antérieur à l'adoption de ce workflow.
+`gitleaks_scan_mode: full` ajoute une seconde passe sans aucune plage, qui lit tout l'historique. C'est la seule portée qui couvre une PR longue, et la seule qui voie l'historique antérieur à l'adoption de ce workflow. Elle n'installe rien : l'action pose son binaire sur le `PATH` du job, la passe complète réutilise le même exécutable au même SHA.
+
+Les annotations, le commentaire de PR et le job summary restent produits par l'action, donc par la passe event. La passe complète ne parle que dans les logs et par son code de sortie.
 
 ```yaml
 with:
