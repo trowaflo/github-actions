@@ -37,6 +37,10 @@ on:
         description: "IaC/filesystem scanning with Trivy"
         type: boolean
         default: false
+      gitleaks_scan_mode:
+        description: "Gitleaks scan scope: event (commits of the event) or full (whole history)"
+        type: string
+        default: "event"
       harden_runner_allowed_endpoints:
         description: "Extra endpoints to allow (merged with built-in defaults, space-separated)"
         type: string
@@ -45,6 +49,10 @@ on:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
         default: "block"
+      kics_fail_on:
+        description: "KICS severities that fail the job (comma-separated high, medium, low, info; empty never fails)"
+        type: string
+        default: "high,medium"
       trivy_severity:
         description: "Trivy severity levels: UNKNOWN, LOW, MEDIUM, HIGH, CRITICAL"
         type: string
@@ -102,12 +110,33 @@ jobs:
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - name: Validate gitleaks_scan_mode
+        env:
+          MODE: ${{ inputs.gitleaks_scan_mode }}
+        run: |
+          case "$MODE" in
+            event|full) echo "gitleaks scan mode: $MODE" ;;
+            *) echo "ERROR: gitleaks_scan_mode must be 'event' or 'full', got '$MODE'"; exit 1 ;;
+          esac
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+      # gitleaks-action derives its scan range from the event it sees.
+      # On pull_request it calls GET /pulls/{n}/commits with no per_page, so the REST
+      # default caps that page at 30 commits: a pull request of 31 commits or more is
+      # scanned only up to its 30th, and the rest is never read before merge.
+      # Measured 2026-09-12 on portfolio-sync: pull request #2 carries 44 commits,
+      # that endpoint returns 30. Same cap on #1, 40 commits, 30 returned.
+      # gitleaks_scan_mode: full removes the range. The action passes no --log-opts for
+      # workflow_dispatch, so declaring that event name makes it scan the whole history.
+      # It is the only scope that covers a long pull request and the history that
+      # predates the adoption of this workflow. Cost: a secret already in the history,
+      # rotated or not, keeps every run red until its fingerprint lands in
+      # .gitleaksignore. That is why event stays the default.
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_EVENT_NAME: ${{ inputs.gitleaks_scan_mode == 'full' && 'workflow_dispatch' || github.event_name }}
 
   kics:
     if: ${{ inputs.enable_kics }}
@@ -149,7 +178,13 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           path: "."
-          ignore_on_exit: results
+          # The two flags are exclusive: --ignore-on-exit results forces the exit code
+          # to zero whatever --fail-on says, which is what made this scan decoration.
+          # Empty kics_fail_on restores that: annotations, comment, summary, never red.
+          # Any other value lets KICS set a non-zero exit code on the listed severities,
+          # which the action turns into core.setFailed() and the job goes red.
+          ignore_on_exit: ${{ inputs.kics_fail_on == '' && 'results' || 'none' }}
+          fail_on: ${{ inputs.kics_fail_on }}
           enable_annotations: true
           enable_comments: true
           enable_jobs_summary: true

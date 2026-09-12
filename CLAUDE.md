@@ -99,6 +99,12 @@ with:
 
 KICS is available in `security.yml` via `enable_kics` (default: `true`). Note: `checkmarx/kics-github-action` was impacted by the TeamPCP supply chain attack (2026-03-23) — the current SHA is pinned to a pre-incident commit (`v2.1.20`, 2026-03-04).
 
+A scanner bars, or it is decoration. `kics_fail_on` (default `high,medium`) lists the severities that fail the job. Never pass `ignore_on_exit: results` alongside it: that flag forces the exit code to zero and silently disables `--fail-on`, which is what kept this scan green on a caller carrying 8 HIGH findings until 2026-09-12. `kics_fail_on: ""` restores the annotate-only behaviour for a caller that needs time.
+
+### gitleaks scan scope
+
+`gitleaks_scan_mode` (default `event`) selects the scope. `event` leaves the range to `gitleaks-action`, which on `pull_request` reads `GET /pulls/{n}/commits` without `per_page`: the REST page caps at 30, so a pull request of 31 commits or more is scanned only up to its 30th. `full` drops the range and scans the whole history, at the cost of staying red on any historical finding until its fingerprint enters `.gitleaksignore`. This repo's own CI runs `full`.
+
 ### IaC scanning (Trivy)
 
 `security.yml` provides `enable_trivy` for IaC/filesystem scanning via `aquasecurity/trivy-action`. Severity is configurable via `trivy_severity` (default: all levels). This is independent from the container Trivy scan in `ci-docker.yml`.

@@ -21,6 +21,11 @@ jobs:
       enable_dependency_review: true
       enable_checkov: true
       enable_trivy: true
+      kics_fail_on: "high,medium"
+      # Ce repo distribue la politique, il se l'applique au plus strict.
+      # Son historique complet est propre (60 commits, 277 KB, 0 leak, mesuré le
+      # 2026-09-12), donc `full` ne coute rien ici et garde le mode sous test.
+      gitleaks_scan_mode: full
 
   lint:
     uses: ./.github/workflows/lint.yml
