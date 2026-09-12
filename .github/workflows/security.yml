@@ -127,6 +127,8 @@ jobs:
       # scanned only up to its 30th, and the rest is never read before merge.
       # Measured 2026-09-12 on portfolio-sync: pull request #2 carries 44 commits,
       # that endpoint returns 30. Same cap on #1, 40 commits, 30 returned.
+      # Those measurements were taken on v2.3.9 and still describe v3.0.0: the four
+      # source files are byte-identical between the two, only the runtime changed.
       # This step keeps the annotations, the pull request comment and the job summary.
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
