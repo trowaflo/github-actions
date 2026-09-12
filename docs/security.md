@@ -107,6 +107,23 @@ Le coût réel est ailleurs : un secret déjà présent dans l'historique garde 
 
 Un `.gitleaks.toml` à la racine du repo caller est chargé et étendu par-dessus les règles par défaut dans les deux modes. Aucune licence n'est requise sur un compte individuel.
 
+### Ce que la garde gitleaks ne couvre pas
+
+**Un secret chiffré au repos est invisible pour le scanner, par conception.** `home-assistant` chiffre son `secrets.yaml` avec [git-crypt](https://github.com/AGWA/git-crypt). Sur un runner, qui clone sans la clé, `git log -p` ne rend que le blob chiffré : gitleaks ne trouve rien, et le job est vert. Depuis un poste déverrouillé, le même scan sur le même commit trouve un `slack-bot-token`. Mesuré le 2026-09-12 sur le commit `409cf57f`, les deux résultats, même binaire et même configuration.
+
+Ce n'est pas un défaut du scanner. C'est le partage des rôles : **git-crypt protège, gitleaks surveille ce qui n'est pas protégé.** Mais un vert sur cette garde ne veut donc pas dire « ce dépôt ne contient aucun secret », il veut dire « aucun secret en clair dans ce qui a été scanné ». Sur un dépôt qui chiffre, la question de la rotation des clés et de la gestion des accès reste entière et ne sera jamais posée par cette CI.
+
+Corollaire pratique : ne jamais mesurer l'exposition d'un dépôt depuis un poste déverrouillé, le chiffre sera faux dans un sens comme dans l'autre. La mesure de référence se prend sur un clone frais, ce que fait `actions/checkout`.
+
+### Portée d'un scan, une ref n'est pas une branche
+
+La passe `full` lance `gitleaks detect` sans `--log-opts`, donc elle **atteint toutes les refs récupérées**, pas seulement la branche par défaut. C'est voulu, et c'est ce qui la distingue :
+
+- `portfolio-sync` rend **zéro** trouvaille sur `origin/main` et **59** toutes refs, toutes portées par un tag `backup/pre-history-purge` laissé après une réécriture d'historique ;
+- `argocd` rend **1** sur le tronc et **4** toutes refs, les trois autres vivant sur deux branches abandonnées.
+
+Un secret sur une ref oubliée est exposé exactement comme un secret sur le tronc : `git clone` la récupère. La portée `event` ne la regarde jamais.
+
 ### Trivy (IaC)
 
 `enable_trivy: true` lance un scan IaC/filesystem via `aquasecurity/trivy-action`. Par défaut, toutes les sévérités sont remontées (`UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL`). Configurable via `trivy_severity`. Ce scan est indépendant du scan container Trivy dans `ci-docker.yml`.
