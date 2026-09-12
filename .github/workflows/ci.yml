@@ -23,8 +23,8 @@ jobs:
       enable_trivy: true
       kics_fail_on: "high,medium"
       # Ce repo distribue la politique, il se l'applique au plus strict.
-      # Son historique complet est propre (60 commits, 277 KB, 0 leak, mesuré le
-      # 2026-09-12), donc `full` ne coute rien ici et garde le mode sous test.
+      # Son historique complet est propre (43 commits, 263 KB, 0 leak, run 34701246753),
+      # donc `full` ne coute rien ici et garde le mode sous test a chaque PR.
       gitleaks_scan_mode: full
 
   lint:
