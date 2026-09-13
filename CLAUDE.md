@@ -35,6 +35,7 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
   test-helm.yml        # Tests ci-helm.yml + release-helm.yml + ci-helm-cleanup.yml
   test-docker.yml      # Tests ci-docker.yml: build, trivy (container)
   test-validate-renovate.yml  # Tests lint-renovate.yml
+  test-security-barring.yml   # Non-regression: asserts KICS bars and full sees beyond the event range
   test-release.yml     # Tests release.yml (dry-run mode)
 
 ```
@@ -98,6 +99,14 @@ with:
 ### KICS
 
 KICS is available in `security.yml` via `enable_kics` (default: `true`). Note: `checkmarx/kics-github-action` was impacted by the TeamPCP supply chain attack (2026-03-23) — the current SHA is pinned to a pre-incident commit (`v2.1.20`, 2026-03-04).
+
+A scanner bars, or it is decoration. `kics_fail_on` (default `high,medium,low`) lists the severities that fail the job. `info` is left non-blocking on a criterion, not on a volume: KICS `info` queries are operational hygiene (liveness probes, resource quotas), not security. Never pass `ignore_on_exit: results` alongside it: that flag forces the exit code to zero and silently disables `--fail-on`, which is what kept this scan green on a caller carrying 8 HIGH findings until 2026-09-12. `kics_fail_on: ""` restores the annotate-only behaviour for a caller that needs time.
+
+A guard proven once by hand is not held. `test-security-barring.yml` asserts on every pull request that KICS exits non-zero on a HIGH fixture, that `kics_fail_on: ""` still keeps it green, and that the `full` pass finds a leak the event range misses. Its fixtures are built at runtime and never committed: a committed finding would keep this repository's own security jobs red for good, which is the state `security.yml` exists to remove. Note in that file that `gitleaks detect` silently ignores `--log-opts`, so the scoped assertion uses `gitleaks git`.
+
+### gitleaks scan scope
+
+`gitleaks_scan_mode` (default `full`) selects the scope. `event` leaves the range to `gitleaks-action`, which on `pull_request` reads `GET /pulls/{n}/commits` without `per_page`: the REST page caps at 30, so a pull request of 31 commits or more is scanned only up to its 30th. `full` adds a second pass with no range, reading the whole history. A historical finding keeps the repository red until it is removed from the history, which is the point: measured 2026-09-12 on fresh clones, which is what a runner fetches, 8 of 11 callers have a clean history and the other three carry findings nobody had seen, one of them entirely on a leftover backup tag that no branch reaches. It installs nothing: the action puts its pinned gitleaks binary on the job `PATH`, and the extra step reuses it. Do not try to reach the same result by setting `GITHUB_EVENT_NAME` on the action step: the runner refuses to overwrite a `GITHUB_*` default, the override is silently dropped and the scan stays event-scoped (measured on run 34701083982).
 
 ### IaC scanning (Trivy)
 

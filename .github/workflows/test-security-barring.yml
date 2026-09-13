@@ -1,0 +1,245 @@
+name: Test Security Barring
+
+# Couverture de non-régression des deux gardes de security.yml.
+#
+# Une garde dont la morsure n'est prouvée qu'une fois, à la main, n'est pas tenue :
+# rien n'empêche le retour au toujours-vert. Ces jobs asservissent cette morsure à
+# la CI, à chaque PR.
+#
+# Les fixtures sont créées à l'exécution et jamais commitées. Une trouvaille commitée
+# rendrait les vrais jobs de ce dépôt rouges en permanence, c'est-à-dire exactement
+# l'état que security.yml corrige, et publierait une fuite factice dans un dépôt public.
+#
+# Triggered:
+#   - workflow_dispatch (manuel)
+#   - pull_request (chaque PR)
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions: {}
+
+env:
+  # Mêmes endpoints que le job kics de security.yml, plus ceux du téléchargement gitleaks.
+  # Liste identique à celle du job kics de security.yml. `registry.npmjs.org` n'est
+  # pas optionnel : l'entrypoint de l'action KICS lance `npm ci` après le scan, et
+  # son absence fait échouer l'étape pour une raison qui n'a rien à voir avec KICS.
+  _HARDEN_DEFAULTS: >-
+    9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
+    agent.api.stepsecurity.io:443
+    api.github.com:443
+    api0.prismacloud.io:443
+    apk.cgr.dev:443
+    files.pythonhosted.org:443
+    get.trivy.dev:443
+    ghcr.io:443
+    github.com:443
+    kics.io:443
+    mirror.gcr.io:443
+    pkg-containers.githubusercontent.com:443
+    pypi.org:443
+    raw.githubusercontent.com:443
+    registry.npmjs.org:443
+    release-assets.githubusercontent.com:443
+
+jobs:
+  kics-contract:
+    name: KICS barre sur HIGH, et reste vert si kics_fail_on est vide
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: block
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Écrire une fixture volontairement non conforme
+        run: |
+          set -euo pipefail
+          mkdir -p .kics-negative
+          cat > .kics-negative/privileged-pod.yaml <<'EOF'
+          ---
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: kics-negative-fixture
+          spec:
+            hostNetwork: true
+            hostPID: true
+            containers:
+              - name: app
+                image: nginx:latest
+                securityContext:
+                  privileged: true
+                  runAsNonRoot: false
+          EOF
+
+      # Mêmes drapeaux que security.yml quand kics_fail_on vaut high,medium,low.
+      - name: KICS doit sortir en code non nul
+        id: barring
+        continue-on-error: true
+        uses: checkmarx/kics-github-action@05aa5eb70eede1355220f4ca5238d96b397e30a6 # v2.1.20
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: .kics-negative
+          ignore_on_exit: none
+          fail_on: high,medium,low
+          enable_annotations: false
+          enable_comments: false
+          enable_jobs_summary: false
+          output_path: ./kics-negative-results
+          output_formats: json
+
+      # Deux assertions, pas une. L'issue de l'étape seule ne suffit pas : une étape
+      # peut échouer pour une raison étrangère à KICS, et le test passerait alors
+      # pour la mauvaise raison. On exige donc aussi que le rapport porte des HIGH.
+      - name: Vérifier que KICS a barré, et sur le bon motif
+        env:
+          OUTCOME: ${{ steps.barring.outcome }}
+        run: |
+          set -euo pipefail
+          report=./kics-negative-results/results.json
+          if [ ! -f "$report" ]; then
+            echo "RÉGRESSION : KICS n'a produit aucun rapport, le scan n'a pas tourné."
+            exit 1
+          fi
+          high=$(python3 - "$report" <<'PYEOF'
+          import json, sys
+          d = json.load(open(sys.argv[1]))
+          sc = d.get("severity_counters") or {}
+          n = sc.get("HIGH")
+          if n is None:
+              n = sum(1 for q in d.get("queries", []) if q.get("severity") == "HIGH")
+          print(n)
+          PYEOF
+          )
+          echo "findings HIGH dans la fixture : $high"
+          if [ "$high" -lt 1 ]; then
+            echo "RÉGRESSION : la fixture ne produit plus de HIGH, le test ne prouve rien."
+            exit 1
+          fi
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "RÉGRESSION : KICS a trouvé $high HIGH et n'a pas barré."
+            echo "Le contrat bloquant de security.yml n'est plus tenu."
+            exit 1
+          fi
+          echo "KICS a barré sur $high findings HIGH, comme attendu."
+
+      # Mêmes drapeaux que security.yml quand kics_fail_on est vide.
+      - name: KICS doit rester vert avec kics_fail_on vide
+        id: permissive
+        continue-on-error: true
+        uses: checkmarx/kics-github-action@05aa5eb70eede1355220f4ca5238d96b397e30a6 # v2.1.20
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: .kics-negative
+          ignore_on_exit: results
+          fail_on: ""
+          enable_annotations: false
+          enable_comments: false
+          enable_jobs_summary: false
+          output_path: ./kics-permissive-results
+          output_formats: json
+
+      - name: Vérifier le chemin de compatibilité, et qu'il a bien scanné
+        env:
+          OUTCOME: ${{ steps.permissive.outcome }}
+        run: |
+          set -euo pipefail
+          report=./kics-permissive-results/results.json
+          if [ ! -f "$report" ]; then
+            echo "RÉGRESSION : aucun rapport, le scan permissif n'a pas tourné."
+            exit 1
+          fi
+          high=$(python3 - "$report" <<'PYEOF'
+          import json, sys
+          d = json.load(open(sys.argv[1]))
+          sc = d.get("severity_counters") or {}
+          n = sc.get("HIGH")
+          if n is None:
+              n = sum(1 for q in d.get("queries", []) if q.get("severity") == "HIGH")
+          print(n)
+          PYEOF
+          )
+          if [ "$high" -lt 1 ]; then
+            echo "RÉGRESSION : la fixture ne produit plus de HIGH, le test ne prouve rien."
+            exit 1
+          fi
+          if [ "$OUTCOME" != "success" ]; then
+            echo "RÉGRESSION : kics_fail_on vide ne garde plus le job vert."
+            echo "Un appelant qui a besoin de temps n'a plus d'échappatoire nommée."
+            exit 1
+          fi
+          echo "Vert malgré $high findings HIGH, le chemin de compatibilité tient."
+
+  gitleaks-scope-contract:
+    name: La passe full voit au-delà de la plage de l'event
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: block
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      # Pose le binaire gitleaks sur le PATH, au SHA exact utilisé par security.yml,
+      # et scanne ce dépôt au passage. Le même mécanisme que la passe full.
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Construire un dépôt jetable dont la fuite est hors plage
+        run: |
+          set -euo pipefail
+          TMP="$(mktemp -d)"
+          cd "$TMP"
+          git init -q .
+          git config user.email "fixture@example.invalid"
+          git config user.name "fixture"
+          # La valeur est engendrée ici, jamais écrite en littéral dans ce fichier.
+          # Un littéral qui déclenche une règle gitleaks est lui-même une fuite aux
+          # yeux du scan de ce dépôt : la première version de ce test faisait rougir
+          # le job Secret Scanning sur son propre fichier de workflow.
+          printf 'api_key = "%s"\n' "$(openssl rand -hex 16)" > leaked.env
+          git add . && git commit -qm "commit 1, porte la fuite"
+          # Le second commit ne touche pas au fichier fuité : sinon son patch de
+          # suppression contiendrait le secret et la plage limitée le verrait.
+          echo ok > clean.txt
+          git add clean.txt && git commit -qm "commit 2, propre"
+          echo "TMP=$TMP" >> "$GITHUB_ENV"
+
+      # `gitleaks git` et non `gitleaks detect` : l'alias hérité `detect` **ignore
+      # silencieusement** `--log-opts`. Mesuré sur 8.23.2, une plage limitée à un
+      # commit y scanne quand même tout l'historique. Utiliser `detect` ici rendrait
+      # ce test vert pour la mauvaise raison, et il ne prouverait plus rien.
+      - name: Une plage limitée au dernier commit ne doit rien voir
+        run: |
+          set -euo pipefail
+          if gitleaks git "$TMP" --redact --no-banner --log-opts="HEAD -1"; then
+            echo "Portée event : rien trouvé, attendu."
+          else
+            echo "La fixture est mal construite : la fuite est visible depuis le dernier commit."
+            echo "Ce test ne prouverait alors rien sur la portée."
+            exit 1
+          fi
+
+      # `gitleaks detect` sans `--log-opts`, la commande exacte de l'étape
+      # « Gitleaks, full history » de security.yml.
+      - name: La passe full doit la trouver
+        run: |
+          set -euo pipefail
+          if gitleaks detect --source "$TMP" --redact --no-banner; then
+            echo "RÉGRESSION : la passe full n'a pas vu une fuite hors de la plage de l'event."
+            echo "C'est précisément la portée que gitleaks_scan_mode: full doit couvrir."
+            exit 1
+          fi
+          echo "La passe full a trouvé la fuite hors plage, comme attendu."

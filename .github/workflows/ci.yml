@@ -21,6 +21,10 @@ jobs:
       enable_dependency_review: true
       enable_checkov: true
       enable_trivy: true
+      kics_fail_on: "high,medium,low"
+      # Les deux valeurs sont les defauts, ecrites pour qu'une relecture de ce
+      # fichier n'ait pas a aller les chercher ailleurs.
+      gitleaks_scan_mode: full
 
   lint:
     uses: ./.github/workflows/lint.yml
