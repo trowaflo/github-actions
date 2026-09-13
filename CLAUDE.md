@@ -35,6 +35,7 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
   test-helm.yml        # Tests ci-helm.yml + release-helm.yml + ci-helm-cleanup.yml
   test-docker.yml      # Tests ci-docker.yml: build, trivy (container)
   test-validate-renovate.yml  # Tests lint-renovate.yml
+  test-security-barring.yml   # Non-regression: asserts KICS bars and full sees beyond the event range
   test-release.yml     # Tests release.yml (dry-run mode)
 
 ```
@@ -100,6 +101,8 @@ with:
 KICS is available in `security.yml` via `enable_kics` (default: `true`). Note: `checkmarx/kics-github-action` was impacted by the TeamPCP supply chain attack (2026-03-23) — the current SHA is pinned to a pre-incident commit (`v2.1.20`, 2026-03-04).
 
 A scanner bars, or it is decoration. `kics_fail_on` (default `high,medium,low`) lists the severities that fail the job. `info` is left non-blocking on a criterion, not on a volume: KICS `info` queries are operational hygiene (liveness probes, resource quotas), not security. Never pass `ignore_on_exit: results` alongside it: that flag forces the exit code to zero and silently disables `--fail-on`, which is what kept this scan green on a caller carrying 8 HIGH findings until 2026-09-12. `kics_fail_on: ""` restores the annotate-only behaviour for a caller that needs time.
+
+A guard proven once by hand is not held. `test-security-barring.yml` asserts on every pull request that KICS exits non-zero on a HIGH fixture, that `kics_fail_on: ""` still keeps it green, and that the `full` pass finds a leak the event range misses. Its fixtures are built at runtime and never committed: a committed finding would keep this repository's own security jobs red for good, which is the state `security.yml` exists to remove. Note in that file that `gitleaks detect` silently ignores `--log-opts`, so the scoped assertion uses `gitleaks git`.
 
 ### gitleaks scan scope
 
