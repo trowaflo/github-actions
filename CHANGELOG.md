@@ -5,7 +5,7 @@
 
 ### ⚠ BREAKING CHANGES
 
-* **github-actions:** Update GitHub Actions (major) (actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/dependency-review-action v5.0.0, actions/github-script v9.0.0, actions/github-script v9.0.0, codecov/codecov-action v7.0.0, gitleaks/gitleaks-action v3.0.0, googleapis/release-please-action v5.0.0) ([#62](https://github.com/trowaflo/github-actions/issues/62))
+* **github-actions:** Update GitHub Actions (major) ([#62](https://github.com/trowaflo/github-actions/issues/62))
 * **security:** make KICS bar and open a full-history gitleaks scope ([#66](https://github.com/trowaflo/github-actions/issues/66))
 
 ### Features
@@ -21,7 +21,7 @@
 
 ### Continuous Integration
 
-* **github-actions:** Update GitHub Actions (major) (actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/checkout v7, actions/dependency-review-action v5.0.0, actions/github-script v9.0.0, actions/github-script v9.0.0, codecov/codecov-action v7.0.0, gitleaks/gitleaks-action v3.0.0, googleapis/release-please-action v5.0.0) ([#62](https://github.com/trowaflo/github-actions/issues/62)) ([928fb55](https://github.com/trowaflo/github-actions/commit/928fb55a4f11b3f909567544f6e7327e7dab2bf1))
+* **github-actions:** Update GitHub Actions (major) ([#62](https://github.com/trowaflo/github-actions/issues/62)) ([928fb55](https://github.com/trowaflo/github-actions/commit/928fb55a4f11b3f909567544f6e7327e7dab2bf1))
 
 ## [3.0.0](https://github.com/trowaflo/github-actions/compare/v2.1.0...v3.0.0) (2026-08-14)
 
