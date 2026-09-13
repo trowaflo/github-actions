@@ -1,5 +1,28 @@
 # Changelog
 
+## [4.0.0](https://github.com/trowaflo/github-actions/compare/v3.0.0...v4.0.0) (2026-09-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **github-actions:** Update GitHub Actions (major) ([#62](https://github.com/trowaflo/github-actions/issues/62))
+* **security:** make KICS bar and open a full-history gitleaks scope ([#66](https://github.com/trowaflo/github-actions/issues/66))
+
+### Features
+
+* **security:** make KICS bar and open a full-history gitleaks scope ([#66](https://github.com/trowaflo/github-actions/issues/66)) ([f0b810b](https://github.com/trowaflo/github-actions/commit/f0b810b94058635800b070e9c839b650fe277f07))
+
+
+### Bug Fixes
+
+* **ci-docker:** allow production.cloudfront.docker.com in the egress allowlist ([#67](https://github.com/trowaflo/github-actions/issues/67)) ([9c81e8d](https://github.com/trowaflo/github-actions/commit/9c81e8d5b1bc6fedc5a061b80e7753e0c04f2f0c))
+* **security:** move gitleaks-action to v3.0.0 for the node24 runtime ([#72](https://github.com/trowaflo/github-actions/issues/72)) ([1ab5b37](https://github.com/trowaflo/github-actions/commit/1ab5b371ffd9c02003c4ad85e4625c3999536504))
+
+
+### Continuous Integration
+
+* **github-actions:** Update GitHub Actions (major) ([#62](https://github.com/trowaflo/github-actions/issues/62)) ([928fb55](https://github.com/trowaflo/github-actions/commit/928fb55a4f11b3f909567544f6e7327e7dab2bf1))
+
 ## [3.0.0](https://github.com/trowaflo/github-actions/compare/v2.1.0...v3.0.0) (2026-08-14)
 
 
