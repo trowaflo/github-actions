@@ -206,15 +206,15 @@ jobs:
           git config user.email "fixture@example.invalid"
           git config user.name "fixture"
           # La valeur satisfait `generic-api-key` par construction, jamais par chance.
-          # Cette regle applique un seuil d'entropie de Shannon voisin de 3,5. Un
-          # `openssl rand -hex 16` rend une entropie moyenne de 3,610, minimum observe
+          # Cette règle applique un seuil d'entropie de Shannon voisin de 3,5. Un
+          # `openssl rand -hex 16` rend une entropie moyenne de 3,610, minimum observé
           # 2,941, et 19 % des tirages tombent sous le seuil : le test rougissait alors
-          # a tort une fois sur six, mesure sur 60 fixtures. Chaque symbole hexadecimal
+          # à tort une fois sur six, mesuré sur 60 fixtures. Chaque symbole hexadécimal
           # exactement deux fois donne 4,000 quel que soit l'ordre, donc une valeur fixe
-          # suffit et rend le test entierement deterministe.
+          # suffit et rend le test entièrement déterministe.
           #
-          # Le nom de la variable compte : `generic-api-key` cherche un mot-cle a gauche
-          # du signe egal. `KEY_CHARS=...` ferait rougir le scan de ce depot sur son
+          # Le nom de la variable compte : `generic-api-key` cherche un mot-clé à gauche
+          # du signe égal. `KEY_CHARS=...` ferait rougir le scan de ce dépôt sur son
           # propre fichier de test. `HEX` passe.
           HEX=0123456789abcdef
           printf 'api_key = "%s%s"\n' "$HEX" "$HEX" > leaked.env
