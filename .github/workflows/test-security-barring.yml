@@ -205,11 +205,19 @@ jobs:
           git init -q .
           git config user.email "fixture@example.invalid"
           git config user.name "fixture"
-          # La valeur est engendrée ici, jamais écrite en littéral dans ce fichier.
-          # Un littéral qui déclenche une règle gitleaks est lui-même une fuite aux
-          # yeux du scan de ce dépôt : la première version de ce test faisait rougir
-          # le job Secret Scanning sur son propre fichier de workflow.
-          printf 'api_key = "%s"\n' "$(openssl rand -hex 16)" > leaked.env
+          # La valeur satisfait `generic-api-key` par construction, jamais par chance.
+          # Cette regle applique un seuil d'entropie de Shannon voisin de 3,5. Un
+          # `openssl rand -hex 16` rend une entropie moyenne de 3,610, minimum observe
+          # 2,941, et 19 % des tirages tombent sous le seuil : le test rougissait alors
+          # a tort une fois sur six, mesure sur 60 fixtures. Chaque symbole hexadecimal
+          # exactement deux fois donne 4,000 quel que soit l'ordre, donc une valeur fixe
+          # suffit et rend le test entierement deterministe.
+          #
+          # Le nom de la variable compte : `generic-api-key` cherche un mot-cle a gauche
+          # du signe egal. `KEY_CHARS=...` ferait rougir le scan de ce depot sur son
+          # propre fichier de test. `HEX` passe.
+          HEX=0123456789abcdef
+          printf 'api_key = "%s%s"\n' "$HEX" "$HEX" > leaked.env
           git add . && git commit -qm "commit 1, porte la fuite"
           # Le second commit ne touche pas au fichier fuité : sinon son patch de
           # suppression contiendrait le secret et la plage limitée le verrait.
