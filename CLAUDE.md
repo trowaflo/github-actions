@@ -65,6 +65,23 @@ uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 Never use tags (`@v4`) or branch names (`@main`). Renovate handles SHA updates automatically.
 The `ci.yml` sha-check job enforces this on every PR — it will fail if any unpinned `uses:` is found.
 
+### Measuring billed minutes
+
+**`runs/{id}/timing` returns `billable: 0` on a personal-account repository**, even for a job that really ran. Measured 2026-09-14 on `trowaflo/portfolio-sync`: a `macos-latest` job ran 80 seconds and the endpoint still reported zero. A reader who trusts it concludes the CI is free.
+
+Recompute from `runs/{id}/jobs` instead. Billing is **per job, never per run**: sum `completed_at - started_at` for each job, round each up to the minute, exclude jobs whose conclusion is `skipped`, and count `macos-latest` ten times.
+
+```bash
+# --paginate is not optional: per_page only sets the page size, and a matrix or a
+# reusable-workflow fan-out beyond 100 jobs would be dropped without a word, which
+# understates the total in exactly the way this section exists to prevent.
+gh api --paginate "repos/<owner>/<repo>/actions/runs/<id>/jobs?per_page=100" \
+  --jq '.jobs[] | select(.conclusion != "skipped") | "\(.name) \(.started_at) \(.completed_at)"'
+# billed = max(1, ceil((completed_at - started_at) / 60)) per job, x10 on macOS
+```
+
+The rounding is not a detail: on the caller measured above, 222 billed minutes covered 119 real ones, a ratio of 1.87, and a job doing nothing but an `echo` cost 39 of them.
+
 ### Renovate
 
 Dependency updates are managed by Renovate using the shared config at `github>trowaflo/renovate-config`. Do not add local `packageRules` unless overriding that shared config.
