@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.1](https://github.com/trowaflo/github-actions/compare/v4.0.0...v4.0.1) (2026-09-14)
+
+
+### Bug Fixes
+
+* **test-security:** make the leak fixture deterministic ([#76](https://github.com/trowaflo/github-actions/issues/76)) ([9a199a2](https://github.com/trowaflo/github-actions/commit/9a199a220bd37a284577f77ec5b673e3b45238da))
+
 ## [4.0.0](https://github.com/trowaflo/github-actions/compare/v3.0.0...v4.0.0) (2026-09-13)
 
 
