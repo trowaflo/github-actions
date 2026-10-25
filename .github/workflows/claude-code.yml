@@ -90,9 +90,13 @@ jobs:
             actions: read
 
   claude-review:
-    # Auto-review disabled to control costs — trigger manually via /review comment
+    # Auto-review disabled to control costs — trigger manually via /review comment.
+    # Guarded here rather than left to the caller: a caller without its own author
+    # filter would otherwise open a billed review to anyone who can comment.
     if: |
+      github.event_name == 'issue_comment' &&
       github.event.issue.pull_request &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) &&
       contains(github.event.comment.body, '/review')
     runs-on: ubuntu-latest
     permissions:

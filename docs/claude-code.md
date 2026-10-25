@@ -62,7 +62,7 @@ Claude lit les instructions dans le commentaire et les exécute.
 
 ### Job `claude-review` — déclenché par `/review`
 
-S'exécute quand un commentaire de PR contient `/review`. Claude analyse la PR et poste une review structurée.
+S'exécute quand un commentaire de PR (event `issue_comment`) contient `/review` et que son auteur est `OWNER`, `MEMBER` ou `COLLABORATOR`. Cette garde vit dans le workflow réutilisable : un caller sans filtre d'auteur n'ouvre pas pour autant la review à tous. Claude analyse la PR et poste une review structurée.
 
 > **Auto-trigger désactivé** : le déclenchement automatique sur chaque PR (sans `/review`) est commenté dans le workflow — à réactiver quand les coûts ne sont plus un problème.
 
