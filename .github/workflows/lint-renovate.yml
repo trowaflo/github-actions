@@ -88,7 +88,9 @@ jobs:
           for f in $files; do
             if [ -f "$f" ]; then
               echo "--- Validating $f ---"
-              if ! renovate-config-validator "$f"; then
+              # --strict also fails on a config that only needs migrating: without it,
+              # a deprecated option passes here and is rewritten silently by Renovate.
+              if ! renovate-config-validator --strict "$f"; then
                 exit_code=1
               fi
             fi

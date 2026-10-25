@@ -1,6 +1,6 @@
 # lint-renovate.yml
 
-Validation des fichiers de configuration Renovate via `renovate-config-validator`.
+Validation des fichiers de configuration Renovate via `renovate-config-validator --strict` : une config qui ne demande qu'une migration (option dépréciée) échoue aussi.
 
 ## Usage
 
