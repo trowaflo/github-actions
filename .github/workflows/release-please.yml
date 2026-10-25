@@ -10,6 +10,11 @@ on:
 
 permissions: {}
 
+# Never cancelled: a release cut in the middle can leave a tag without its release.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     uses: ./.github/workflows/release.yml

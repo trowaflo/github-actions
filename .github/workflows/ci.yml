@@ -8,6 +8,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   security:
     uses: ./.github/workflows/security.yml
@@ -56,6 +60,7 @@ jobs:
   sha-check:
     name: SHA Pinning Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -64,15 +69,17 @@ jobs:
         run: |
           # Matches both `uses:` and step syntax `- uses:`
           # Excludes: local workflow references (./.github/workflows/)
+          # Accepts: a 40-char commit SHA, or a docker:// image pinned by sha256 digest
           UNPINNED=$(grep -rn '^\s*-\?\s*uses:\s' .github/workflows/ \
             | grep -v '\./.github/workflows/' \
-            | grep -v '@[0-9a-f]\{40\}' || true)
+            | grep -v '@[0-9a-f]\{40\}' \
+            | grep -v 'uses:\s*docker://[^ ]*@sha256:[0-9a-f]\{64\}' || true)
 
           if [ -n "$UNPINNED" ]; then
             echo "ERROR: Found uses: references without SHA pinning:"
             echo "$UNPINNED"
             echo ""
-            echo "All external uses: must be pinned to a full 40-char SHA."
+            echo "All external uses: must be pinned to a full 40-char SHA, or a sha256 digest for docker://."
             echo "Use: uses: owner/action@<40-char-sha> # vX.Y.Z"
             exit 1
           fi

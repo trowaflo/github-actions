@@ -1,9 +1,12 @@
 name: Claude
 
 # Workflow local — Claude Code pour ce repo uniquement.
-# Restreint au propriétaire du repo (github.repository_owner) pour éviter
-# les déclenchements non autorisés sur un repo public.
 # Délègue au workflow réutilisable claude-code.yml.
+#
+# Le filtre porte sur l'auteur du contenu que le modèle va lire, jamais sur
+# github.actor : l'acteur est celui qui déclenche l'event, pas celui qui a écrit
+# le texte. Pas de `assigned` : assigner une issue écrite par un tiers faisait
+# lire ce texte au modèle sous l'identité du propriétaire.
 
 on:
   issue_comment:
@@ -11,15 +14,25 @@ on:
   pull_request_review_comment:
     types: [created]
   issues:
-    types: [opened, assigned]
+    types: [opened]
   pull_request_review:
     types: [submitted]
 
 permissions: {}
 
+# No workflow-level concurrency here: every comment of the repository runs on the
+# default branch, so a per-ref group would let an unrelated comment cancel a pending
+# @claude request. claude-code.yml groups its jobs per issue or pull request instead.
+
 jobs:
   claude:
-    if: github.actor == github.repository_owner
+    # L'ordre compte : sur issue_comment, github.event.issue désigne l'issue et
+    # son auteur, le commentaire doit donc primer.
+    if: >-
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'),
+        github.event.comment.author_association ||
+        github.event.review.author_association ||
+        github.event.issue.author_association)
     uses: ./.github/workflows/claude-code.yml
     permissions:
       contents: read

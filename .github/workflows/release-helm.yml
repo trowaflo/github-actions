@@ -34,7 +34,7 @@ on:
       harden_runner_egress_policy:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "audit"
+        default: "block"
       release_charts_dirs:
         description: "Space-separated ordered chart directories to release (max 2, e.g., 'charts/library charts/apps'). Defaults to 'charts'."
         type: string
@@ -47,6 +47,13 @@ jobs:
     if: ${{ inputs.enable_release }}
     name: Helm Release
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Job-level, not workflow-level: in a called workflow, workflow-level concurrency
+    # applies to the caller's run. Never cancelled: a release cut in the middle can
+    # leave a GitHub release without its index entry or OCI copy.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-release-helm
+      cancel-in-progress: false
     permissions:
       contents: write
       pages: write
@@ -77,7 +84,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}

@@ -28,7 +28,7 @@ on:
       harden_runner_egress_policy:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "audit"
+        default: "block"
     secrets:
       claude_code_oauth_token:
         description: "Claude Code OAuth token"
@@ -44,6 +44,13 @@ jobs:
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Keyed on the issue or pull request, not on github.ref: comment events all run
+    # on the default branch, so a per-ref group would serialise every conversation of
+    # the repository. Never cancelled: a second @claude must not kill a running answer.
+    concurrency:
+      group: ${{ github.workflow }}-claude-code-claude-${{ github.event.issue.number || github.event.pull_request.number }}
+      cancel-in-progress: false
     permissions:
       contents: read
       pull-requests: read
@@ -51,20 +58,28 @@ jobs:
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
     env:
-      # Built-in harden-runner allowed endpoints:
+      # Built-in harden-runner allowed endpoints, read from the action source:
       #   agent.api.stepsecurity.io:443 — harden-runner agent
-      #   api.anthropic.com:443 — Claude API (claude-code-action)
+      #   api.anthropic.com:443 — Claude API, OIDC token exchange (claude-code-action)
       #   api.github.com:443 — GitHub API (PR comments, code review)
-      #   github.com:443 — git clone, actions checkout
+      #   claude.ai:443 — Claude Code installer (curl https://claude.ai/install.sh)
+      #   downloads.claude.ai:443 — Claude Code binary fetched by that installer
+      #   github.com:443 — git clone, actions checkout, plugin marketplace, Bun release
+      #   registry.npmjs.org:443 — `bun install --production` of the action dependencies
+      #   release-assets.githubusercontent.com:443 — Bun release asset (redirect target)
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
-        github.com:443
-        api.github.com:443
         api.anthropic.com:443
+        api.github.com:443
+        claude.ai:443
+        downloads.claude.ai:443
+        github.com:443
+        registry.npmjs.org:443
+        release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -74,7 +89,7 @@ jobs:
           fetch-depth: 1
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@26ddc358fe3befff50c5ec2f80304c90c763f6f8 # v1.0.90
+        uses: anthropics/claude-code-action@787c5a0ce96a9a6cfb050ea0c8f4c05f2447c251 # v1.0.133
         with:
           claude_code_oauth_token: ${{ secrets.claude_code_oauth_token }}
           # This is an optional setting that allows Claude to read CI results on PRs
@@ -82,11 +97,19 @@ jobs:
             actions: read
 
   claude-review:
-    # Auto-review disabled to control costs — trigger manually via /review comment
+    # Auto-review disabled to control costs — trigger manually via /review comment.
+    # Guarded here rather than left to the caller: a caller without its own author
+    # filter would otherwise open a billed review to anyone who can comment.
     if: |
+      github.event_name == 'issue_comment' &&
       github.event.issue.pull_request &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) &&
       contains(github.event.comment.body, '/review')
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-claude-code-review-${{ github.event.issue.number }}
+      cancel-in-progress: false
     permissions:
       contents: read
       pull-requests: read
@@ -96,13 +119,17 @@ jobs:
       # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
-        github.com:443
-        api.github.com:443
         api.anthropic.com:443
+        api.github.com:443
+        claude.ai:443
+        downloads.claude.ai:443
+        github.com:443
+        registry.npmjs.org:443
+        release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -112,7 +139,7 @@ jobs:
           fetch-depth: 1
       - name: Run Claude Code Review
         id: claude-review
-        uses: anthropics/claude-code-action@26ddc358fe3befff50c5ec2f80304c90c763f6f8 # v1.0.90
+        uses: anthropics/claude-code-action@787c5a0ce96a9a6cfb050ea0c8f4c05f2447c251 # v1.0.133
         with:
           claude_code_oauth_token: ${{ secrets.claude_code_oauth_token }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'

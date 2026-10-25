@@ -64,7 +64,7 @@ on:
       harden_runner_egress_policy:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "audit"
+        default: "block"
 permissions: {}
 
 jobs:
@@ -74,6 +74,15 @@ jobs:
     if: ${{ inputs.enable_lint }}
     name: Helm Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Job-level, not workflow-level: in a called workflow, workflow-level concurrency
+    # applies to the caller's run. The file-job suffix keeps each group distinct from
+    # the caller's own `<workflow>-<ref>` group, so the two cannot deadlock.
+    # Jobs that push (bump, docs, pr-charts) never cancel in progress: a push cut in
+    # the middle leaves a half-published chart or a branch the next run must repair.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-helm-lint
+      cancel-in-progress: true
     permissions:
       contents: read
     env:
@@ -109,7 +118,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -142,6 +151,10 @@ jobs:
     if: ${{ inputs.enable_unittest }}
     name: Detect Test Charts
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-helm-unittest-matrix
+      cancel-in-progress: true
     permissions:
       contents: read
     outputs:
@@ -164,7 +177,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -188,6 +201,12 @@ jobs:
     needs: helm-unittest-matrix
     name: "Test: ${{ matrix.chart }}"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The chart is part of the group: without it, the matrix legs would share one
+    # group and cancel each other.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-helm-unittest-${{ matrix.chart }}
+      cancel-in-progress: true
     permissions:
       contents: read
       checks: write
@@ -212,17 +231,12 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
-      - name: Cache Helm plugins
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.local/share/helm/plugins
-          key: helm-unittest-${{ runner.os }}
       - name: Cache Helm dependencies
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -232,9 +246,13 @@ jobs:
           key: helm-deps-${{ matrix.chart }}-${{ hashFiles(format('{0}/Chart.yaml', matrix.chart)) }}
           restore-keys: |
             helm-deps-${{ matrix.chart }}-
+      # Pinned by commit, not by tag: the plugin is a git checkout of --version, and a
+      # tag can be moved. No plugin cache: a restored plugin skipped the install, so
+      # the pin would not have been what ran. --verify=false stays because Helm 4
+      # refuses provenance verification for a git source; the commit pin replaces it.
       - name: Install helm-unittest plugin
-        # renovate: datasource=github-releases depName=helm-unittest/helm-unittest
-        run: helm plugin list | grep -q unittest || helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.0.3 --verify=false
+        # renovate: datasource=github-tags depName=helm-unittest/helm-unittest
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 6f82a998e0b5461762ca959f87f5dd344af5e4eb --verify=false # v1.0.3
       - name: Build Helm dependencies
         run: helm dependency update "${{ matrix.chart }}"
       - name: Run Helm unit tests
@@ -265,6 +283,10 @@ jobs:
           (needs.helm-unittest.result == 'success' || needs.helm-unittest.result == 'skipped') }}
     name: Helm Version Bump
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-helm-bump
+      cancel-in-progress: false
     permissions:
       contents: write
     env:
@@ -284,7 +306,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -378,6 +400,10 @@ jobs:
           (needs.helm-bump.result == 'success' || needs.helm-bump.result == 'skipped') }}
     name: Helm Docs
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-helm-docs
+      cancel-in-progress: false
     permissions:
       contents: write
     env:
@@ -397,7 +423,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -441,6 +467,10 @@ jobs:
           (needs.helm-docs.result == 'success' || needs.helm-docs.result == 'skipped') }}
     name: Helm Docs Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-helm-docs-check
+      cancel-in-progress: true
     permissions:
       contents: read
     env:
@@ -460,7 +490,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -505,6 +535,10 @@ jobs:
           (needs.helm-bump.result == 'success' || needs.helm-bump.result == 'skipped') }}
     name: PR Chart Packages
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-helm-pr-charts
+      cancel-in-progress: false
     permissions:
       contents: write
       packages: write
@@ -527,7 +561,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -621,7 +655,7 @@ jobs:
           echo "packaged=$packaged_charts" >> "$GITHUB_OUTPUT"
       - name: Upload artifacts
         if: steps.package.outputs.packaged != ''
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: helm-charts-pr-${{ github.event.pull_request.number }}
           path: /tmp/pr-artifacts/*.tgz

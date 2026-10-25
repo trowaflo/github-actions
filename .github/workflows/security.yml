@@ -1,3 +1,7 @@
+# kics-scan disable=555ab8f9-2001-455e-a077-f2d0f41e2fb9
+# KICS reads any docker:// reference as an unpinned action, digest included, and
+# ignore-line does not reach that query. The sha-check job of ci.yml still
+# enforces pinning on this file.
 name: Security
 
 # Reusable workflow — Secret scanning + IaC security scanning
@@ -65,6 +69,13 @@ jobs:
     if: ${{ inputs.enable_gitleaks }}
     name: Secret Scanning
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Job-level, not workflow-level: in a called workflow, workflow-level concurrency
+    # applies to the caller's run. The file-job suffix keeps each group distinct from
+    # the caller's own `<workflow>-<ref>` group, so the two cannot deadlock.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-security-gitleaks
+      cancel-in-progress: true
     permissions:
       contents: read
       pull-requests: write
@@ -106,7 +117,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -130,9 +141,13 @@ jobs:
       # Those measurements were taken on v2.3.9 and still describe v3.0.0: the four
       # source files are byte-identical between the two, only the runtime changed.
       # This step keeps the annotations, the pull request comment and the job summary.
+      # GITLEAKS_VERSION is written out: left unset, the binary version is whatever the
+      # action hardcodes, and it moves with an action bump nobody reads as a scanner bump.
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # renovate: datasource=github-releases depName=gitleaks/gitleaks
+          GITLEAKS_VERSION: "8.24.3"
       # gitleaks_scan_mode: full adds a second pass with no range at all, so the whole
       # history is read. It is the only scope that covers a long pull request, and the
       # only one that sees the history predating the adoption of this workflow.
@@ -151,9 +166,12 @@ jobs:
     if: ${{ inputs.enable_kics }}
     name: IaC Scan (KICS)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-security-kics
+      cancel-in-progress: true
     permissions:
       contents: read
-      pull-requests: write
       security-events: write
     env:
       # Built-in endpoints — see first job above
@@ -177,32 +195,41 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The KICS image runs pinned by digest, not through kics-github-action: that
+      # action builds `FROM checkmarx/kics:v2.1.20` at job setup, a mutable tag that was
+      # repointed once already (2026-04-22), so its SHA pin never fixed what ran.
+      # Index digest of v2.1.20, read from the registry; its linux/amd64 manifest
+      # sha256:643071cf... was built 2026-03-03 from Checkmarx/kics e1f23cad, the
+      # commit of tag v2.1.20, before the TeamPCP incident.
+      # The image is pulled during job setup, before harden-runner starts, so no
+      # Docker Hub host enters the allowlist.
+      # The two flags are exclusive: --ignore-on-exit results forces the exit code to
+      # zero whatever --fail-on says, which is what made this scan decoration. Empty
+      # kics_fail_on restores that path; any other value bars on the listed severities.
       - name: Run KICS Scan
-        uses: checkmarx/kics-github-action@05aa5eb70eede1355220f4ca5238d96b397e30a6 # v2.1.20
+        uses: docker://checkmarx/kics:v2.1.20@sha256:3e5a268eb8adda2e5a483c9359ddfc4cd520ab856a7076dc0b1d8784a37e2602
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          path: "."
-          # The two flags are exclusive: --ignore-on-exit results forces the exit code
-          # to zero whatever --fail-on says, which is what made this scan decoration.
-          # Empty kics_fail_on restores that: annotations, comment, summary, never red.
-          # Any other value lets KICS set a non-zero exit code on the listed severities,
-          # which the action turns into core.setFailed() and the job goes red.
-          ignore_on_exit: ${{ inputs.kics_fail_on == '' && 'results' || 'none' }}
-          fail_on: ${{ inputs.kics_fail_on }}
-          enable_annotations: true
-          enable_comments: true
-          enable_jobs_summary: true
-          comments_with_queries: true
-          output_path: ./results
-          output_formats: json,sarif
+          args: >-
+            scan --no-progress -p . -o results --report-formats json,sarif
+            ${{ inputs.kics_fail_on == '' && '--ignore-on-exit results' || format('--fail-on {0}', inputs.kics_fail_on) }}
+      - name: KICS summary
+        if: ${{ always() && hashFiles('results/results.json') != '' }}
+        run: |
+          {
+            echo "### KICS"
+            echo
+            echo "| Severity | Findings |"
+            echo "| --- | --- |"
+            jq -r '.severity_counters | to_entries[] | "| \(.key) | \(.value) |"' results/results.json
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload KICS SARIF
         if: ${{ always() && github.event.repository.visibility == 'public' }}
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
         with:
           sarif_file: ./results/results.sarif
           category: kics
@@ -211,6 +238,10 @@ jobs:
     if: ${{ inputs.enable_dependency_review && github.event_name == 'pull_request' }}
     name: Dependency Review
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-security-dependency-review
+      cancel-in-progress: true
     permissions:
       contents: read
       pull-requests: write
@@ -236,7 +267,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -247,6 +278,10 @@ jobs:
     if: ${{ inputs.enable_checkov }}
     name: IaC Scan (Checkov)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-security-checkov
+      cancel-in-progress: true
     permissions:
       contents: read
       security-events: write
@@ -272,12 +307,12 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: bridgecrewio/checkov-action@002cd2e8cc0fe0535e6f364509e091c1a9870efa # v12.3093.0
+      - uses: bridgecrewio/checkov-action@4048c972aae68d0b983a48bb3479aab2d877b898 # v12.3102.0
         with:
           directory: .
           framework: ${{ inputs.checkov_framework }}
@@ -286,7 +321,7 @@ jobs:
           output_file_path: console,checkov-results.sarif
       - name: Upload Checkov SARIF
         if: ${{ always() && github.event.repository.visibility == 'public' }}
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
         with:
           sarif_file: checkov-results.sarif
           category: checkov
@@ -295,6 +330,10 @@ jobs:
     if: ${{ inputs.enable_trivy }}
     name: IaC Scan (Trivy)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-security-trivy
+      cancel-in-progress: true
     permissions:
       contents: read
       security-events: write
@@ -320,13 +359,13 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Run Trivy (table)
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -335,7 +374,7 @@ jobs:
           severity: ${{ inputs.trivy_severity }}
       - name: Run Trivy (SARIF)
         if: always()
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -344,7 +383,7 @@ jobs:
           severity: ${{ inputs.trivy_severity }}
       - name: Upload Trivy SARIF
         if: ${{ always() && github.event.repository.visibility == 'public' }}
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
         with:
           sarif_file: trivy-results.sarif
           category: trivy

@@ -1,6 +1,6 @@
 # lint-renovate.yml
 
-Validation des fichiers de configuration Renovate via `renovate-config-validator`.
+Validation des fichiers de configuration Renovate via `renovate-config-validator --strict` : une config qui ne demande qu'une migration (option dépréciée) échoue aussi.
 
 ## Usage
 
@@ -15,7 +15,7 @@ jobs:
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
+| `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
 | `harden_runner_allowed_endpoints` | string | `(built-in)` | Allowed endpoints when block (space-separated) — extra endpoints merged with defaults |
 | `node_version` | string | `"24"` | Version de Node.js |
 | `config_files` | string | `""` | Glob pattern des fichiers à valider (défaut : `*.json *.json5` à la racine) |

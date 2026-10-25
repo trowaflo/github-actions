@@ -25,7 +25,7 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
 
   # ─── Self-CI (this repo only) ────────────────────────────────
   ci.yml               # Calls security.yml + lint.yml + lint-renovate.yml + sha-check
-  claude.yml           # Claude Code — restricted to repository_owner only
+  claude.yml           # Claude Code — content author must be OWNER/MEMBER/COLLABORATOR
   release-please.yml   # Creates tags and CHANGELOG on main push
 
   # ─── Test workflows (validate each reusable workflow) ────────
@@ -63,6 +63,7 @@ uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 ```
 
 Never use tags (`@v4`) or branch names (`@main`). Renovate handles SHA updates automatically.
+A container step is pinned by digest instead: `uses: docker://image:tag@sha256:<64 hex>`.
 The `ci.yml` sha-check job enforces this on every PR — it will fail if any unpinned `uses:` is found.
 
 ### Measuring billed minutes
@@ -94,11 +95,11 @@ Dependency updates are managed by Renovate using the shared config at `github>tr
 
 ### Harden Runner
 
-All reusable workflows enable [StepSecurity harden-runner](https://github.com/step-security/harden-runner) by default (`enable_harden_runner: true`). The default egress policy is `audit` — observe mode, no blocking. Switch to `block` once all endpoints are known.
+All reusable workflows enable [StepSecurity harden-runner](https://github.com/step-security/harden-runner) by default (`enable_harden_runner: true`). The default egress policy is `block` in every reusable workflow: outbound traffic outside the allowlist is cut, which is what stops a compromised action from exfiltrating the job token.
 
-Each workflow ships with a **built-in list of allowed endpoints** covering its own dependencies (pip, npm, Docker registries, etc.). These built-in defaults are **always applied**. Consumers can pass extra endpoints via `harden_runner_allowed_endpoints` — they are **merged** (union) with the built-in defaults, not replaced.
+Each job ships with a **built-in list of allowed endpoints** covering only what that job downloads (pip, npm, Docker registries, etc.). A host listed in a job is a host a compromised step of that job can reach, so do not copy a list from one job to another. These built-in defaults are **always applied**. Consumers can pass extra endpoints via `harden_runner_allowed_endpoints` — they are **merged** (union) with the built-in defaults, not replaced.
 
-To observe endpoints before enforcing, start with `audit`:
+To observe endpoints on a caller whose extra hosts are not known yet, pass `audit` temporarily:
 
 ```yaml
 with:
@@ -113,11 +114,15 @@ with:
     my-private-registry.example.com:443
 ```
 
+### Timeouts and concurrency
+
+Every job carries `timeout-minutes: 15`: the 6-hour default lets a hung job burn minutes for nothing. Top-level workflows set `concurrency` per `${{ github.workflow }}-${{ github.ref }}`. Reusable workflows set it per job, never at workflow level: there it would apply to the caller's run. Each job group appends `<file>-<job>` (and the matrix value where there is one) so it never equals the caller's group, which would deadlock. Jobs that push, publish or release use `cancel-in-progress: false`; `claude-code.yml` groups per issue or pull request, since every comment runs on the default branch.
+
 ### KICS
 
-KICS is available in `security.yml` via `enable_kics` (default: `true`). Note: `checkmarx/kics-github-action` was impacted by the TeamPCP supply chain attack (2026-03-23) — the current SHA is pinned to a pre-incident commit (`v2.1.20`, 2026-03-04).
+KICS is available in `security.yml` via `enable_kics` (default: `true`). It runs the `checkmarx/kics` image as a `docker://` step pinned by digest, not `checkmarx/kics-github-action`: that action builds `FROM checkmarx/kics:<tag>` at job setup, so its SHA pin never fixed the image, and the tag was repointed once after the TeamPCP supply chain attack (2026-03-23). The price is the action's PR comment and annotations; a job summary per severity and the SARIF upload remain. `test-security-barring.yml` uses the same digest and must move with it.
 
-A scanner bars, or it is decoration. `kics_fail_on` (default `high,medium,low`) lists the severities that fail the job. `info` is left non-blocking on a criterion, not on a volume: KICS `info` queries are operational hygiene (liveness probes, resource quotas), not security. Never pass `ignore_on_exit: results` alongside it: that flag forces the exit code to zero and silently disables `--fail-on`, which is what kept this scan green on a caller carrying 8 HIGH findings until 2026-09-12. `kics_fail_on: ""` restores the annotate-only behaviour for a caller that needs time.
+A scanner bars, or it is decoration. `kics_fail_on` (default `high,medium,low`) lists the severities that fail the job. `info` is left non-blocking on a criterion, not on a volume: KICS `info` queries are operational hygiene (liveness probes, resource quotas), not security. Never pass `ignore_on_exit: results` alongside it: that flag forces the exit code to zero and silently disables `--fail-on`, which is what kept this scan green on a caller carrying 8 HIGH findings until 2026-09-12. `kics_fail_on: ""` restores the non-blocking behaviour for a caller that needs time.
 
 A guard proven once by hand is not held. `test-security-barring.yml` asserts on every pull request that KICS exits non-zero on a HIGH fixture, that `kics_fail_on: ""` still keeps it green, and that the `full` pass finds a leak the event range misses. Its fixtures are built at runtime and never committed: a committed finding would keep this repository's own security jobs red for good, which is the state `security.yml` exists to remove. Note in that file that `gitleaks detect` silently ignores `--log-opts`, so the scoped assertion uses `gitleaks git`.
 
@@ -169,7 +174,7 @@ Security/lint workflows should trigger on `pull_request` only — **not** on `pu
 
 ## Inputs reference
 
-All inputs (including secrets) are documented inline in each workflow file — read the file directly for the full list. Shared across all workflows: `enable_harden_runner` (default: `true`), `harden_runner_egress_policy` (default: `"audit"`), `harden_runner_allowed_endpoints` (extra endpoints merged with built-in defaults).
+All inputs (including secrets) are documented inline in each workflow file — read the file directly for the full list. Shared across all workflows: `enable_harden_runner` (default: `true`), `harden_runner_egress_policy` (default: `"block"`), `harden_runner_allowed_endpoints` (extra endpoints merged with built-in defaults).
 
 Key files: `security.yml`, `lint.yml`, `lint-renovate.yml`, `ci-ha.yml`, `ci-python.yml`, `ci-helm.yml`, `ci-helm-cleanup.yml`, `ci-docker.yml`, `release.yml`, `release-helm.yml`, `claude-code.yml`
 

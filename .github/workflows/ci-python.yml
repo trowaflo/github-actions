@@ -41,7 +41,7 @@ on:
       harden_runner_egress_policy:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "audit"
+        default: "block"
       python_version:
         description: "Python version"
         type: string
@@ -62,6 +62,13 @@ jobs:
     if: ${{ inputs.enable_test }}
     name: Test Python
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Job-level, not workflow-level: in a called workflow, workflow-level concurrency
+    # applies to the caller's run. The file-job suffix keeps each group distinct from
+    # the caller's own `<workflow>-<ref>` group, so the two cannot deadlock.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-python-test
+      cancel-in-progress: true
     permissions:
       contents: read
     env:
@@ -90,7 +97,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -129,6 +136,10 @@ jobs:
     if: ${{ inputs.enable_lint }}
     name: Lint Python (ruff)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-python-lint
+      cancel-in-progress: true
     permissions:
       contents: read
     env:
@@ -147,7 +158,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -155,8 +166,16 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ inputs.python_version }}
+      # Hash-pinned wheel, wheels only: same rule and same regeneration as the yamllint
+      # job of lint.yml (see docs/lint.md). Inline because a called workflow only sees
+      # the caller's checkout.
       - name: Run ruff
         run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/ruff-requirements.txt" <<'EOF'
           # renovate: datasource=pypi depName=ruff
-          pip install ruff==0.15.9
+          ruff==0.15.9 \
+              --hash=sha256:2b0c7c341f68adb01c488c3b7d4b49aa8ea97409eae6462d860a79cf55f431b6
+          EOF
+          pip install --require-hashes --only-binary=:all: -r "$RUNNER_TEMP/ruff-requirements.txt"
           ruff check .

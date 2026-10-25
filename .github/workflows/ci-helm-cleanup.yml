@@ -26,7 +26,7 @@ on:
       harden_runner_egress_policy:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "audit"
+        default: "block"
       skip_event_check:
         description: "Skip event.action == closed check (for testing only)"
         type: boolean
@@ -43,6 +43,13 @@ jobs:
     if: ${{ inputs.skip_event_check || (github.event_name == 'pull_request' && github.event.action == 'closed') }}
     name: PR Chart Cleanup
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Job-level, not workflow-level: in a called workflow, workflow-level concurrency
+    # applies to the caller's run. Never cancelled: the job pushes to pr-charts and
+    # deletes GHCR versions, and a run cut in the middle leaves them half-reconciled.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-helm-cleanup
+      cancel-in-progress: false
     permissions:
       contents: write
       packages: write
@@ -63,7 +70,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}

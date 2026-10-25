@@ -23,7 +23,7 @@ jobs:
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
+| `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
 | `harden_runner_allowed_endpoints` | string | `(built-in)` | Allowed endpoints when block (space-separated) — extra endpoints merged with defaults |
 | `enable_actionlint` | boolean | `true` | Lint des fichiers workflow GitHub Actions |
 | `enable_markdown_lint` | boolean | `false` | Lint Markdown avec markdownlint-cli2 |
@@ -62,6 +62,20 @@ Valide la syntaxe de tous les fichiers `*.json` (via `json.load`) et `*.json5` (
 
 Créer un `.yamllint.yml` à la racine du repo pour surcharger la configuration par défaut.
 
+### Paquets Python épinglés par hash
+
+yamllint, json5 (ici) et ruff (`ci-python.yml`) s'installent avec `pip install --require-hashes --only-binary=:all:`, depuis un fichier de requirements écrit dans le job : un workflow appelé ne voit que le checkout du caller, jamais un fichier de ce dépôt. Chaque paquet, dépendances transitives comprises, porte le hash des wheels que le runner peut choisir (manylinux x86_64 ou `py3-none-any`, CPython 3.12 à 3.14).
+
+Renovate bumpe la version via l'annotation `# renovate:` ; les hashes, eux, ne suivent pas et l'installation échoue fermée tant qu'ils ne sont pas régénérés :
+
+```bash
+curl -s https://pypi.org/pypi/<paquet>/<version>/json | jq -r '.urls[]
+  | select(.filename | test("py3-none-any|cp31[2-4]-cp31[2-4]-manylinux.*x86_64|py3-none-manylinux.*x86_64"))
+  | "\(.digests.sha256) \(.filename)"'
+```
+
+Les dépendances transitives se listent avec `uv pip compile` sur `<paquet>==<version>`.
+
 ### shellcheck
 
 Analyse statique des scripts shell (bash/sh/zsh) via [`reviewdog/action-shellcheck`](https://github.com/reviewdog/action-shellcheck). Détecte les erreurs courantes et les problèmes de sécurité (variables non quotées, injections via `eval`, etc.).
@@ -78,4 +92,4 @@ Par défaut : indentation 2 espaces, `case` indenté (`-i 2 -ci`). Configurable 
 
 ### harden-runner
 
-[StepSecurity harden-runner](https://github.com/step-security/harden-runner) sécurise le réseau de chaque job. Par défaut, la politique egress est `audit` — le trafic sortant est observé sans blocage. Passer à `block` une fois les endpoints connus.
+[StepSecurity harden-runner](https://github.com/step-security/harden-runner) sécurise le réseau de chaque job. Par défaut, la politique egress est `block` : chaque job n'autorise que les endpoints qu'il télécharge lui-même. Un hôte propre au consumer s'ajoute via `harden_runner_allowed_endpoints` ; `audit` sert seulement à découvrir ces hôtes, jamais comme réglage durable.

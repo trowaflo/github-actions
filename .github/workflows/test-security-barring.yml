@@ -1,3 +1,6 @@
+# kics-scan disable=555ab8f9-2001-455e-a077-f2d0f41e2fb9
+# Même motif que security.yml : KICS lit docker://…@sha256 comme non épinglé,
+# et la garde sha-check de ci.yml tient l'épinglage de ce fichier.
 name: Test Security Barring
 
 # Couverture de non-régression des deux gardes de security.yml.
@@ -20,11 +23,13 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
-  # Mêmes endpoints que le job kics de security.yml, plus ceux du téléchargement gitleaks.
-  # Liste identique à celle du job kics de security.yml. `registry.npmjs.org` n'est
-  # pas optionnel : l'entrypoint de l'action KICS lance `npm ci` après le scan, et
-  # son absence fait échouer l'étape pour une raison qui n'a rien à voir avec KICS.
+  # Liste identique à celle du job kics de security.yml, qui couvre aussi le
+  # téléchargement gitleaks.
   _HARDEN_DEFAULTS: >-
     9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
     agent.api.stepsecurity.io:443
@@ -47,6 +52,7 @@ jobs:
   kics-contract:
     name: KICS barre sur HIGH, et reste vert si kics_fail_on est vide
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -78,21 +84,14 @@ jobs:
                   runAsNonRoot: false
           EOF
 
-      # Mêmes drapeaux que security.yml quand kics_fail_on vaut high,medium,low.
+      # Même image, au même digest, et mêmes drapeaux que security.yml quand
+      # kics_fail_on vaut high,medium,low.
       - name: KICS doit sortir en code non nul
         id: barring
         continue-on-error: true
-        uses: checkmarx/kics-github-action@05aa5eb70eede1355220f4ca5238d96b397e30a6 # v2.1.20
+        uses: docker://checkmarx/kics:v2.1.20@sha256:3e5a268eb8adda2e5a483c9359ddfc4cd520ab856a7076dc0b1d8784a37e2602
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          path: .kics-negative
-          ignore_on_exit: none
-          fail_on: high,medium,low
-          enable_annotations: false
-          enable_comments: false
-          enable_jobs_summary: false
-          output_path: ./kics-negative-results
-          output_formats: json
+          args: scan --no-progress -p .kics-negative -o kics-negative-results --report-formats json --fail-on high,medium,low
 
       # Deux assertions, pas une. L'issue de l'étape seule ne suffit pas : une étape
       # peut échouer pour une raison étrangère à KICS, et le test passerait alors
@@ -133,17 +132,9 @@ jobs:
       - name: KICS doit rester vert avec kics_fail_on vide
         id: permissive
         continue-on-error: true
-        uses: checkmarx/kics-github-action@05aa5eb70eede1355220f4ca5238d96b397e30a6 # v2.1.20
+        uses: docker://checkmarx/kics:v2.1.20@sha256:3e5a268eb8adda2e5a483c9359ddfc4cd520ab856a7076dc0b1d8784a37e2602
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          path: .kics-negative
-          ignore_on_exit: results
-          fail_on: ""
-          enable_annotations: false
-          enable_comments: false
-          enable_jobs_summary: false
-          output_path: ./kics-permissive-results
-          output_formats: json
+          args: scan --no-progress -p .kics-negative -o kics-permissive-results --report-formats json --ignore-on-exit results
 
       - name: Vérifier le chemin de compatibilité, et qu'il a bien scanné
         env:
@@ -179,6 +170,7 @@ jobs:
   gitleaks-scope-contract:
     name: La passe full voit au-delà de la plage de l'event
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -196,6 +188,8 @@ jobs:
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # renovate: datasource=github-releases depName=gitleaks/gitleaks
+          GITLEAKS_VERSION: "8.24.3"
 
       - name: Construire un dépôt jetable dont la fuite est hors plage
         run: |

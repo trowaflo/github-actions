@@ -43,7 +43,7 @@ jobs:
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` or `block` |
+| `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` or `block` |
 | `harden_runner_allowed_endpoints` | string | (built-in) | Extra endpoints merged with defaults |
 | `enable_lint` | boolean | `false` | Lint avec `ct lint` |
 | `enable_unittest` | boolean | `false` | Unit tests avec helm-unittest |
@@ -91,7 +91,7 @@ jobs:
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` or `block` |
+| `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` or `block` |
 | `harden_runner_allowed_endpoints` | string | (built-in) | Extra endpoints merged with defaults |
 | `enable_release` | boolean | `false` | Release via chart-releaser |
 | `enable_oci_release` | boolean | `false` | Publie aussi les charts releasés sur GHCR OCI (`oci://ghcr.io/<owner>/<repo>/<chart>:<version>`). Mirror du pattern `enable_oci_pr_charts` côté `ci-helm.yml`. |
@@ -133,7 +133,7 @@ jobs:
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` or `block` |
+| `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` or `block` |
 | `harden_runner_allowed_endpoints` | string | (built-in) | Extra endpoints merged with defaults |
 | `enable_oci_cleanup` | boolean | `false` | Supprime aussi les versions OCI taguées `*-pr<N>` sur GHCR pour les PRs closed |
 
