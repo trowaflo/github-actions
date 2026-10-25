@@ -113,6 +113,10 @@ with:
     my-private-registry.example.com:443
 ```
 
+### Timeouts and concurrency
+
+Every job carries `timeout-minutes: 15`: the 6-hour default lets a hung job burn minutes for nothing. Top-level workflows set `concurrency` per `${{ github.workflow }}-${{ github.ref }}`. Reusable workflows set it per job, never at workflow level: there it would apply to the caller's run. Each job group appends `<file>-<job>` (and the matrix value where there is one) so it never equals the caller's group, which would deadlock. Jobs that push, publish or release use `cancel-in-progress: false`; `claude-code.yml` groups per issue or pull request, since every comment runs on the default branch.
+
 ### KICS
 
 KICS is available in `security.yml` via `enable_kics` (default: `true`). Note: `checkmarx/kics-github-action` was impacted by the TeamPCP supply chain attack (2026-03-23) — the current SHA is pinned to a pre-incident commit (`v2.1.20`, 2026-03-04).

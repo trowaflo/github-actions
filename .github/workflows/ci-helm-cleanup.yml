@@ -43,6 +43,13 @@ jobs:
     if: ${{ inputs.skip_event_check || (github.event_name == 'pull_request' && github.event.action == 'closed') }}
     name: PR Chart Cleanup
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Job-level, not workflow-level: in a called workflow, workflow-level concurrency
+    # applies to the caller's run. Never cancelled: the job pushes to pr-charts and
+    # deletes GHCR versions, and a run cut in the middle leaves them half-reconciled.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-helm-cleanup
+      cancel-in-progress: false
     permissions:
       contents: write
       packages: write

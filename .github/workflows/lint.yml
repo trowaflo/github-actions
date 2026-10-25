@@ -61,6 +61,13 @@ jobs:
     if: ${{ inputs.enable_actionlint }}
     name: Lint Workflows
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Job-level, not workflow-level: in a called workflow, workflow-level concurrency
+    # applies to the caller's run. The file-job suffix keeps each group distinct from
+    # the caller's own `<workflow>-<ref>` group, so the two cannot deadlock.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-lint-actionlint
+      cancel-in-progress: true
     permissions:
       contents: read
       security-events: write
@@ -118,6 +125,10 @@ jobs:
     if: ${{ inputs.enable_markdown_lint }}
     name: Lint Markdown
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-lint-markdown-lint
+      cancel-in-progress: true
     permissions:
       contents: read
     env:
@@ -145,6 +156,10 @@ jobs:
     if: ${{ inputs.enable_yamllint }}
     name: Lint YAML
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-lint-yamllint
+      cancel-in-progress: true
     permissions:
       contents: read
     env:
@@ -174,6 +189,10 @@ jobs:
     if: ${{ inputs.enable_ansible_lint }}
     name: Lint Ansible
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-lint-ansible-lint
+      cancel-in-progress: true
     permissions:
       contents: read
     env:
@@ -203,6 +222,10 @@ jobs:
     if: ${{ inputs.enable_terraform_validate }}
     name: Validate Terraform
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-lint-terraform-validate
+      cancel-in-progress: true
     permissions:
       contents: read
     env:
@@ -236,6 +259,10 @@ jobs:
     if: ${{ inputs.enable_json_lint }}
     name: Lint JSON
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-lint-json-lint
+      cancel-in-progress: true
     permissions:
       contents: read
     env:
@@ -280,6 +307,10 @@ jobs:
     if: ${{ inputs.enable_shellcheck }}
     name: Lint Shell (shellcheck)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-lint-shellcheck
+      cancel-in-progress: true
     permissions:
       contents: read
       pull-requests: write
@@ -312,6 +343,10 @@ jobs:
     if: ${{ inputs.enable_shfmt }}
     name: Format Shell (shfmt)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-lint-shfmt
+      cancel-in-progress: true
     permissions:
       contents: read
       pull-requests: write

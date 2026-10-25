@@ -74,6 +74,15 @@ jobs:
     if: ${{ inputs.enable_lint }}
     name: Helm Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Job-level, not workflow-level: in a called workflow, workflow-level concurrency
+    # applies to the caller's run. The file-job suffix keeps each group distinct from
+    # the caller's own `<workflow>-<ref>` group, so the two cannot deadlock.
+    # Jobs that push (bump, docs, pr-charts) never cancel in progress: a push cut in
+    # the middle leaves a half-published chart or a branch the next run must repair.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-helm-lint
+      cancel-in-progress: true
     permissions:
       contents: read
     env:
@@ -142,6 +151,10 @@ jobs:
     if: ${{ inputs.enable_unittest }}
     name: Detect Test Charts
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-helm-unittest-matrix
+      cancel-in-progress: true
     permissions:
       contents: read
     outputs:
@@ -188,6 +201,12 @@ jobs:
     needs: helm-unittest-matrix
     name: "Test: ${{ matrix.chart }}"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The chart is part of the group: without it, the matrix legs would share one
+    # group and cancel each other.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-helm-unittest-${{ matrix.chart }}
+      cancel-in-progress: true
     permissions:
       contents: read
       checks: write
@@ -265,6 +284,10 @@ jobs:
           (needs.helm-unittest.result == 'success' || needs.helm-unittest.result == 'skipped') }}
     name: Helm Version Bump
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-helm-bump
+      cancel-in-progress: false
     permissions:
       contents: write
     env:
@@ -378,6 +401,10 @@ jobs:
           (needs.helm-bump.result == 'success' || needs.helm-bump.result == 'skipped') }}
     name: Helm Docs
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-helm-docs
+      cancel-in-progress: false
     permissions:
       contents: write
     env:
@@ -441,6 +468,10 @@ jobs:
           (needs.helm-docs.result == 'success' || needs.helm-docs.result == 'skipped') }}
     name: Helm Docs Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-helm-docs-check
+      cancel-in-progress: true
     permissions:
       contents: read
     env:
@@ -505,6 +536,10 @@ jobs:
           (needs.helm-bump.result == 'success' || needs.helm-bump.result == 'skipped') }}
     name: PR Chart Packages
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-helm-pr-charts
+      cancel-in-progress: false
     permissions:
       contents: write
       packages: write

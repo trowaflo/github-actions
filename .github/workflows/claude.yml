@@ -20,6 +20,10 @@ on:
 
 permissions: {}
 
+# No workflow-level concurrency here: every comment of the repository runs on the
+# default branch, so a per-ref group would let an unrelated comment cancel a pending
+# @claude request. claude-code.yml groups its jobs per issue or pull request instead.
+
 jobs:
   claude:
     # L'ordre compte : sur issue_comment, github.event.issue désigne l'issue et

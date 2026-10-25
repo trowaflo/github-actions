@@ -20,6 +20,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   # Mêmes endpoints que le job kics de security.yml, plus ceux du téléchargement gitleaks.
   # Liste identique à celle du job kics de security.yml. `registry.npmjs.org` n'est
@@ -47,6 +51,7 @@ jobs:
   kics-contract:
     name: KICS barre sur HIGH, et reste vert si kics_fail_on est vide
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -179,6 +184,7 @@ jobs:
   gitleaks-scope-contract:
     name: La passe full voit au-delà de la plage de l'event
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:

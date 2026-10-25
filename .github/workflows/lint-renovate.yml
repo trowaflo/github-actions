@@ -33,6 +33,13 @@ jobs:
   validate:
     name: Renovate Config Validator
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Job-level, not workflow-level: in a called workflow, workflow-level concurrency
+    # applies to the caller's run. The file-job suffix keeps the group distinct from
+    # the caller's own `<workflow>-<ref>` group, so the two cannot deadlock.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-lint-renovate-validate
+      cancel-in-progress: true
     permissions:
       contents: read
     env:

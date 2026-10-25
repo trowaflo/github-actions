@@ -54,6 +54,15 @@ jobs:
   docker:
     name: Docker Build → Scan → Publish
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Job-level, not workflow-level: in a called workflow, workflow-level concurrency
+    # applies to the caller's run. The file-job suffix keeps the group distinct from
+    # the caller's own `<workflow>-<ref>` group, so the two cannot deadlock.
+    # Cancels only on pull_request: outside it the job publishes the final image, and
+    # a publish cut in the middle leaves a partial set of tags.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-docker-docker
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     permissions:
       contents: read
       packages: write
