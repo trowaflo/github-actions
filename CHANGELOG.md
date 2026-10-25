@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.0.1](https://github.com/trowaflo/github-actions/compare/v4.0.0...v4.0.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* hardened reusable workflows ([#78](https://github.com/trowaflo/github-actions/issues/78)) ([8157f67](https://github.com/trowaflo/github-actions/commit/8157f67137544823380d2588e88527529b812127))
+* **test-security:** make the leak fixture deterministic ([#76](https://github.com/trowaflo/github-actions/issues/76)) ([9a199a2](https://github.com/trowaflo/github-actions/commit/9a199a220bd37a284577f77ec5b673e3b45238da))
+
 ## [4.0.0](https://github.com/trowaflo/github-actions/compare/v3.0.0...v4.0.0) (2026-09-13)
 
 
