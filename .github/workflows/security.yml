@@ -208,6 +208,8 @@ jobs:
       # zero whatever --fail-on says, which is what made this scan decoration. Empty
       # kics_fail_on restores that path; any other value bars on the listed severities.
       - name: Run KICS Scan
+        # KICS reads any docker:// reference as an unpinned action, digest or not.
+        # kics-scan ignore-line
         uses: docker://checkmarx/kics:v2.1.20@sha256:3e5a268eb8adda2e5a483c9359ddfc4cd520ab856a7076dc0b1d8784a37e2602
         with:
           args: >-
