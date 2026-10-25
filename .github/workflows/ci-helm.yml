@@ -237,11 +237,6 @@ jobs:
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
-      - name: Cache Helm plugins
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.local/share/helm/plugins
-          key: helm-unittest-${{ runner.os }}
       - name: Cache Helm dependencies
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -251,9 +246,13 @@ jobs:
           key: helm-deps-${{ matrix.chart }}-${{ hashFiles(format('{0}/Chart.yaml', matrix.chart)) }}
           restore-keys: |
             helm-deps-${{ matrix.chart }}-
+      # Pinned by commit, not by tag: the plugin is a git checkout of --version, and a
+      # tag can be moved. No plugin cache: a restored plugin skipped the install, so
+      # the pin would not have been what ran. --verify=false stays because Helm 4
+      # refuses provenance verification for a git source; the commit pin replaces it.
       - name: Install helm-unittest plugin
-        # renovate: datasource=github-releases depName=helm-unittest/helm-unittest
-        run: helm plugin list | grep -q unittest || helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.0.3 --verify=false
+        # renovate: datasource=github-tags depName=helm-unittest/helm-unittest
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 6f82a998e0b5461762ca959f87f5dd344af5e4eb --verify=false # v1.0.3
       - name: Build Helm dependencies
         run: helm dependency update "${{ matrix.chart }}"
       - name: Run Helm unit tests
