@@ -118,7 +118,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -177,7 +177,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -231,7 +231,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -306,7 +306,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -423,7 +423,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -490,7 +490,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -561,7 +561,7 @@ jobs:
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
@@ -655,7 +655,7 @@ jobs:
           echo "packaged=$packaged_charts" >> "$GITHUB_OUTPUT"
       - name: Upload artifacts
         if: steps.package.outputs.packaged != ''
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: helm-charts-pr-${{ github.event.pull_request.number }}
           path: /tmp/pr-artifacts/*.tgz
