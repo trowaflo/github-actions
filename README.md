@@ -66,7 +66,7 @@ jobs:
 - All `uses:` are SHA-pinned — never tags (`@v4`) or branches (`@main`)
 - `ci.yml` enforces this with a `sha-check` job on every PR
 - **KICS**, **Trivy**, **Checkov**, and **actionlint** upload results in SARIF format to **Security > Code scanning** — inline annotations on PRs
-- `enable_harden_runner` available on all workflows (default: `true`, egress `audit`) — [StepSecurity harden-runner](https://github.com/step-security/harden-runner). Switch to `block` once endpoints are known
+- `enable_harden_runner` available on all workflows (default: `true`, egress `block`) — [StepSecurity harden-runner](https://github.com/step-security/harden-runner). Each job allows only the endpoints it downloads from; add yours with `harden_runner_allowed_endpoints`, or pass `audit` while you discover them
 - KICS in `security.yml` via `enable_kics` (default: `true`) — ⚠ TeamPCP supply chain attack (2026-03-23), SHA pinned to pre-incident commit
 - Trivy IaC scanning in `security.yml` via `enable_trivy` (default: `false`); container scanning in `ci-docker.yml`
 - Claude Code (`claude-code.yml`) — **requires access control on public repos**, restrict to `github.repository_owner` (see [docs](docs/claude-code.md))

@@ -33,7 +33,7 @@ jobs:
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
+| `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
 | `harden_runner_allowed_endpoints` | string | `(built-in)` | Allowed endpoints when block (space-separated) — extra endpoints merged with defaults |
 | `enable_trivy` | boolean | `false` | CVE scan via Trivy (aquasecurity) |
 | `registry` | string | `"ghcr.io"` | Registre Docker cible |
@@ -62,11 +62,10 @@ Pour pousser vers `ghcr.io`, aucun secret nécessaire si le repo est dans la mê
 
 ### Harden-runner en mode `block`
 
-En mode `block`, seuls les endpoints explicitement autorisés sont accessibles. Le workflow embarque des endpoints par défaut (GitHub API, Docker Hub, Trivy, ghcr.io…), mais **les endpoints spécifiques à l'image buildée ne sont pas inclus**. Si le Dockerfile installe des paquets (ex. `apk update`, `apt-get update`), il faut autoriser les CDN correspondants :
+`block` est le mode par défaut : seuls les endpoints explicitement autorisés sont accessibles. Le workflow embarque des endpoints par défaut (GitHub API, Docker Hub, Trivy, ghcr.io…), mais **les endpoints spécifiques à l'image buildée ne sont pas inclus**. Si le Dockerfile installe des paquets (ex. `apk update`, `apt-get update`), il faut autoriser les CDN correspondants :
 
 ```yaml
 with:
-  harden_runner_egress_policy: block
   harden_runner_allowed_endpoints: >
     dl-cdn.alpinelinux.org:443
 ```

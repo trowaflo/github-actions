@@ -23,7 +23,7 @@ jobs:
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enable_harden_runner` | boolean | `true` | Runtime security via StepSecurity harden-runner |
-| `harden_runner_egress_policy` | string | `"audit"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
+| `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
 | `harden_runner_allowed_endpoints` | string | `(built-in)` | Allowed endpoints when block (space-separated) — extra endpoints merged with defaults |
 | `enable_actionlint` | boolean | `true` | Lint des fichiers workflow GitHub Actions |
 | `enable_markdown_lint` | boolean | `false` | Lint Markdown avec markdownlint-cli2 |
@@ -78,4 +78,4 @@ Par défaut : indentation 2 espaces, `case` indenté (`-i 2 -ci`). Configurable 
 
 ### harden-runner
 
-[StepSecurity harden-runner](https://github.com/step-security/harden-runner) sécurise le réseau de chaque job. Par défaut, la politique egress est `audit` — le trafic sortant est observé sans blocage. Passer à `block` une fois les endpoints connus.
+[StepSecurity harden-runner](https://github.com/step-security/harden-runner) sécurise le réseau de chaque job. Par défaut, la politique egress est `block` : chaque job n'autorise que les endpoints qu'il télécharge lui-même. Un hôte propre au consumer s'ajoute via `harden_runner_allowed_endpoints` ; `audit` sert seulement à découvrir ces hôtes, jamais comme réglage durable.

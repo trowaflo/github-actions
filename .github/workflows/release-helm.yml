@@ -34,7 +34,7 @@ on:
       harden_runner_egress_policy:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "audit"
+        default: "block"
       release_charts_dirs:
         description: "Space-separated ordered chart directories to release (max 2, e.g., 'charts/library charts/apps'). Defaults to 'charts'."
         type: string

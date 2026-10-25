@@ -22,7 +22,7 @@ on:
       harden_runner_egress_policy:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "audit"
+        default: "block"
       node_version:
         description: "Node.js version for renovate-config-validator"
         type: string

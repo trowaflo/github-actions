@@ -28,7 +28,7 @@ on:
       harden_runner_egress_policy:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "audit"
+        default: "block"
     secrets:
       claude_code_oauth_token:
         description: "Claude Code OAuth token"
@@ -51,16 +51,24 @@ jobs:
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
     env:
-      # Built-in harden-runner allowed endpoints:
+      # Built-in harden-runner allowed endpoints, read from the action source:
       #   agent.api.stepsecurity.io:443 — harden-runner agent
-      #   api.anthropic.com:443 — Claude API (claude-code-action)
+      #   api.anthropic.com:443 — Claude API, OIDC token exchange (claude-code-action)
       #   api.github.com:443 — GitHub API (PR comments, code review)
-      #   github.com:443 — git clone, actions checkout
+      #   claude.ai:443 — Claude Code installer (curl https://claude.ai/install.sh)
+      #   downloads.claude.ai:443 — Claude Code binary fetched by that installer
+      #   github.com:443 — git clone, actions checkout, plugin marketplace, Bun release
+      #   registry.npmjs.org:443 — `bun install --production` of the action dependencies
+      #   release-assets.githubusercontent.com:443 — Bun release asset (redirect target)
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
-        github.com:443
-        api.github.com:443
         api.anthropic.com:443
+        api.github.com:443
+        claude.ai:443
+        downloads.claude.ai:443
+        github.com:443
+        registry.npmjs.org:443
+        release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -96,9 +104,13 @@ jobs:
       # Built-in endpoints — see first job above
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
-        github.com:443
-        api.github.com:443
         api.anthropic.com:443
+        api.github.com:443
+        claude.ai:443
+        downloads.claude.ai:443
+        github.com:443
+        registry.npmjs.org:443
+        release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}

@@ -26,7 +26,7 @@ on:
       harden_runner_egress_policy:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
-        default: "audit"
+        default: "block"
       skip_event_check:
         description: "Skip event.action == closed check (for testing only)"
         type: boolean

@@ -94,11 +94,11 @@ Dependency updates are managed by Renovate using the shared config at `github>tr
 
 ### Harden Runner
 
-All reusable workflows enable [StepSecurity harden-runner](https://github.com/step-security/harden-runner) by default (`enable_harden_runner: true`). The default egress policy is `audit` — observe mode, no blocking. Switch to `block` once all endpoints are known.
+All reusable workflows enable [StepSecurity harden-runner](https://github.com/step-security/harden-runner) by default (`enable_harden_runner: true`). The default egress policy is `block` in every reusable workflow: outbound traffic outside the allowlist is cut, which is what stops a compromised action from exfiltrating the job token.
 
-Each workflow ships with a **built-in list of allowed endpoints** covering its own dependencies (pip, npm, Docker registries, etc.). These built-in defaults are **always applied**. Consumers can pass extra endpoints via `harden_runner_allowed_endpoints` — they are **merged** (union) with the built-in defaults, not replaced.
+Each job ships with a **built-in list of allowed endpoints** covering only what that job downloads (pip, npm, Docker registries, etc.). A host listed in a job is a host a compromised step of that job can reach, so do not copy a list from one job to another. These built-in defaults are **always applied**. Consumers can pass extra endpoints via `harden_runner_allowed_endpoints` — they are **merged** (union) with the built-in defaults, not replaced.
 
-To observe endpoints before enforcing, start with `audit`:
+To observe endpoints on a caller whose extra hosts are not known yet, pass `audit` temporarily:
 
 ```yaml
 with:
@@ -169,7 +169,7 @@ Security/lint workflows should trigger on `pull_request` only — **not** on `pu
 
 ## Inputs reference
 
-All inputs (including secrets) are documented inline in each workflow file — read the file directly for the full list. Shared across all workflows: `enable_harden_runner` (default: `true`), `harden_runner_egress_policy` (default: `"audit"`), `harden_runner_allowed_endpoints` (extra endpoints merged with built-in defaults).
+All inputs (including secrets) are documented inline in each workflow file — read the file directly for the full list. Shared across all workflows: `enable_harden_runner` (default: `true`), `harden_runner_egress_policy` (default: `"block"`), `harden_runner_allowed_endpoints` (extra endpoints merged with built-in defaults).
 
 Key files: `security.yml`, `lint.yml`, `lint-renovate.yml`, `ci-ha.yml`, `ci-python.yml`, `ci-helm.yml`, `ci-helm-cleanup.yml`, `ci-docker.yml`, `release.yml`, `release-helm.yml`, `claude-code.yml`
 
