@@ -1,3 +1,7 @@
+# kics-scan disable=555ab8f9-2001-455e-a077-f2d0f41e2fb9
+# KICS reads any docker:// reference as an unpinned action, digest included, and
+# ignore-line does not reach that query. The sha-check job of ci.yml still
+# enforces pinning on this file.
 name: Security
 
 # Reusable workflow — Secret scanning + IaC security scanning
@@ -208,8 +212,6 @@ jobs:
       # zero whatever --fail-on says, which is what made this scan decoration. Empty
       # kics_fail_on restores that path; any other value bars on the listed severities.
       - name: Run KICS Scan
-        # KICS reads any docker:// reference as an unpinned action, digest or not.
-        # kics-scan ignore-line
         uses: docker://checkmarx/kics:v2.1.20@sha256:3e5a268eb8adda2e5a483c9359ddfc4cd520ab856a7076dc0b1d8784a37e2602
         with:
           args: >-

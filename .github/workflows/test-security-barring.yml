@@ -1,3 +1,6 @@
+# kics-scan disable=555ab8f9-2001-455e-a077-f2d0f41e2fb9
+# Même motif que security.yml : KICS lit docker://…@sha256 comme non épinglé,
+# et la garde sha-check de ci.yml tient l'épinglage de ce fichier.
 name: Test Security Barring
 
 # Couverture de non-régression des deux gardes de security.yml.
@@ -86,8 +89,6 @@ jobs:
       - name: KICS doit sortir en code non nul
         id: barring
         continue-on-error: true
-        # KICS lit toute référence docker:// comme une action non épinglée, digest ou non.
-        # kics-scan ignore-line
         uses: docker://checkmarx/kics:v2.1.20@sha256:3e5a268eb8adda2e5a483c9359ddfc4cd520ab856a7076dc0b1d8784a37e2602
         with:
           args: scan --no-progress -p .kics-negative -o kics-negative-results --report-formats json --fail-on high,medium,low
@@ -131,7 +132,6 @@ jobs:
       - name: KICS doit rester vert avec kics_fail_on vide
         id: permissive
         continue-on-error: true
-        # kics-scan ignore-line
         uses: docker://checkmarx/kics:v2.1.20@sha256:3e5a268eb8adda2e5a483c9359ddfc4cd520ab856a7076dc0b1d8784a37e2602
         with:
           args: scan --no-progress -p .kics-negative -o kics-permissive-results --report-formats json --ignore-on-exit results
