@@ -63,6 +63,7 @@ uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 ```
 
 Never use tags (`@v4`) or branch names (`@main`). Renovate handles SHA updates automatically.
+A container step is pinned by digest instead: `uses: docker://image:tag@sha256:<64 hex>`.
 The `ci.yml` sha-check job enforces this on every PR — it will fail if any unpinned `uses:` is found.
 
 ### Measuring billed minutes
@@ -119,9 +120,9 @@ Every job carries `timeout-minutes: 15`: the 6-hour default lets a hung job burn
 
 ### KICS
 
-KICS is available in `security.yml` via `enable_kics` (default: `true`). Note: `checkmarx/kics-github-action` was impacted by the TeamPCP supply chain attack (2026-03-23) — the current SHA is pinned to a pre-incident commit (`v2.1.20`, 2026-03-04).
+KICS is available in `security.yml` via `enable_kics` (default: `true`). It runs the `checkmarx/kics` image as a `docker://` step pinned by digest, not `checkmarx/kics-github-action`: that action builds `FROM checkmarx/kics:<tag>` at job setup, so its SHA pin never fixed the image, and the tag was repointed once after the TeamPCP supply chain attack (2026-03-23). The price is the action's PR comment and annotations; a job summary per severity and the SARIF upload remain. `test-security-barring.yml` uses the same digest and must move with it.
 
-A scanner bars, or it is decoration. `kics_fail_on` (default `high,medium,low`) lists the severities that fail the job. `info` is left non-blocking on a criterion, not on a volume: KICS `info` queries are operational hygiene (liveness probes, resource quotas), not security. Never pass `ignore_on_exit: results` alongside it: that flag forces the exit code to zero and silently disables `--fail-on`, which is what kept this scan green on a caller carrying 8 HIGH findings until 2026-09-12. `kics_fail_on: ""` restores the annotate-only behaviour for a caller that needs time.
+A scanner bars, or it is decoration. `kics_fail_on` (default `high,medium,low`) lists the severities that fail the job. `info` is left non-blocking on a criterion, not on a volume: KICS `info` queries are operational hygiene (liveness probes, resource quotas), not security. Never pass `ignore_on_exit: results` alongside it: that flag forces the exit code to zero and silently disables `--fail-on`, which is what kept this scan green on a caller carrying 8 HIGH findings until 2026-09-12. `kics_fail_on: ""` restores the non-blocking behaviour for a caller that needs time.
 
 A guard proven once by hand is not held. `test-security-barring.yml` asserts on every pull request that KICS exits non-zero on a HIGH fixture, that `kics_fail_on: ""` still keeps it green, and that the `full` pass finds a leak the event range misses. Its fixtures are built at runtime and never committed: a committed finding would keep this repository's own security jobs red for good, which is the state `security.yml` exists to remove. Note in that file that `gitleaks detect` silently ignores `--log-opts`, so the scoped assertion uses `gitleaks git`.
 

@@ -10,7 +10,7 @@ jobs:
     uses: trowaflo/github-actions/.github/workflows/security.yml@<sha> # vX.Y.Z
     permissions:
       contents: read
-      pull-requests: write     # gitleaks annotations, dependency-review, KICS comments
+      pull-requests: write     # gitleaks annotations, dependency-review
       security-events: write   # SARIF uploads (kics, trivy, checkov)
     with:
       enable_dependency_review: true   # opt-in sur les PRs
@@ -25,7 +25,7 @@ jobs:
 | `harden_runner_egress_policy` | string | `"block"` | Egress policy: `audit` (observe) or `block` (enforce allowlist) |
 | `harden_runner_allowed_endpoints` | string | `(built-in)` | Allowed endpoints when block (space-separated) — extra endpoints merged with defaults |
 | `enable_gitleaks` | boolean | `true` | Secret scanning avec gitleaks |
-| `enable_kics` | boolean | `true` | Scan IaC avec KICS (SHA `05aa5eb` = v2.1.20, release officielle vérifiée post-TeamPCP) |
+| `enable_kics` | boolean | `true` | Scan IaC avec KICS (image `checkmarx/kics:v2.1.20` épinglée par digest) |
 | `enable_dependency_review` | boolean | `false` | Revue CVE sur PR — **nécessite event `pull_request`** |
 | `enable_checkov` | boolean | `false` | Scan IaC misconfigurations avec Checkov |
 | `enable_trivy` | boolean | `false` | Scan IaC/filesystem avec Trivy |
@@ -39,7 +39,7 @@ jobs:
 | Permission | Jobs qui l'utilisent |
 | --- | --- |
 | `contents: read` | Tous les jobs (checkout) |
-| `pull-requests: write` | gitleaks (annotations), dependency-review, KICS (commentaires) |
+| `pull-requests: write` | gitleaks (annotations), dependency-review |
 | `security-events: write` | KICS, checkov, trivy (upload SARIF) |
 
 ## Secrets
@@ -52,19 +52,21 @@ Aucun — utilise `GITHUB_TOKEN` implicitement.
 
 KICS est disponible via `enable_kics: true` (défaut).
 
-**Depuis le 2026-09-12, le job barre.** `kics_fail_on` liste les sévérités qui font sortir KICS en code non nul, que l'action transforme en `core.setFailed()`. Le défaut est `high,medium,low`. `info` reste remonté en annotations, commentaire de PR et job summary, sans bloquer.
+**Le job barre.** `kics_fail_on` liste les sévérités qui font sortir KICS en code non nul, et le job passe au rouge. Le défaut est `high,medium,low`. `info` reste remonté dans les logs, le job summary et le SARIF, sans bloquer.
+
+**L'image tourne épinglée par digest.** Le job lance `docker://checkmarx/kics:v2.1.20@sha256:3e5a268e…` et non plus `checkmarx/kics-github-action` : cette action construit son image au démarrage du job depuis `FROM checkmarx/kics:v2.1.20`, un tag mutable déjà repointé une fois (2026-04-22), donc son pin SHA ne figeait jamais ce qui s'exécute. Le digest est celui de l'index du tag, lu sur le registre ; son manifeste `linux/amd64` (`sha256:643071cf…`) a été construit le 2026-03-03 depuis `Checkmarx/kics@e1f23cad`, le commit du tag v2.1.20. Contrepartie : plus de commentaire de PR ni d'annotations produites par l'action. Restent les logs, un job summary par sévérité et, sur un repo public, le SARIF dans Code Scanning.
 
 Le partage se fait sur un critère, pas sur un volume. Les findings `low` mesurés sur les appelants sont des points de durcissement : `Image Without Digest`, `Secrets As Environment Variables`, `No Drop Capabilities for Containers`, `Root Container Not Mounted Read-only`, `Missing AppArmor Profile`. Les findings `info` sont de l'hygiène d'exploitation : `Liveness Probe Is Not Defined`, `Pod or Container Without LimitRange`, `Ensure Administrative Boundaries Between Resources`. Une sonde de vie manquante n'a pas sa place dans une barrière de sécurité.
 
 Chiffres du 2026-09-12 sur les appelants lisibles : 13 findings `low` et 4 `info`, répartis sur trois dépôts qui sont **déjà** rouges en `high` ou `medium`. Barrer sur `low` ne met donc aucun appelant supplémentaire au rouge aujourd'hui.
 
-Avant cette date le workflow passait `ignore_on_exit: results`, qui force le code de sortie à zéro quelles que soient les trouvailles. Le job restait vert avec 15 findings dont 8 HIGH (mesuré sur `argocd`, run 34169168650). Les deux drapeaux sont exclusifs : `--ignore-on-exit results` écrase `--fail-on`.
+Avant le 2026-09-12, le workflow passait `ignore_on_exit: results`, qui force le code de sortie à zéro quelles que soient les trouvailles. Le job restait vert avec 15 findings dont 8 HIGH (mesuré sur `argocd`, run 34169168650). Les deux drapeaux sont exclusifs : `--ignore-on-exit results` écrase `--fail-on`.
 
 Pour restaurer l'ancien comportement, sans blocage :
 
 ```yaml
 with:
-  kics_fail_on: ""     # annote, commente, résume, ne bloque jamais
+  kics_fail_on: ""     # résume, ne bloque jamais
 ```
 
 Pour ne bloquer que sur HIGH :
@@ -76,7 +78,7 @@ with:
 
 Sur un repo privé, l'upload SARIF est sauté (Code Scanning demande GHAS, payant). Le code de sortie est donc le **seul** signal bloquant : sans `kics_fail_on`, un repo privé n'a aucune application de ses findings IaC.
 
-> ⚠ `checkmarx/kics-github-action` a été compromis lors de l'attaque supply chain TeamPCP (2026-03-23). Le SHA actuel est pinné sur un commit pré-incident (`v2.1.20`, 2026-03-04). Le SHA pinning protège contre le tag hijack.
+> ⚠ `checkmarx/kics-github-action` a été compromis lors de l'attaque supply chain TeamPCP (2026-03-23). Le workflow ne l'utilise plus : il exécute l'image KICS directement, par digest.
 
 ### gitleaks, portée du scan
 
@@ -92,7 +94,7 @@ Le piège est sur `pull_request` : l'action appelle `GET /repos/{owner}/{repo}/p
 
 Mesuré le 2026-09-12 sur `portfolio-sync` : la PR #2 porte 44 commits, l'endpoint en rend 30 ; la PR #1 en porte 40, il en rend 30. Une PR de 21 commits, elle, est bien scannée en entier (run 34571455867, `21 commits scanned`).
 
-`gitleaks_scan_mode: full` ajoute une seconde passe sans aucune plage, qui lit tout l'historique. C'est la seule portée qui couvre une PR longue, et la seule qui voie l'historique antérieur à l'adoption de ce workflow. Elle n'installe rien : l'action pose son binaire sur le `PATH` du job, la passe complète réutilise le même exécutable au même SHA.
+`gitleaks_scan_mode: full` ajoute une seconde passe sans aucune plage, qui lit tout l'historique. C'est la seule portée qui couvre une PR longue, et la seule qui voie l'historique antérieur à l'adoption de ce workflow. Elle n'installe rien : l'action pose son binaire sur le `PATH` du job, la passe complète réutilise le même exécutable au même SHA. La version du binaire est fixée par `GITLEAKS_VERSION` dans le workflow, suivie par Renovate : laissée vide, elle serait celle que l'action code en dur, et bougerait avec un bump de l'action que personne ne lit comme un bump du scanner.
 
 Les annotations, le commentaire de PR et le job summary restent produits par l'action, donc par la passe event. La passe complète ne parle que dans les logs et par son code de sortie.
 
