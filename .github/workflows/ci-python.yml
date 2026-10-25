@@ -166,8 +166,16 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ inputs.python_version }}
+      # Hash-pinned wheel, wheels only: same rule and same regeneration as the yamllint
+      # job of lint.yml (see docs/lint.md). Inline because a called workflow only sees
+      # the caller's checkout.
       - name: Run ruff
         run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/ruff-requirements.txt" <<'EOF'
           # renovate: datasource=pypi depName=ruff
-          pip install ruff==0.15.9
+          ruff==0.15.9 \
+              --hash=sha256:2b0c7c341f68adb01c488c3b7d4b49aa8ea97409eae6462d860a79cf55f431b6
+          EOF
+          pip install --require-hashes --only-binary=:all: -r "$RUNNER_TEMP/ruff-requirements.txt"
           ruff check .

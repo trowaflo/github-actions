@@ -178,11 +178,27 @@ jobs:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Hash-pinned, transitive dependencies included, wheels only: a file re-uploaded
+      # to PyPI at the same version, or a source build, cannot change what runs.
+      # The requirements live inline because a called workflow only sees the caller's
+      # checkout, never a file of this repository. Renovate bumps the version from the
+      # annotation; the hashes then fail closed until regenerated with the jq command
+      # in docs/lint.md (manylinux x86_64 or py3-none-any wheels, CPython 3.12-3.14).
       - name: Run yamllint
         run: |
           set -euo pipefail
+          cat > "$RUNNER_TEMP/yamllint-requirements.txt" <<'EOF'
           # renovate: datasource=pypi depName=yamllint
-          pip install --quiet yamllint==1.38.0
+          yamllint==1.38.0 \
+              --hash=sha256:fc394a5b3be980a4062607b8fdddc0843f4fa394152b6da21722f5d59013c220
+          pathspec==1.1.1 \
+              --hash=sha256:a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189
+          pyyaml==6.0.3 \
+              --hash=sha256:ba1cc08a7ccde2d2ec775841541641e4548226580ab850948cbfda66a1befcdc \
+              --hash=sha256:0f29edc409a6392443abf94b9cf89ce99889a1dd5376d94316ae5145dfedd5d6 \
+              --hash=sha256:c458b6d084f9b935061bc36216e8a69a7e293a2f1e68bf956dcd9e6cbcd143f5
+          EOF
+          pip install --quiet --require-hashes --only-binary=:all: -r "$RUNNER_TEMP/yamllint-requirements.txt"
           yamllint .
 
   ansible-lint:
@@ -281,11 +297,16 @@ jobs:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Hash-pinned wheel, same rule and same regeneration as the yamllint job.
       - name: Validate JSON and JSON5 files
         run: |
           set -euo pipefail
+          cat > "$RUNNER_TEMP/json5-requirements.txt" <<'EOF'
           # renovate: datasource=pypi depName=json5
-          pip install --quiet json5==0.14.0
+          json5==0.14.0 \
+              --hash=sha256:56cf861bab076b1178eb8c92e1311d273a9b9acea2ccc82c276abf839ebaef3a
+          EOF
+          pip install --quiet --require-hashes --only-binary=:all: -r "$RUNNER_TEMP/json5-requirements.txt"
           exit_code=0
           while IFS= read -r -d '' f; do
             if ! python3 -c "import json, sys; json.load(open(sys.argv[1]))" "$f"; then

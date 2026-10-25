@@ -62,6 +62,20 @@ Valide la syntaxe de tous les fichiers `*.json` (via `json.load`) et `*.json5` (
 
 Créer un `.yamllint.yml` à la racine du repo pour surcharger la configuration par défaut.
 
+### Paquets Python épinglés par hash
+
+yamllint, json5 (ici) et ruff (`ci-python.yml`) s'installent avec `pip install --require-hashes --only-binary=:all:`, depuis un fichier de requirements écrit dans le job : un workflow appelé ne voit que le checkout du caller, jamais un fichier de ce dépôt. Chaque paquet, dépendances transitives comprises, porte le hash des wheels que le runner peut choisir (manylinux x86_64 ou `py3-none-any`, CPython 3.12 à 3.14).
+
+Renovate bumpe la version via l'annotation `# renovate:` ; les hashes, eux, ne suivent pas et l'installation échoue fermée tant qu'ils ne sont pas régénérés :
+
+```bash
+curl -s https://pypi.org/pypi/<paquet>/<version>/json | jq -r '.urls[]
+  | select(.filename | test("py3-none-any|cp31[2-4]-cp31[2-4]-manylinux.*x86_64|py3-none-manylinux.*x86_64"))
+  | "\(.digests.sha256) \(.filename)"'
+```
+
+Les dépendances transitives se listent avec `uv pip compile` sur `<paquet>==<version>`.
+
 ### shellcheck
 
 Analyse statique des scripts shell (bash/sh/zsh) via [`reviewdog/action-shellcheck`](https://github.com/reviewdog/action-shellcheck). Détecte les erreurs courantes et les problèmes de sécurité (variables non quotées, injections via `eval`, etc.).
