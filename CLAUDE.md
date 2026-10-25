@@ -25,7 +25,7 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
 
   # ─── Self-CI (this repo only) ────────────────────────────────
   ci.yml               # Calls security.yml + lint.yml + lint-renovate.yml + sha-check
-  claude.yml           # Claude Code — restricted to repository_owner only
+  claude.yml           # Claude Code — content author must be OWNER/MEMBER/COLLABORATOR
   release-please.yml   # Creates tags and CHANGELOG on main push
 
   # ─── Test workflows (validate each reusable workflow) ────────

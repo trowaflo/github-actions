@@ -14,27 +14,24 @@ on:
   pull_request_review_comment:
     types: [created]
   issues:
-    types: [opened, assigned]
+    types: [opened]
   pull_request_review:
     types: [submitted]
 
 jobs:
   claude:
-    # Restreindre au propriétaire du repo uniquement (repos publics)
-    if: github.actor == github.repository_owner
+    # Filtrer sur l'auteur du contenu lu par le modèle, pas sur github.actor.
+    if: >-
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'),
+        github.event.comment.author_association ||
+        github.event.review.author_association ||
+        github.event.issue.author_association)
     uses: trowaflo/github-actions/.github/workflows/claude-code.yml@<sha> # vX.Y.Z
     secrets:
       claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 ```
 
-### Alternative : autoriser membres et collaborateurs
-
-```yaml
-    if: |
-      github.event.comment.author_association == 'OWNER' ||
-      github.event.comment.author_association == 'MEMBER' ||
-      github.event.comment.author_association == 'COLLABORATOR'
-```
+Pas de déclencheur `issues: assigned` : assigner une issue écrite par un tiers fait lire son texte au modèle alors que l'acteur est le propriétaire. Un filtre sur `github.actor` laisse passer ce cas ; un filtre sur `author_association` de l'auteur du contenu le bloque.
 
 ## Inputs
 
@@ -59,7 +56,7 @@ S'exécute quand :
 - un commentaire d'issue contient `@claude`
 - un commentaire de PR contient `@claude`
 - une review de PR contient `@claude`
-- une issue ouverte/assignée contient `@claude` dans le titre ou le corps
+- une issue ouverte contient `@claude` dans le titre ou le corps
 
 Claude lit les instructions dans le commentaire et les exécute.
 
@@ -75,9 +72,7 @@ S'exécute quand un commentaire de PR contient `/review`. Claude analyse la PR e
 
 **Ne pas activer sans restriction.** N'importe qui peut poster `@claude` ou `/review` et déclencher des appels API coûteux.
 
-**Recommandation** : restreindre au propriétaire du repo via `github.actor == github.repository_owner`. C'est le filtre le plus strict et le plus simple.
-
-Si plusieurs personnes doivent pouvoir déclencher Claude, utiliser `author_association` (`MEMBER`, `COLLABORATOR`).
+**Recommandation** : filtrer sur `author_association` (`OWNER`, `MEMBER`, `COLLABORATOR`) de l'auteur du commentaire, de la review ou de l'issue, comme dans l'exemple ci-dessus. `github.actor == github.repository_owner` ne suffit pas : l'acteur n'est pas forcément l'auteur du texte que le modèle lit.
 
 ### `additional_permissions: actions: read`
 
