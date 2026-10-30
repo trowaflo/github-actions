@@ -8,7 +8,7 @@ Modèle : Opus 5.5, effort high.
 
 ## Entrées
 
-`brief-commun.md`, `OUT/e0/` (surtout `scanners/`, `settings.jsonl`, `uses-inventory.csv`, `uses-transitive.csv`), `OUT/e1/`, `REPOS_DIR`.
+`brief-commun.md`, `DATA/e0/` (surtout `scanners/`, `settings.jsonl`, `uses-inventory.csv`, `uses-transitive.csv`), `OUT/e1/`, `REPOS_DIR`.
 
 ## Méthode
 

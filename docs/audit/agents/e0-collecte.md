@@ -13,7 +13,7 @@ C'est la seule exception tolérée à la contrainte 3, bornée dans le temps, et
 
 ## Exports attendus
 
-Tout dans `OUT/e0/`. Formats plats (CSV, JSONL) pour être lus par morceaux.
+Tout dans `DATA/e0/`, hors du vault. Formats plats (CSV, JSONL) pour être lus par morceaux. Seuls le script, `tools.txt` et `ecarts.md` vont dans `OUT/e0/` (vault) : l'audit reste rejouable sans y stocker les données.
 
 | Fichier | Contenu | Source |
 | --- | --- | --- |
@@ -49,4 +49,4 @@ Versions des outils : épinglées et notées dans `OUT/e0/tools.txt`. Un outil q
 - [ ] `callers.csv` liste autant de repos que `repos.csv`.
 - [ ] Somme de `billing-by-job.csv` sur le dernier mois complet, comparée à `billing-official.json` si disponible ; écart > 10 % documenté dans `OUT/e0/ecarts.md`.
 - [ ] Chaque scanner a une sortie (ou une erreur consignée) par repo.
-- [ ] Aucun secret en clair : `gitleaks dir OUT/e0` vert.
+- [ ] Aucun secret en clair : `gitleaks dir DATA/e0` vert.

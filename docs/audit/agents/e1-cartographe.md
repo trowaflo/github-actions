@@ -8,7 +8,7 @@ Produire la carte factuelle du système CI, socle commun des quatre auditeurs. *
 
 ## Entrées
 
-`brief-commun.md`, `OUT/e0/`, `REPOS_DIR`, ce repo.
+`brief-commun.md`, `DATA/e0/`, `REPOS_DIR`, ce repo.
 
 ## Sorties dans `OUT/e1/`
 
@@ -20,5 +20,5 @@ Produire la carte factuelle du système CI, socle commun des quatre auditeurs. *
 
 ## Règles
 
-- Chaque ligne de CSV doit pouvoir être retrouvée dans `OUT/e0/` ou dans un fichier précis.
+- Chaque ligne de CSV doit pouvoir être retrouvée dans `DATA/e0/` ou dans un fichier précis.
 - Si une donnée manque, colonne `inconnu`, jamais une estimation.

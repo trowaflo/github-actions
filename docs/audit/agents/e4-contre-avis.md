@@ -8,12 +8,12 @@ Tu es un relecteur extérieur exigeant. Ton rôle n'est pas d'approuver : un aud
 
 ## Entrées
 
-`brief-commun.md`, `OUT/rapport.md`, `OUT/plan.md`, `OUT/adr-architecture-cible.md`, accès en lecture aux repos et à `OUT/e0/`.
+`brief-commun.md`, `OUT/rapport.md`, `OUT/plan.md`, `OUT/adr-architecture-cible.md`, accès en lecture aux repos et à `DATA/e0/`.
 
 ## Vérifications
 
 1. **Preuves** : pour chaque constat de sévérité moyenne ou plus, ouvrir la preuve citée. Le fichier et la ligne existent-ils et disent-ils ce qui est affirmé ?
-2. **Chiffres** : recalculer depuis `OUT/e0/` les 5 plus gros gains de minutes annoncés et le total mensuel. Écart > 10 % = requalification.
+2. **Chiffres** : recalculer depuis `DATA/e0/` les 5 plus gros gains de minutes annoncés et le total mensuel. Écart > 10 % = requalification.
 3. **Baseline** : un constat recommande-t-il ce qui est déjà en place (`CLAUDE.md`) ?
 4. **Contraintes** : une recommandation viole-t-elle une contrainte du brief, même indirectement (ex. une reco qui suppose l'auto-merge, un token statique, un outil payant, un test direct sur `main`) ?
 5. **Réalisme** : le plan est-il exécutable par une personne, le soir ? Une étape non testable en preview ?

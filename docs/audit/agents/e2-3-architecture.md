@@ -10,7 +10,7 @@ Le diagnostic de départ de l'utilisateur, à confirmer ou infirmer : « un gros
 
 ## Entrées
 
-`brief-commun.md`, `OUT/e0/`, `OUT/e1/` (surtout `versioning-actuel.md`, `matrice-appelants.csv`), ce repo, `renovate-config`, `REPOS_DIR`.
+`brief-commun.md`, `DATA/e0/`, `OUT/e1/` (surtout `versioning-actuel.md`, `matrice-appelants.csv`), ce repo, `renovate-config`, `REPOS_DIR`.
 
 ## Diagnostic à produire
 

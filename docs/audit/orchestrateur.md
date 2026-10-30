@@ -8,24 +8,27 @@ Tu enchaînes les phases E0 à E4 et tu ne fais **aucune analyse toi-même**. To
 
 Variables à fixer au démarrage :
 
-- `OUT` : dossier de sortie, hors de tout repo public (ex. `../audit-output/2026-11-02/`).
-- `REPOS_DIR` : dossier où cloner les repos appelants (shallow, lecture seule).
+- `OUT` : livrables, dans le vault perso (repo privé `trowaflo/MyObsidianNotes`), dossier `02-Perso/Infra/Audit CI/<AAAA-MM-JJ>/`. Lisibles dans Obsidian : Markdown, schémas Mermaid, liens relatifs.
+- `DATA` : données brutes de E0 et clones, **hors du vault** (ex. `~/audit-ci-data/<AAAA-MM-JJ>/`). Volumineuses et régénérables par le script : elles n'ont rien à faire dans Obsidian ni dans iCloud.
+- `REPOS_DIR` : `DATA/repos/`, clones shallow en lecture seule.
+
+Rien n'est écrit dans `trowaflo/github-actions` : repo public, un rapport de failles n'y a pas sa place avant correction.
 
 ## Déroulé
 
 ### E0 — Collecte (toi, sans sous-agent)
 
 1. Lis `agents/e0-collecte.md`.
-2. Écris le script décrit, dans `OUT/e0/collect.sh` (ou `.py`), puis **montre-le à l'utilisateur et attends son accord avant de l'exécuter** : il tourne avec son token.
+2. Écris le script décrit, dans `OUT/e0/collect.sh` (ou `.py`) pour qu'il reste avec l'audit et permette de le rejouer, puis **montre-le à l'utilisateur et attends son accord avant de l'exécuter** : il tourne avec son token.
 3. Exécute-le. Vérifie la checklist de fin de `e0-collecte.md`. Si un export manque, stoppe et signale.
 
 ### E1 — Cartographe
 
-Lance un sous-agent (Sonnet 5.5, medium) avec : `brief-commun.md`, `agents/e1-cartographe.md`, `OUT/e0/`, `REPOS_DIR`. Attends `OUT/e1/`.
+Lance un sous-agent (Sonnet 5.5, medium) avec : `brief-commun.md`, `agents/e1-cartographe.md`, `DATA/e0/`, `REPOS_DIR`. Attends `OUT/e1/`.
 
 ### E2 — Auditeurs, en parallèle
 
-Lance les quatre dans **un seul message** pour qu'ils tournent en même temps. Chacun reçoit : `brief-commun.md`, son fichier de rôle, `OUT/e0/`, `OUT/e1/`, `REPOS_DIR`.
+Lance les quatre dans **un seul message** pour qu'ils tournent en même temps. Chacun reçoit : `brief-commun.md`, son fichier de rôle, `DATA/e0/`, `OUT/e1/`, `REPOS_DIR`.
 
 | Agent | Modèle | Effort |
 | --- | --- | --- |
@@ -44,7 +47,7 @@ Sous-agent Opus 5.5, high, avec `brief-commun.md`, `agents/e3-synthese.md`, `OUT
 
 ### E4 — Contre-avis
 
-Sous-agent Opus 5.5, high, **contexte vierge** : il reçoit `brief-commun.md`, `agents/e4-contre-avis.md`, les livrables de E3 et l'accès aux repos et à `OUT/e0/`. Il ne reçoit **pas** les sorties brutes de E2 ni ton historique : il doit juger les livrables comme le ferait un relecteur extérieur.
+Sous-agent Opus 5.5, high, **contexte vierge** : il reçoit `brief-commun.md`, `agents/e4-contre-avis.md`, les livrables de E3 et l'accès aux repos et à `DATA/e0/`. Il ne reçoit **pas** les sorties brutes de E2 ni ton historique : il doit juger les livrables comme le ferait un relecteur extérieur.
 
 Si E4 rejette ou requalifie des constats, renvoie `OUT/e4/verdicts.yaml` à E3 (même agent, via message de suite) pour une **seule** passe de correction. Pas de boucle infinie : au deuxième désaccord, les deux positions vont dans le rapport final, section « Points disputés ».
 

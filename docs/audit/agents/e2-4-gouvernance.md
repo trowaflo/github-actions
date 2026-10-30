@@ -8,7 +8,7 @@ Vérifier que les règles décrites sont **imposées** et pas seulement écrites
 
 ## Entrées
 
-`brief-commun.md`, `OUT/e0/settings.jsonl`, `OUT/e1/`, repos `terraform-github`, `renovate-config`, ce repo.
+`brief-commun.md`, `DATA/e0/settings.jsonl`, `OUT/e1/`, repos `terraform-github`, `renovate-config`, ce repo.
 
 ## Questions
 

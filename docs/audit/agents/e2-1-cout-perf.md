@@ -8,7 +8,7 @@ Expliquer où partent les minutes et proposer de quoi repasser durablement sous 
 
 ## Entrées
 
-`brief-commun.md`, `OUT/e0/` (surtout `billing-by-*.csv`, `jobs.jsonl`, `renovate-prs.csv`, `storage.csv`), `OUT/e1/`, `REPOS_DIR`.
+`brief-commun.md`, `DATA/e0/` (surtout `billing-by-*.csv`, `jobs.jsonl`, `renovate-prs.csv`, `storage.csv`), `OUT/e1/`, `REPOS_DIR`.
 
 ## Questions à traiter
 

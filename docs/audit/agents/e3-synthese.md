@@ -8,7 +8,7 @@ Transformer quatre listes de constats en trois livrables actionnables par une pe
 
 ## Entrées
 
-`brief-commun.md`, `OUT/e1/`, `OUT/e2-*/`. Accès en lecture aux repos et à `OUT/e0/` pour vérifier un point, pas pour refaire l'audit.
+`brief-commun.md`, `OUT/e1/`, `OUT/e2-*/`. Accès en lecture aux repos et à `DATA/e0/` pour vérifier un point, pas pour refaire l'audit.
 
 ## Travail
 

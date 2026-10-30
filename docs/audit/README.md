@@ -19,7 +19,7 @@ Ce dossier contient les instructions d'un audit multi-agents de la CI `trowaflo/
 3. `adr-architecture-cible.md` : 2 à 3 architectures cibles comparées, une recommandation tranchée.
 4. Une veille hebdomadaire planifiée (phase E5), si validée à la lecture du plan.
 
-Les livrables sont écrits dans `audit-output/<date>/` **hors de ce repo** (repo public : un rapport de failles n'a rien à y faire avant correction).
+Les livrables sont écrits dans le **vault perso** (repo privé `trowaflo/MyObsidianNotes`), dossier `02-Perso/Infra/Audit CI/<AAAA-MM-JJ>/`. Jamais dans ce repo : il est public, un rapport de failles n'y a pas sa place avant correction. Les données brutes de la collecte restent hors du vault (voir [`orchestrateur.md`](orchestrateur.md)).
 
 ## Workflow
 
@@ -57,10 +57,12 @@ Un orchestrateur unique (session principale, Opus 5.5, effort medium) enchaîne 
 
 ## Lancer l'audit
 
-Depuis Claude Code, avec ce repo et un dossier de travail hors repo :
+Depuis Claude Code, avec ce repo et le vault perso accessibles :
 
 ```text
-Lis docs/audit/orchestrateur.md et exécute-le. Dossier de sortie : ../audit-output/<date>/
+Lis docs/audit/orchestrateur.md et exécute-le.
+OUT  = <vault>/02-Perso/Infra/Audit CI/<AAAA-MM-JJ>/
+DATA = ~/audit-ci-data/<AAAA-MM-JJ>/
 ```
 
 Exécution recommandée : Claude Code local ou session cloud. **Jamais en GitHub Action** : ça consommerait le quota audité et confierait un token à un LLM exposé à du contenu non fiable (titres de PR, logs).
