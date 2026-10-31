@@ -6,7 +6,10 @@ Tous les jobs sont **désactivés par défaut** (opt-in explicite).
 
 ## Ordre d'exécution
 
-Le workflow garantit l'ordre **build → scan → publish** :
+Sur `pull_request`, seul le job `scan` tourne, et seulement si `enable_trivy` : build chargé dans le démon local (`load`, plateforme `linux/amd64`), scan Trivy, SARIF.
+Il n'a ni login au registre, ni credentials git persistés, ni `packages: write` : la branche contrôle le bake file et les Dockerfiles.
+
+Sur tout autre événement, le job `docker` garantit l'ordre **build → scan → publish** :
 
 1. Build l'image avec un tag staging temporaire (`:scan-{run_id}`)
 2. Scan Trivy sur ce tag staging
@@ -59,6 +62,8 @@ QEMU est configuré automatiquement. Les platforms cibles sont définies dans le
 ### ghcr.io
 
 Pour pousser vers `ghcr.io`, aucun secret nécessaire si le repo est dans la même organisation GitHub. Le `GITHUB_TOKEN` suffit avec la permission `packages: write`.
+
+Le job `docker` publie sur tout événement autre que `pull_request` : le consumer restreint son trigger `push` à la branche par défaut et aux tags, sinon une branche poussée publie son image.
 
 ### Harden-runner en mode `block`
 
