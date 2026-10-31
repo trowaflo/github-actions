@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.2](https://github.com/trowaflo/github-actions/compare/v4.0.1...v4.0.2) (2026-10-31)
+
+
+### Bug Fixes
+
+* ci-docker sans login ni push sur pull_request ([#82](https://github.com/trowaflo/github-actions/issues/82)) ([97c2123](https://github.com/trowaflo/github-actions/commit/97c21234c22f3854a23851814fdb6162b6de2b87))
+
 ## [4.0.1](https://github.com/trowaflo/github-actions/compare/v4.0.0...v4.0.1) (2026-10-25)
 
 
