@@ -3,7 +3,8 @@ name: Docker CI
 # Reusable workflow — Docker Build & Container Scanning
 # Usage: uses: trowaflo/github-actions/.github/workflows/ci-docker.yml@<sha>
 #
-# Ordre garanti :
+# pull_request : job `scan`, build chargé en local et scan Trivy, sans login ni push.
+# Autres événements, ordre garanti dans le job `docker` :
 #   1. Build → push staging tag (ex: :scan-{run_id})
 #   2. Scan Trivy sur le staging tag
 #   3. Publish final (bake avec les tags originaux du bake file, depuis le cache)
@@ -51,18 +52,98 @@ on:
 permissions: {}
 
 jobs:
+  scan:
+    name: Docker Build → Scan (PR)
+    # On a PR the branch controls the bake file and the Dockerfiles: no registry
+    # login, no persisted git credentials, and a token that cannot write packages.
+    if: ${{ github.event_name == 'pull_request' && inputs.enable_trivy }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-ci-docker-scan
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      security-events: write
+    env:
+      # Same hosts as the docker job minus the push: base image pulls (Docker Hub,
+      # ghcr.io) and the Trivy binary and database (ghcr.io, mirror.gcr.io).
+      _HARDEN_DEFAULTS: >-
+        agent.api.stepsecurity.io:443
+        api.github.com:443
+        auth.docker.io:443
+        check.trivy.dev:443
+        get.trivy.dev:443
+        ghcr.io:443
+        github.com:443
+        mirror.gcr.io:443
+        pkg-containers.githubusercontent.com:443
+        production.cloudflare.docker.com:443
+        production.cloudfront.docker.com:443
+        raw.githubusercontent.com:443
+        registry-1.docker.io:443
+        release-assets.githubusercontent.com:443
+      SCAN_TAG: ci-docker-scan:${{ github.run_id }}
+    steps:
+      - name: Harden Runner
+        if: ${{ inputs.enable_harden_runner }}
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: ${{ inputs.harden_runner_egress_policy }}
+          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      # `load` cannot hold a multi-platform image: scan the runner platform only.
+      - name: Build image locally
+        uses: docker/bake-action@6614cfa25eff9a0b2b2697efb0b6159e7680d584 # v7.2.0
+        with:
+          load: true
+          set: |
+            *.tags=${{ env.SCAN_TAG }}
+            *.platform=linux/amd64
+
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.SCAN_TAG }}
+          format: table
+          severity: ${{ inputs.trivy_severity }}
+          ignore-unfixed: ${{ inputs.trivy_ignore_unfixed }}
+          exit-code: "1"
+
+      - name: Trivy scan (SARIF)
+        if: ${{ always() }}
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.SCAN_TAG }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: ${{ inputs.trivy_severity }}
+          ignore-unfixed: ${{ inputs.trivy_ignore_unfixed }}
+
+      - name: Upload Trivy SARIF
+        if: ${{ always() && hashFiles('trivy-results.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-container
+
   docker:
     name: Docker Build → Scan → Publish
+    if: ${{ github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # Job-level, not workflow-level: in a called workflow, workflow-level concurrency
     # applies to the caller's run. The file-job suffix keeps the group distinct from
     # the caller's own `<workflow>-<ref>` group, so the two cannot deadlock.
-    # Cancels only on pull_request: outside it the job publishes the final image, and
-    # a publish cut in the middle leaves a partial set of tags.
+    # Never cancels: the job publishes the final image, and a publish cut in the
+    # middle leaves a partial set of tags.
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-ci-docker-docker
-      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+      cancel-in-progress: false
     permissions:
       contents: read
       packages: write
@@ -163,7 +244,6 @@ jobs:
 
       # ── Phase 3 : publish final ────────────────────────────────────────────
       - name: Publish final image
-        if: ${{ github.event_name != 'pull_request' }}
         uses: docker/bake-action@6614cfa25eff9a0b2b2697efb0b6159e7680d584 # v7.2.0
         with:
           push: true
