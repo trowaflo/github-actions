@@ -1,3 +1,6 @@
+# kics-scan disable=555ab8f9-2001-455e-a077-f2d0f41e2fb9
+# Même motif que security.yml : KICS lit docker://…@sha256 comme non épinglé,
+# et la garde sha-check de ci.yml tient l'épinglage de ce fichier.
 name: Lint Renovate Config
 
 # Reusable workflow — Validation des fichiers de configuration Renovate
