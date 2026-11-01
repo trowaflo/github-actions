@@ -91,6 +91,9 @@ jobs:
       # deprecated option passes here and is rewritten silently by Renovate.
       - name: Validate Renovate config files
         if: ${{ steps.files.outputs.list != '' }}
+        # The validation takes seconds: a step still running after 5 minutes is stuck,
+        # and the job timeout alone would bill 15 of them.
+        timeout-minutes: 5
         uses: docker://ghcr.io/renovatebot/renovate:43.104.6@sha256:47b481eb21edf0047ef90c93fd0e728758676c974c496c01221699bd3f3e8d77
         with:
           entrypoint: renovate-config-validator
