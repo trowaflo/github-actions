@@ -3,9 +3,5 @@
 profile: min
 exclude_paths:
   - .git/
-  - tests/charts/
-  - tests/docker/
-  - tests/ha/
-  - tests/python/
   - tests/terraform/
   - docs/

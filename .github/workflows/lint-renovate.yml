@@ -23,10 +23,6 @@ on:
         description: "Harden-runner egress policy: audit (observe) or block (enforce allowlist)"
         type: string
         default: "block"
-      node_version:
-        description: "Node.js version for renovate-config-validator"
-        type: string
-        default: "24"
 permissions: {}
 
 jobs:
@@ -43,20 +39,16 @@ jobs:
     permissions:
       contents: read
     env:
-      # Built-in harden-runner allowed endpoints:
+      # Built-in harden-runner allowed endpoints. The renovate image is pulled during
+      # job setup, before harden-runner starts, and the validator reads local files
+      # only, so nothing beyond checkout is listed.
       #   agent.api.stepsecurity.io:443 — harden-runner agent
       #   api.github.com:443 — GitHub API (actions runtime)
       #   github.com:443 — git clone, actions checkout
-      #   nodejs.org:443 — Node.js binary (actions/setup-node)
-      #   registry.npmjs.org:443 — npm packages (renovate-config-validator)
-      #   release-assets.githubusercontent.com:443 — GitHub release downloads
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
-        github.com:443
         api.github.com:443
-        registry.npmjs.org:443
-        nodejs.org:443
-        release-assets.githubusercontent.com:443
+        github.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -66,33 +58,37 @@ jobs:
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: ${{ inputs.node_version }}
+          persist-credentials: false
 
-      - name: Install renovate
-        # renovate: datasource=npm depName=renovate
-        run: npm install --global renovate@43.104.6
-
-      - name: Validate Renovate config files
+      # The shell expands config_files here, so a glob such as "*.json *.json5" keeps
+      # working; the container step below receives plain paths.
+      - name: List Renovate config files
+        id: files
         env:
           CONFIG_FILES: ${{ inputs.config_files }}
         run: |
-          exit_code=0
           if [ -n "$CONFIG_FILES" ]; then
-            files="$CONFIG_FILES"
+            candidates="$CONFIG_FILES"
           else
-            files=$(find . -maxdepth 1 -name '*renovate*' \( -name '*.json' -o -name '*.json5' \) 2>/dev/null || true)
+            candidates=$(find . -maxdepth 1 -name '*renovate*' \( -name '*.json' -o -name '*.json5' \) 2>/dev/null || true)
           fi
-          for f in $files; do
-            if [ -f "$f" ]; then
-              echo "--- Validating $f ---"
-              # --strict also fails on a config that only needs migrating: without it,
-              # a deprecated option passes here and is rewritten silently by Renovate.
-              if ! renovate-config-validator --strict "$f"; then
-                exit_code=1
-              fi
-            fi
+          list=""
+          for f in $candidates; do
+            if [ -f "$f" ]; then list="$list $f"; fi
           done
-          exit $exit_code
+          echo "Files to validate:${list:- none}"
+          echo "list=${list# }" >> "$GITHUB_OUTPUT"
+
+      # The renovate image runs pinned by digest instead of `npm install --global`,
+      # which resolved hundreds of transitive packages at run time with no lockfile:
+      # the digest freezes the whole dependency tree. A lockfile is not an option in
+      # a called workflow, which only sees the caller's checkout.
+      # --strict also fails on a config that only needs migrating: without it, a
+      # deprecated option passes here and is rewritten silently by Renovate.
+      - name: Validate Renovate config files
+        if: ${{ steps.files.outputs.list != '' }}
+        uses: docker://ghcr.io/renovatebot/renovate:43.104.6@sha256:47b481eb21edf0047ef90c93fd0e728758676c974c496c01221699bd3f3e8d77
+        with:
+          entrypoint: renovate-config-validator
+          args: --strict ${{ steps.files.outputs.list }}

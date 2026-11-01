@@ -5,6 +5,8 @@ name: CI
 
 on:
   pull_request:
+    # edited : le job contract lit le titre de la PR, qui peut changer sans nouveau commit.
+    types: [opened, synchronize, reopened, edited]
 
 permissions: {}
 
@@ -35,11 +37,6 @@ jobs:
     permissions:
       contents: read
       security-events: write
-      # Requis par les jobs shellcheck et shfmt de lint.yml, qui postent via reviewdog.
-      # Ils sont désactivés par défaut et ne tournent pas ici, mais GitHub valide le
-      # contrat de permissions de TOUS les jobs du workflow appelé au démarrage,
-      # avant d'évaluer le moindre `if:`. Sans cette ligne, startup_failure.
-      pull-requests: write
     with:
       enable_harden_runner: true
       harden_runner_egress_policy: block
@@ -48,6 +45,8 @@ jobs:
       enable_json_lint: true
       enable_ansible_lint: true
       enable_terraform_validate: true
+      enable_shellcheck: true
+      enable_shfmt: true
 
   lint-renovate:
     uses: ./.github/workflows/lint-renovate.yml
@@ -67,13 +66,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Verify all external uses are SHA-pinned
         run: |
-          # Matches both `uses:` and step syntax `- uses:`
-          # Excludes: local workflow references (./.github/workflows/)
-          # Accepts: a 40-char commit SHA, or a docker:// image pinned by sha256 digest
-          UNPINNED=$(grep -rn '^\s*-\?\s*uses:\s' .github/workflows/ \
-            | grep -v '\./.github/workflows/' \
-            | grep -v '@[0-9a-f]\{40\}' \
-            | grep -v 'uses:\s*docker://[^ ]*@sha256:[0-9a-f]\{64\}' || true)
+          # Matches both `uses:` and step syntax `- uses:`.
+          # Accepts, on the uses value itself and never elsewhere on the line, so that
+          # `uses: x/y@v1 # <40 hex>` is refused: a local reference (./), a 40-char
+          # commit SHA, or a docker:// image pinned by sha256 digest.
+          UNPINNED=$(grep -rnE '^\s*-?\s*uses:\s' .github/workflows/ \
+            | grep -vE 'uses:\s*\./' \
+            | grep -vE 'uses:\s*[^@[:space:]#]+@[0-9a-f]{40}(\s|$)' \
+            | grep -vE 'uses:\s*docker://[^@[:space:]#]+@sha256:[0-9a-f]{64}(\s|$)' || true)
 
           if [ -n "$UNPINNED" ]; then
             echo "ERROR: Found uses: references without SHA pinning:"
@@ -84,3 +84,20 @@ jobs:
             exit 1
           fi
           echo "All external uses: are properly SHA-pinned."
+
+  contract:
+    name: Contract Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Les tags servent de référence : le dernier v* est le contrat publié.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Compare reusable workflow contracts with the last tag
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: .github/scripts/contract-check.sh

@@ -31,11 +31,11 @@ on:
         type: boolean
         default: false
       enable_shellcheck:
-        description: "Lint shell scripts (bash/sh/zsh) with shellcheck via reviewdog (inline PR comments)"
+        description: "Lint *.sh with shellcheck (non-blocking; SARIF on public repos, job summary everywhere)"
         type: boolean
         default: false
       enable_shfmt:
-        description: "Check shell script formatting with shfmt via reviewdog (inline PR comments)"
+        description: "Check *.sh formatting with shfmt -i 2 -ci (non-blocking; SARIF on public repos, job summary everywhere)"
         type: boolean
         default: false
       enable_terraform_validate:
@@ -57,37 +57,54 @@ on:
 permissions: {}
 
 jobs:
-  actionlint:
-    if: ${{ inputs.enable_actionlint }}
-    name: Lint Workflows
+  # One job, one step per linter. A job is billed per started minute and its setup
+  # (runner, harden-runner, checkout) costs about 13 s, so eight jobs of 20 s were
+  # billed eight minutes. Each linter step carries continue-on-error so the others
+  # still run, and the last step fails the job if any of them failed.
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # Job-level, not workflow-level: in a called workflow, workflow-level concurrency
-    # applies to the caller's run. The file-job suffix keeps each group distinct from
+    # applies to the caller's run. The file-job suffix keeps the group distinct from
     # the caller's own `<workflow>-<ref>` group, so the two cannot deadlock.
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-lint-actionlint
+      group: ${{ github.workflow }}-${{ github.ref }}-lint-lint
       cancel-in-progress: true
+    # No pull-requests: write. GitHub checks the caller against every permission the
+    # called workflow declares before evaluating any `if:`, so one opt-in linter that
+    # comments on pull requests imposed that scope on every caller.
     permissions:
       contents: read
       security-events: write
     env:
-      # Built-in harden-runner allowed endpoints. Each job lists only what it downloads:
-      # the egress policy defaults to block, so a host listed here is a host a
-      # compromised step can reach.
+      # Union of what the linters download, since they share one job. The egress
+      # policy defaults to block, so a host listed here is a host a compromised step
+      # of any enabled linter can reach.
       #   agent.api.stepsecurity.io:443 — harden-runner agent
-      #   api.github.com:443 — GitHub API (actions runtime, SARIF upload)
-      #   github.com:443 — git clone, actions checkout, actionlint release
-      #   raw.githubusercontent.com:443 — actionlint SARIF template download
-      #   release-assets.githubusercontent.com:443 — actionlint release asset (redirect target)
+      #   api.github.com:443 — GitHub API (actions runtime, SARIF upload, setup-tflint)
+      #   files.pythonhosted.org:443 — wheels (yamllint, json5, ansible-lint)
+      #   github.com:443 — checkout, actionlint, shfmt, tflint releases
+      #   pypi.org:443 — pip index (yamllint, json5, ansible-lint)
+      #   raw.githubusercontent.com:443 — actionlint SARIF template
+      #   release-assets.githubusercontent.com:443 — release assets (redirect target)
+      #   releases.hashicorp.com:443 — Terraform
       _HARDEN_DEFAULTS: >-
         agent.api.stepsecurity.io:443
         api.github.com:443
+        files.pythonhosted.org:443
         github.com:443
+        pypi.org:443
         raw.githubusercontent.com:443
         release-assets.githubusercontent.com:443
+        releases.hashicorp.com:443
       # renovate: datasource=github-releases depName=rhysd/actionlint
       ACTIONLINT_VERSION: "1.7.12"
+      # renovate: datasource=github-releases depName=mvdan/sh
+      SHFMT_VERSION: "3.14.1"
+      # Digest of shfmt_v<version>_linux_amd64. A version bump fails closed until this
+      # is updated: gh release view v<version> -R mvdan/sh --json assets.
+      SHFMT_SHA256: "76e77641faa025814b77f153b29796b8e6fa2fca03e0c76a691608b86c7ea7bf"
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -96,9 +113,17 @@ jobs:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # ─── actionlint ─────────────────────────────────────────────
       - name: Install actionlint with checksum verification
+        id: actionlint_install
+        if: ${{ inputs.enable_actionlint && !cancelled() }}
+        continue-on-error: true
         run: |
           set -euo pipefail
+          cd "$RUNNER_TEMP"
           ARCHIVE="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
           CHECKSUMS="actionlint_${ACTIONLINT_VERSION}_checksums.txt"
           BASE_URL="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}"
@@ -107,84 +132,49 @@ jobs:
           grep " ${ARCHIVE}$" "${CHECKSUMS}" | sha256sum -c -
           tar -xzf "${ARCHIVE}" actionlint
       - name: Run actionlint
-        run: ./actionlint -color
+        id: actionlint
+        if: ${{ inputs.enable_actionlint && !cancelled() }}
+        continue-on-error: true
+        run: '"$RUNNER_TEMP/actionlint" -color'
       - name: Run actionlint (SARIF)
-        if: ${{ always() && github.event.repository.visibility == 'public' }}
+        if: ${{ inputs.enable_actionlint && !cancelled() && github.event.repository.visibility == 'public' }}
         run: |
           set -euo pipefail
           SARIF_TEMPLATE="$(curl -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/v${ACTIONLINT_VERSION}/testdata/format/sarif_template.txt")"
-          ./actionlint -format "$SARIF_TEMPLATE" > actionlint-results.sarif || true
+          "$RUNNER_TEMP/actionlint" -format "$SARIF_TEMPLATE" > "$RUNNER_TEMP/actionlint-results.sarif" || true
       - name: Upload actionlint SARIF
-        if: ${{ always() && github.event.repository.visibility == 'public' }}
+        id: actionlint_sarif
+        if: ${{ inputs.enable_actionlint && !cancelled() && github.event.repository.visibility == 'public' }}
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
         with:
-          sarif_file: actionlint-results.sarif
+          sarif_file: ${{ runner.temp }}/actionlint-results.sarif
           category: actionlint
 
-  markdown-lint:
-    if: ${{ inputs.enable_markdown_lint }}
-    name: Lint Markdown
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-lint-markdown-lint
-      cancel-in-progress: true
-    permissions:
-      contents: read
-    env:
-      # Built-in endpoints: harden-runner agent, GitHub API, checkout.
+      # ─── markdownlint ───────────────────────────────────────────
       # markdownlint-cli2-action ships bundled (dist/index.mjs) and fetches nothing.
-      _HARDEN_DEFAULTS: >-
-        agent.api.stepsecurity.io:443
-        api.github.com:443
-        github.com:443
-    steps:
-      - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
-        with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
+      - name: Lint Markdown
+        id: markdown_lint
+        if: ${{ inputs.enable_markdown_lint && !cancelled() }}
+        continue-on-error: true
+        uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
         with:
           globs: |
             **/*.md
             !.venv/**
 
-  yamllint:
-    if: ${{ inputs.enable_yamllint }}
-    name: Lint YAML
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-lint-yamllint
-      cancel-in-progress: true
-    permissions:
-      contents: read
-    env:
-      # Built-in endpoints: harden-runner agent, GitHub API, checkout, PyPI (yamllint).
-      _HARDEN_DEFAULTS: >-
-        agent.api.stepsecurity.io:443
-        api.github.com:443
-        files.pythonhosted.org:443
-        github.com:443
-        pypi.org:443
-    steps:
-      - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
-        with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # ─── yamllint ───────────────────────────────────────────────
       # Hash-pinned, transitive dependencies included, wheels only: a file re-uploaded
       # to PyPI at the same version, or a source build, cannot change what runs.
       # The requirements live inline because a called workflow only sees the caller's
       # checkout, never a file of this repository. Renovate bumps the version from the
-      # annotation; the hashes then fail closed until regenerated with the jq command
+      # annotation; the hashes then fail closed until regenerated with the command
       # in docs/lint.md (manylinux x86_64 or py3-none-any wheels, CPython 3.12-3.14).
-      - name: Run yamllint
+      # Each Python tool gets its own venv: they share the job, and their pins differ.
+      - name: Lint YAML
+        id: yamllint
+        if: ${{ inputs.enable_yamllint && !cancelled() }}
+        continue-on-error: true
         run: |
           set -euo pipefail
           cat > "$RUNNER_TEMP/yamllint-requirements.txt" <<'EOF'
@@ -198,107 +188,141 @@ jobs:
               --hash=sha256:0f29edc409a6392443abf94b9cf89ce99889a1dd5376d94316ae5145dfedd5d6 \
               --hash=sha256:c458b6d084f9b935061bc36216e8a69a7e293a2f1e68bf956dcd9e6cbcd143f5
           EOF
-          pip install --quiet --require-hashes --only-binary=:all: -r "$RUNNER_TEMP/yamllint-requirements.txt"
-          yamllint .
+          python3 -m venv "$RUNNER_TEMP/venv-yamllint"
+          "$RUNNER_TEMP/venv-yamllint/bin/pip" install --quiet --require-hashes --only-binary=:all: -r "$RUNNER_TEMP/yamllint-requirements.txt"
+          "$RUNNER_TEMP/venv-yamllint/bin/yamllint" .
 
-  ansible-lint:
-    if: ${{ inputs.enable_ansible_lint }}
-    name: Lint Ansible
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-lint-ansible-lint
-      cancel-in-progress: true
-    permissions:
-      contents: read
-    env:
-      # Built-in endpoints: harden-runner agent, GitHub API, checkout, plus what the
-      # ansible-lint composite action fetches: its requirements lock on
-      # raw.githubusercontent.com, uv and Python from GitHub releases, and the
-      # ansible-lint install from git and PyPI.
-      _HARDEN_DEFAULTS: >-
-        agent.api.stepsecurity.io:443
-        api.github.com:443
-        files.pythonhosted.org:443
-        github.com:443
-        pypi.org:443
-        raw.githubusercontent.com:443
-        release-assets.githubusercontent.com:443
-    steps:
-      - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
-        with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: ansible/ansible-lint@5fac056c45595896c973fbde871f01f6cb14d74c # v26.4.0
+      # ─── ansible-lint ───────────────────────────────────────────
+      # Not ansible/ansible-lint: that composite action runs astral-sh/setup-uv@v7,
+      # a tag that the SHA pin of the outer action never fixed. Same hash-pinned
+      # install as yamllint, lock regenerated with the uv command in docs/lint.md.
+      - name: Lint Ansible
+        id: ansible_lint
+        if: ${{ inputs.enable_ansible_lint && !cancelled() }}
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/ansible-lint-requirements.txt" <<'EOF'
+          ansible-compat==26.10.0 \
+              --hash=sha256:700f0778fbb348daf6ee58941871e8ca77a987702993e8bf7895761d036d6450
+          ansible-core==2.21.5 \
+              --hash=sha256:08886f9f3e23d129aa98a01271c4a47833516e1cb7c737a246788cb474f41222
+          # renovate: datasource=pypi depName=ansible-lint
+          ansible-lint==26.4.0 \
+              --hash=sha256:f33c4823544a5a8e5e36614866e111d1a929eeffee5e84481ede10d524a9d6d6
+          attrs==26.1.0 \
+              --hash=sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309
+          black==26.10.1 \
+              --hash=sha256:03c0ddd93bb392e71209903a691767eb366fe1a76deb9509ccbaae9e1f14bb52 \
+              --hash=sha256:28842f9a8207cc1df6eb983a35a14c5a0dfcd603d214fe82d84bef552afd2e3a \
+              --hash=sha256:289282aa2e09d3162312a3be1788ff21b08e9ea9cc4a81e656024728b32428fb \
+              --hash=sha256:b5347d760f0c02bb00dd249384cab71c3bf828b4f68d5b401eb116e0390f147d
+          bracex==3.2 \
+              --hash=sha256:8f3e908a452f66707e1d6d91b3d7d7d4c649d248df18537c0dc710aeb9c30d87
+          cffi==2.1.1 \
+              --hash=sha256:a931079504ecc49efed7744c476a5c343a92fabf66dec2db95edb1b2fdc770e2 \
+              --hash=sha256:b0431303acaea1089ad4b3e9ce4e6518193def1118d4073ca848635ee4ea2e96 \
+              --hash=sha256:c1453022f490d2459a11819d83ad1d586e9ff65a12ac3e705ffebd46d3685dcf
+          click==8.5.0 \
+              --hash=sha256:255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360
+          cryptography==50.0.2 \
+              --hash=sha256:1981f1db4630889b9ef7803fadef12b056f428cb6b85c27ba57b774793b6093c \
+              --hash=sha256:4061c0079120205fb760c58acab6443e217307dcf05e3702cf970e0689972856 \
+              --hash=sha256:630ebfea3bf689d075f82316324ff7433dc447fe6bc1bfc76524b74b4a9567d2 \
+              --hash=sha256:9dab55f57c74c3cad24c323bacbbd04be4705ba6eb0d92e920b1fc4837ed5079 \
+              --hash=sha256:ee247f5c245c9a2fe7c8e2214e295918838e44e00a45a6718451e4004219e767 \
+              --hash=sha256:f21e8a22c8605750c7af886bab299a363721264061b4ac0a30efb73cfd58efc5
+          distro==1.9.0 \
+              --hash=sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2
+          filelock==4.2.6 \
+              --hash=sha256:fd7d4fca497bf3e3d0945a13261f8e684f2aef12ce7cf76aef26e13bf7388b88
+          jinja2==3.1.6 \
+              --hash=sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67
+          jsonschema==4.26.0 \
+              --hash=sha256:d489f15263b8d200f8387e64b4c3a75f06629559fb73deb8fdfb525f2dab50ce
+          jsonschema-specifications==2025.9.1 \
+              --hash=sha256:98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe
+          markupsafe==3.0.4 \
+              --hash=sha256:434139499bb20b502ed3baa1f169e618f924a97e7a777fea1a49446d80106cf6 \
+              --hash=sha256:8e124f974786f831d6043728e38296969d3579db8896fe004682f5758e613581 \
+              --hash=sha256:a8e9f292fcda89b324f2f5c91d13f1424a153e40fc2756f38ee23b15835ff300
+          mypy-extensions==1.1.0 \
+              --hash=sha256:1be4cccdb0f2482337c4743e60421de3a356cd97508abadd57d47403e94f5505
+          packaging==26.3 \
+              --hash=sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c
+          pathspec==1.0.4 \
+              --hash=sha256:fb6ae2fd4e7c921a165808a552060e722767cfa526f99ca5156ed2ce45a5c723
+          platformdirs==4.14.2 \
+              --hash=sha256:dc1f93390f2a9265e44e5afc8667ec7faf737739604e39bc538fec889720c36b
+          pycparser==3.12 ; implementation_name != 'PyPy' \
+              --hash=sha256:a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e
+          pytokens==0.4.1 \
+              --hash=sha256:24afde1f53d95348b5a0eb19488661147285ca4dd7ed752bbc3e1c6242a304d1 \
+              --hash=sha256:26cef14744a8385f35d0e095dc8b3a7583f6c953c2e3d269c7f82484bf5ad2de \
+              --hash=sha256:29d1d8fb1030af4d231789959f21821ab6325e463f0503a61d204343c9b355d1 \
+              --hash=sha256:dc74c035f9bfca0255c1af77ddd2d6ae8419012805453e4b0e7513e17904545d
+          pyyaml==6.0.3 \
+              --hash=sha256:0f29edc409a6392443abf94b9cf89ce99889a1dd5376d94316ae5145dfedd5d6 \
+              --hash=sha256:ba1cc08a7ccde2d2ec775841541641e4548226580ab850948cbfda66a1befcdc \
+              --hash=sha256:c458b6d084f9b935061bc36216e8a69a7e293a2f1e68bf956dcd9e6cbcd143f5
+          referencing==0.37.0 \
+              --hash=sha256:381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231
+          resolvelib==1.2.1 \
+              --hash=sha256:fb06b66c8da04172d9e72a21d7d06186d8919e32ae5ab5cdf5b9d920be805ac2
+          rpds-py==2026.9.1 \
+              --hash=sha256:7868b85224291c6cb6759f9b5adb9745f486d226f62b16a614dd5a2a5ab2b35b \
+              --hash=sha256:addeda51556dac7c1a2f14cda62db8b621cd12afba3091d03a96c72932387eab \
+              --hash=sha256:eac2f5dbafd585dfe31f86a23ebf0d3ba480a9d49ebc87947267b5608d4ea0cd
+          ruamel-yaml==0.19.1 \
+              --hash=sha256:27592957fedf6e0b62f281e96effd28043345e0e66001f97683aa9a40c667c93
+          ruamel-yaml-clib==0.2.15 ; python_full_version < '3.14' \
+              --hash=sha256:11e5499db1ccbc7f4b41f0565e4f799d863ea720e01d3e99fa0b7b5fcd7802c9 \
+              --hash=sha256:2812ff359ec1f30129b62372e5f22a52936fac13d5d21e70373dbca5d64bb97c \
+              --hash=sha256:4d1032919280ebc04a80e4fb1e93f7a738129857eaec9448310e638c8bccefcf
+          subprocess-tee==0.4.2 \
+              --hash=sha256:21942e976715af4a19a526918adb03a8a27a8edab959f2d075b777e3d78f532d
+          typing-extensions==4.16.0 ; python_full_version < '3.13' \
+              --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8
+          wcmatch==11.2 \
+              --hash=sha256:952bab83c75c233836007a69550a3a8753cf06964c1eb3b84ff11ad5bff1c272
+          yamllint==1.38.0 \
+              --hash=sha256:fc394a5b3be980a4062607b8fdddc0843f4fa394152b6da21722f5d59013c220
+          EOF
+          python3 -m venv "$RUNNER_TEMP/venv-ansible-lint"
+          "$RUNNER_TEMP/venv-ansible-lint/bin/pip" install --quiet --require-hashes --only-binary=:all: -r "$RUNNER_TEMP/ansible-lint-requirements.txt"
+          PATH="$RUNNER_TEMP/venv-ansible-lint/bin:$PATH" ansible-lint
 
-  terraform-validate:
-    if: ${{ inputs.enable_terraform_validate }}
-    name: Validate Terraform
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-lint-terraform-validate
-      cancel-in-progress: true
-    permissions:
-      contents: read
-    env:
-      # Built-in endpoints: harden-runner agent, GitHub API (setup-tflint resolves its
-      # release), checkout, Terraform from releases.hashicorp.com, tflint and its
-      # plugins from GitHub releases.
-      _HARDEN_DEFAULTS: >-
-        agent.api.stepsecurity.io:443
-        api.github.com:443
-        github.com:443
-        release-assets.githubusercontent.com:443
-        releases.hashicorp.com:443
-    steps:
-      - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
-        with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
-      - uses: terraform-linters/setup-tflint@b480b8fcdaa6f2c577f8e4fa799e89e756bb7c93 # v6.2.2
+      # ─── terraform ──────────────────────────────────────────────
+      - name: Set up Terraform
+        id: terraform_setup
+        if: ${{ inputs.enable_terraform_validate && !cancelled() }}
+        continue-on-error: true
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+      - name: Set up TFLint
+        id: tflint_setup
+        if: ${{ inputs.enable_terraform_validate && !cancelled() }}
+        continue-on-error: true
+        uses: terraform-linters/setup-tflint@b480b8fcdaa6f2c577f8e4fa799e89e756bb7c93 # v6.2.2
       - name: Terraform format check
+        id: terraform_fmt
+        if: ${{ inputs.enable_terraform_validate && !cancelled() }}
+        continue-on-error: true
         run: terraform fmt -check -recursive
-      - name: TFLint init
-        run: tflint --init
-      - name: TFLint run
-        run: tflint --recursive --format compact
+      - name: TFLint
+        id: tflint
+        if: ${{ inputs.enable_terraform_validate && !cancelled() }}
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          tflint --init
+          tflint --recursive --format compact
 
-  json-lint:
-    if: ${{ inputs.enable_json_lint }}
-    name: Lint JSON
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-lint-json-lint
-      cancel-in-progress: true
-    permissions:
-      contents: read
-    env:
-      # Built-in endpoints: harden-runner agent, GitHub API, checkout, PyPI (json5).
-      _HARDEN_DEFAULTS: >-
-        agent.api.stepsecurity.io:443
-        api.github.com:443
-        files.pythonhosted.org:443
-        github.com:443
-        pypi.org:443
-    steps:
-      - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
-        with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # Hash-pinned wheel, same rule and same regeneration as the yamllint job.
-      - name: Validate JSON and JSON5 files
+      # ─── json ───────────────────────────────────────────────────
+      # Hash-pinned wheel, same rule and same regeneration as yamllint.
+      - name: Lint JSON and JSON5
+        id: json_lint
+        if: ${{ inputs.enable_json_lint && !cancelled() }}
+        continue-on-error: true
         run: |
           set -euo pipefail
           cat > "$RUNNER_TEMP/json5-requirements.txt" <<'EOF'
@@ -306,17 +330,19 @@ jobs:
           json5==0.14.0 \
               --hash=sha256:56cf861bab076b1178eb8c92e1311d273a9b9acea2ccc82c276abf839ebaef3a
           EOF
-          pip install --quiet --require-hashes --only-binary=:all: -r "$RUNNER_TEMP/json5-requirements.txt"
+          python3 -m venv "$RUNNER_TEMP/venv-json5"
+          PY="$RUNNER_TEMP/venv-json5/bin/python"
+          "$RUNNER_TEMP/venv-json5/bin/pip" install --quiet --require-hashes --only-binary=:all: -r "$RUNNER_TEMP/json5-requirements.txt"
           exit_code=0
           while IFS= read -r -d '' f; do
-            if ! python3 -c "import json, sys; json.load(open(sys.argv[1]))" "$f"; then
+            if ! "$PY" -c "import json, sys; json.load(open(sys.argv[1]))" "$f"; then
               echo "Invalid JSON: $f"; exit_code=1
             else
               echo "OK: $f"
             fi
           done < <(find . -name '*.json' -not -path './.git/*' -not -path './node_modules/*' -print0)
           while IFS= read -r -d '' f; do
-            if ! python3 -c "import json5, sys; json5.load(open(sys.argv[1]))" "$f"; then
+            if ! "$PY" -c "import json5, sys; json5.load(open(sys.argv[1]))" "$f"; then
               echo "Invalid JSON5: $f"; exit_code=1
             else
               echo "OK: $f"
@@ -324,73 +350,132 @@ jobs:
           done < <(find . -name '*.json5' -not -path './.git/*' -not -path './node_modules/*' -print0)
           exit $exit_code
 
-  shellcheck:
-    if: ${{ inputs.enable_shellcheck }}
-    name: Lint Shell (shellcheck)
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-lint-shellcheck
-      cancel-in-progress: true
-    permissions:
-      contents: read
-      pull-requests: write
-    env:
-      # Built-in harden-runner allowed endpoints:
-      #   agent.api.stepsecurity.io:443 — harden-runner agent
-      #   api.github.com:443            — reviewdog posts PR review comments
-      #   github.com:443                — checkout + shellcheck + reviewdog binaries
-      #   release-assets.githubusercontent.com:443 — binary downloads
-      _HARDEN_DEFAULTS: >-
-        agent.api.stepsecurity.io:443
-        api.github.com:443
-        github.com:443
-        release-assets.githubusercontent.com:443
-    steps:
-      - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+      # ─── shellcheck, shfmt ──────────────────────────────────────
+      # Findings do not fail the job, as with the reviewdog actions they replace
+      # (fail_on_error: false). They go to SARIF, uploaded on public repositories
+      # only (code scanning is not free on private ones), and to the job summary.
+      # shellcheck is preinstalled on the ubuntu runner image.
+      - name: Lint Shell (shellcheck)
+        id: shellcheck
+        if: ${{ inputs.enable_shellcheck && !cancelled() }}
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/shellcheck.json"
+          echo '{"comments":[]}' > "$out"
+          if [ -n "$(git ls-files '*.sh')" ]; then
+            git ls-files -z '*.sh' | xargs -0 shellcheck --external-sources -f json1 > "$out" || true
+          fi
+          jq '{
+            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+            version: "2.1.0",
+            runs: [{
+              tool: {driver: {name: "shellcheck", informationUri: "https://www.shellcheck.net",
+                rules: ([.comments[].code] | unique | map({id: "SC\(.)", helpUri: "https://www.shellcheck.net/wiki/SC\(.)"}))}},
+              results: [.comments[] | {
+                ruleId: "SC\(.code)",
+                level: ({error: "error", warning: "warning"}[.level] // "note"),
+                message: {text: .message},
+                locations: [{physicalLocation: {artifactLocation: {uri: .file},
+                  region: {startLine: .line, startColumn: .column, endLine: .endLine, endColumn: .endColumn}}}]
+              }]
+            }]
+          }' "$out" > "$RUNNER_TEMP/shellcheck.sarif"
+          count=$(jq '.comments | length' "$out")
+          {
+            echo "### shellcheck: $count finding(s)"
+            if [ "$count" -gt 0 ]; then
+              echo
+              echo "| File | Line | Code | Level | Message |"
+              echo "| --- | --- | --- | --- | --- |"
+              jq -r '.comments[] | "| \(.file) | \(.line) | SC\(.code) | \(.level) | \(.message | gsub("\\|"; "\\\\|")) |"' "$out"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload shellcheck SARIF
+        id: shellcheck_sarif
+        if: ${{ inputs.enable_shellcheck && !cancelled() && github.event.repository.visibility == 'public' && steps.shellcheck.outcome == 'success' }}
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
         with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: reviewdog/action-shellcheck@4c07458293ac342d477251099501a718ae5ef86e # v1.32.0
+          sarif_file: ${{ runner.temp }}/shellcheck.sarif
+          category: shellcheck
+      - name: Format Shell (shfmt)
+        id: shfmt
+        if: ${{ inputs.enable_shfmt && !cancelled() }}
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          bin="$RUNNER_TEMP/shfmt"
+          curl -fsSL -o "$bin" "https://github.com/mvdan/sh/releases/download/v${SHFMT_VERSION}/shfmt_v${SHFMT_VERSION}_linux_amd64"
+          echo "${SHFMT_SHA256}  $bin" | sha256sum -c -
+          chmod +x "$bin"
+          : > "$RUNNER_TEMP/shfmt.txt"
+          if [ -n "$(git ls-files '*.sh')" ]; then
+            git ls-files -z '*.sh' | xargs -0 "$bin" -i 2 -ci -l > "$RUNNER_TEMP/shfmt.txt" || true
+          fi
+          jq -R -s '{
+            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+            version: "2.1.0",
+            runs: [{
+              tool: {driver: {name: "shfmt", informationUri: "https://github.com/mvdan/sh",
+                rules: [{id: "shfmt", shortDescription: {text: "File is not formatted with shfmt -i 2 -ci"}}]}},
+              results: [split("\n")[] | select(length > 0) | {
+                ruleId: "shfmt", level: "warning",
+                message: {text: "Not formatted. Fix with: shfmt -i 2 -ci -w \(.)"},
+                locations: [{physicalLocation: {artifactLocation: {uri: .}, region: {startLine: 1}}}]
+              }]
+            }]
+          }' "$RUNNER_TEMP/shfmt.txt" > "$RUNNER_TEMP/shfmt.sarif"
+          count=$(grep -c . "$RUNNER_TEMP/shfmt.txt" || true)
+          {
+            echo "### shfmt: $count file(s) not formatted"
+            if [ "$count" -gt 0 ]; then
+              echo
+              echo '<details><summary>Diff (shfmt -i 2 -ci -d)</summary>'
+              echo
+              echo '```diff'
+              xargs -d '\n' "$bin" -i 2 -ci -d < "$RUNNER_TEMP/shfmt.txt" || true
+              echo '```'
+              echo '</details>'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload shfmt SARIF
+        id: shfmt_sarif
+        if: ${{ inputs.enable_shfmt && !cancelled() && github.event.repository.visibility == 'public' && steps.shfmt.outcome == 'success' }}
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-pr-review
-          filter_mode: added
+          sarif_file: ${{ runner.temp }}/shfmt.sarif
+          category: shfmt
 
-  shfmt:
-    if: ${{ inputs.enable_shfmt }}
-    name: Format Shell (shfmt)
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-lint-shfmt
-      cancel-in-progress: true
-    permissions:
-      contents: read
-      pull-requests: write
-    env:
-      # Built-in harden-runner allowed endpoints:
-      #   agent.api.stepsecurity.io:443 — harden-runner agent
-      #   api.github.com:443            — reviewdog posts PR suggestions
-      #   github.com:443                — checkout + shfmt + reviewdog binaries
-      #   release-assets.githubusercontent.com:443 — binary downloads
-      _HARDEN_DEFAULTS: >-
-        agent.api.stepsecurity.io:443
-        api.github.com:443
-        github.com:443
-        release-assets.githubusercontent.com:443
-    steps:
-      - name: Harden Runner
-        if: ${{ inputs.enable_harden_runner }}
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
-        with:
-          egress-policy: ${{ inputs.harden_runner_egress_policy }}
-          allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: reviewdog/action-shfmt@d8f080930b9be5847b4f97e9f4122b81a82aaeac # v1.0.4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          filter_mode: added
+      # continue-on-error leaves each step's outcome at failure while the job stays
+      # green: this step turns any failed outcome back into a red job.
+      - name: Fail if a linter failed
+        if: ${{ !cancelled() }}
+        env:
+          OUTCOMES: >-
+            actionlint-install=${{ steps.actionlint_install.outcome }}
+            actionlint=${{ steps.actionlint.outcome }}
+            actionlint-sarif=${{ steps.actionlint_sarif.outcome }}
+            markdownlint=${{ steps.markdown_lint.outcome }}
+            yamllint=${{ steps.yamllint.outcome }}
+            ansible-lint=${{ steps.ansible_lint.outcome }}
+            terraform-setup=${{ steps.terraform_setup.outcome }}
+            tflint-setup=${{ steps.tflint_setup.outcome }}
+            terraform-fmt=${{ steps.terraform_fmt.outcome }}
+            tflint=${{ steps.tflint.outcome }}
+            json-lint=${{ steps.json_lint.outcome }}
+            shellcheck=${{ steps.shellcheck.outcome }}
+            shellcheck-sarif=${{ steps.shellcheck_sarif.outcome }}
+            shfmt=${{ steps.shfmt.outcome }}
+            shfmt-sarif=${{ steps.shfmt_sarif.outcome }}
+        run: |
+          failed=""
+          for o in $OUTCOMES; do
+            echo "$o"
+            case "$o" in *=failure) failed="$failed ${o%=failure}" ;; esac
+          done
+          if [ -n "$failed" ]; then
+            echo "::error::Failed:$failed"
+            exit 1
+          fi

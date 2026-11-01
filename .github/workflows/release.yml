@@ -2,8 +2,6 @@ name: Release
 
 # Reusable workflow — Release Management via release-please
 # Usage: uses: trowaflo/github-actions/.github/workflows/release.yml@<sha>
-#
-# Pour les mentions Claude Code, utiliser claude-code.yml + claude.yml à la place.
 
 on:
   workflow_call:

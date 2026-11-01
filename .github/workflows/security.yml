@@ -80,39 +80,18 @@ jobs:
       contents: read
       pull-requests: write
     env:
-      # Built-in harden-runner allowed endpoints:
-      #   9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443 — KICS queries (Checkmarx R2 storage)
+      # Built-in harden-runner allowed endpoints. One list per job, never copied from
+      # another job: a host listed here is a host a compromised step of THIS job can
+      # reach. github.com stays open everywhere (checkout), so the block policy is a
+      # defence in depth, not a guarantee that nothing leaves.
       #   agent.api.stepsecurity.io:443 — harden-runner agent
-      #   api.github.com:443 — GitHub API (actions runtime, SARIF upload, dependency-review)
-      #   api0.prismacloud.io:443 — Checkov policies (Prisma Cloud API)
-      #   apk.cgr.dev:443 — Chainguard APK packages (KICS container)
-      #   files.pythonhosted.org:443 — pip packages (checkov)
-      #   get.trivy.dev:443 — Trivy install script (trivy-action)
-      #   ghcr.io:443 — container images (KICS, gitleaks)
-      #   github.com:443 — git clone, actions checkout
-      #   kics.io:443 — KICS scanner queries download
-      #   mirror.gcr.io:443 — GCR mirror (Docker daemon)
-      #   pkg-containers.githubusercontent.com:443 — GHCR storage backend
-      #   pypi.org:443 — pip index (checkov)
-      #   raw.githubusercontent.com:443 — GitHub raw content (gitleaks config)
-      #   registry.npmjs.org:443 — npm packages (dependency-review-action)
-      #   release-assets.githubusercontent.com:443 — GitHub release downloads
+      #   api.github.com:443 — pull request commits, PR comment
+      #   github.com:443 — checkout, gitleaks release
+      #   release-assets.githubusercontent.com:443 — gitleaks release asset (redirect target)
       _HARDEN_DEFAULTS: >-
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
         api.github.com:443
-        api0.prismacloud.io:443
-        apk.cgr.dev:443
-        files.pythonhosted.org:443
-        get.trivy.dev:443
-        ghcr.io:443
         github.com:443
-        kics.io:443
-        mirror.gcr.io:443
-        pkg-containers.githubusercontent.com:443
-        pypi.org:443
-        raw.githubusercontent.com:443
-        registry.npmjs.org:443
         release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner
@@ -174,24 +153,19 @@ jobs:
       contents: read
       security-events: write
     env:
-      # Built-in endpoints — see first job above
+      # Built-in endpoints, this job only (see gitleaks). The image is pulled during
+      # job setup, before harden-runner starts, so no registry host is listed.
+      #   9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443 — KICS query descriptions (Checkmarx R2)
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — SARIF upload
+      #   github.com:443 — checkout
+      #   kics.io:443 — KICS version check and telemetry
       _HARDEN_DEFAULTS: >-
         9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
         api.github.com:443
-        api0.prismacloud.io:443
-        apk.cgr.dev:443
-        files.pythonhosted.org:443
-        get.trivy.dev:443
-        ghcr.io:443
         github.com:443
         kics.io:443
-        mirror.gcr.io:443
-        pkg-containers.githubusercontent.com:443
-        pypi.org:443
-        raw.githubusercontent.com:443
-        registry.npmjs.org:443
-        release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -246,24 +220,14 @@ jobs:
       contents: read
       pull-requests: write
     env:
-      # Built-in endpoints — see first job above
+      # Built-in endpoints, this job only (see gitleaks). The action is bundled JS.
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — dependency graph compare, PR comment
+      #   github.com:443 — checkout
       _HARDEN_DEFAULTS: >-
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
         api.github.com:443
-        api0.prismacloud.io:443
-        apk.cgr.dev:443
-        files.pythonhosted.org:443
-        get.trivy.dev:443
-        ghcr.io:443
         github.com:443
-        kics.io:443
-        mirror.gcr.io:443
-        pkg-containers.githubusercontent.com:443
-        pypi.org:443
-        raw.githubusercontent.com:443
-        registry.npmjs.org:443
-        release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -286,24 +250,17 @@ jobs:
       contents: read
       security-events: write
     env:
-      # Built-in endpoints — see first job above
+      # Built-in endpoints, this job only (see gitleaks). The image is pulled during
+      # job setup, before harden-runner starts, so no registry host is listed.
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — SARIF upload
+      #   api0.prismacloud.io:443 — Checkov guidelines (Prisma Cloud API)
+      #   github.com:443 — checkout
       _HARDEN_DEFAULTS: >-
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
         api.github.com:443
         api0.prismacloud.io:443
-        apk.cgr.dev:443
-        files.pythonhosted.org:443
-        get.trivy.dev:443
-        ghcr.io:443
         github.com:443
-        kics.io:443
-        mirror.gcr.io:443
-        pkg-containers.githubusercontent.com:443
-        pypi.org:443
-        raw.githubusercontent.com:443
-        registry.npmjs.org:443
-        release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner
         if: ${{ inputs.enable_harden_runner }}
@@ -312,13 +269,20 @@ jobs:
           egress-policy: ${{ inputs.harden_runner_egress_policy }}
           allowed-endpoints: ${{ env._HARDEN_DEFAULTS }} ${{ inputs.harden_runner_allowed_endpoints }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: bridgecrewio/checkov-action@4048c972aae68d0b983a48bb3479aab2d877b898 # v12.3102.0
         with:
-          directory: .
-          framework: ${{ inputs.checkov_framework }}
-          quiet: true
-          output_format: cli,sarif
-          output_file_path: console,checkov-results.sarif
+          persist-credentials: false
+      # The checkov image runs pinned by digest, not through bridgecrewio/checkov-action:
+      # that action declares `image: docker://ghcr.io/bridgecrewio/checkov:<tag>`, a
+      # mutable tag its SHA pin never fixed. Same image and version the action ran
+      # (3.2.527); the entrypoint is checkov itself, not the action's wrapper script.
+      - name: Run Checkov
+        uses: docker://ghcr.io/bridgecrewio/checkov:3.2.527@sha256:f4c7c5bde21df03432ca8d9d1305ffe21b7205ea752c3d4e65559abae67ead4a
+        with:
+          entrypoint: checkov
+          args: >-
+            --directory . --quiet
+            --output cli --output sarif --output-file-path console,checkov-results.sarif
+            ${{ inputs.checkov_framework != '' && format('--framework {0}', inputs.checkov_framework) || '' }}
       - name: Upload Checkov SARIF
         if: ${{ always() && github.event.repository.visibility == 'public' }}
         uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
@@ -338,23 +302,23 @@ jobs:
       contents: read
       security-events: write
     env:
-      # Built-in endpoints — see first job above
+      # Built-in endpoints, this job only (see gitleaks).
+      #   agent.api.stepsecurity.io:443 — harden-runner agent
+      #   api.github.com:443 — SARIF upload, setup-trivy release lookup
+      #   get.trivy.dev:443 — Trivy install script and binary
+      #   ghcr.io:443 — Trivy DB and checks bundle (fallback registry)
+      #   github.com:443 — checkout, Trivy release
+      #   mirror.gcr.io:443 — Trivy DB and checks bundle (default registry)
+      #   pkg-containers.githubusercontent.com:443 — GHCR blob storage
+      #   release-assets.githubusercontent.com:443 — Trivy release asset (redirect target)
       _HARDEN_DEFAULTS: >-
-        9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
         agent.api.stepsecurity.io:443
         api.github.com:443
-        api0.prismacloud.io:443
-        apk.cgr.dev:443
-        files.pythonhosted.org:443
         get.trivy.dev:443
         ghcr.io:443
         github.com:443
-        kics.io:443
         mirror.gcr.io:443
         pkg-containers.githubusercontent.com:443
-        pypi.org:443
-        raw.githubusercontent.com:443
-        registry.npmjs.org:443
         release-assets.githubusercontent.com:443
     steps:
       - name: Harden Runner

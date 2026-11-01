@@ -128,13 +128,17 @@ Un secret sur une ref oubliée est exposé exactement comme un secret sur le tro
 
 ### Trivy (IaC)
 
-`enable_trivy: true` lance un scan IaC/filesystem via `aquasecurity/trivy-action`. Par défaut, toutes les sévérités sont remontées (`UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL`). Configurable via `trivy_severity`. Ce scan est indépendant du scan container Trivy dans `ci-docker.yml`.
+`enable_trivy: true` lance un scan IaC/filesystem via `aquasecurity/trivy-action`. Par défaut, toutes les sévérités sont remontées (`UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL`). Configurable via `trivy_severity`.
 
 Les résultats sont uploadés au format SARIF dans l'onglet **Security > Code scanning** du repo, avec des annotations inline sur les PRs.
 
 ### dependency-review
 
 Ce job ne s'exécute que si le workflow caller est déclenché par `pull_request`. Si activé depuis un workflow `push`, il sera automatiquement ignoré.
+
+### Checkov
+
+L'image `ghcr.io/bridgecrewio/checkov` tourne épinglée par digest, avec `checkov` pour entrypoint, et non plus par `bridgecrewio/checkov-action` : cette action déclare `image: docker://ghcr.io/bridgecrewio/checkov:<tag>`, un tag mutable que son pin SHA ne figeait pas. Même image et même version que celles que l'action lançait, mêmes options (`--quiet`, sortie console et SARIF).
 
 ### checkov_framework
 
@@ -150,4 +154,16 @@ with:
 
 [StepSecurity harden-runner](https://github.com/step-security/harden-runner) sécurise le réseau de chaque job. Depuis le 2026-08-14, la politique egress par défaut est `block` : tout trafic sortant hors allowlist est coupé. C'est la parade au vecteur TeamPCP, dont le canal d'exfiltration primaire était un POST vers un domaine tiers. Repasser à `audit` sur un repo dont les endpoints ne sont pas encore connus, jamais comme réglage durable.
 
-Le workflow inclut une liste d'endpoints par défaut couvrant ses dépendances internes. Le consumer peut ajouter des endpoints via `harden_runner_allowed_endpoints` — ils sont **fusionnés** avec la liste par défaut.
+Chaque job porte sa propre liste, réduite à ce que son scanner télécharge : un hôte listé est un hôte qu'une étape compromise de ce job peut joindre. Les images KICS et Checkov sont tirées à la mise en place du job, avant harden-runner, et aucun registre n'apparaît dans leur liste.
+
+| Job | Hôtes en plus de l'agent harden-runner, `api.github.com` et `github.com` |
+| --- | --- |
+| gitleaks | `release-assets.githubusercontent.com` (binaire gitleaks) |
+| kics | `kics.io`, le bucket R2 de Checkmarx (descriptions des requêtes) |
+| dependency-review | aucun |
+| checkov | `api0.prismacloud.io` (guidelines) |
+| trivy | `get.trivy.dev`, `mirror.gcr.io`, `ghcr.io`, `pkg-containers.githubusercontent.com`, `release-assets.githubusercontent.com` (binaire, base et règles) |
+
+`github.com` reste ouvert partout, pour le checkout : la politique `block` est une défense en profondeur, pas une garantie que rien ne sort.
+
+Le consumer peut ajouter des endpoints via `harden_runner_allowed_endpoints` — ils sont **fusionnés** avec la liste de chaque job.
