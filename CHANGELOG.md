@@ -1,5 +1,21 @@
 # Changelog
 
+## [5.0.0](https://github.com/trowaflo/github-actions/compare/v4.0.1...v5.0.0) (2026-11-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* noyau à quatre reusable workflows, lint en un job, contrat de version ([#84](https://github.com/trowaflo/github-actions/issues/84))
+
+### Features
+
+* noyau à quatre reusable workflows, lint en un job, contrat de version ([#84](https://github.com/trowaflo/github-actions/issues/84)) ([f6971a8](https://github.com/trowaflo/github-actions/commit/f6971a88c5d816283a7b977e6b7a7b53907a092c))
+
+
+### Bug Fixes
+
+* ci-docker sans login ni push sur pull_request ([#82](https://github.com/trowaflo/github-actions/issues/82)) ([97c2123](https://github.com/trowaflo/github-actions/commit/97c21234c22f3854a23851814fdb6162b6de2b87))
+
 ## [4.0.1](https://github.com/trowaflo/github-actions/compare/v4.0.0...v4.0.1) (2026-10-25)
 
 
