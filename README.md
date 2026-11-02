@@ -16,14 +16,9 @@ All external `uses:` references are pinned to full commit SHAs. Renovate manages
 | [`security.yml`](.github/workflows/security.yml) | gitleaks, kics | [docs/security.md](docs/security.md) |
 | [`lint.yml`](.github/workflows/lint.yml) | actionlint | [docs/lint.md](docs/lint.md) |
 | [`lint-renovate.yml`](.github/workflows/lint-renovate.yml) | — (all opt-in) | [docs/lint-renovate.md](docs/lint-renovate.md) |
-| [`ci-ha.yml`](.github/workflows/ci-ha.yml) | — (all opt-in) | [docs/ci-ha.md](docs/ci-ha.md) |
-| [`ci-python.yml`](.github/workflows/ci-python.yml) | — (all opt-in) | [docs/ci-python.md](docs/ci-python.md) |
-| [`ci-helm.yml`](.github/workflows/ci-helm.yml) | — (all opt-in) | [docs/helm.md](docs/helm.md) |
-| [`release-helm.yml`](.github/workflows/release-helm.yml) | — (all opt-in) | [docs/helm.md](docs/helm.md) |
-| [`ci-helm-cleanup.yml`](.github/workflows/ci-helm-cleanup.yml) | — (all opt-in) | [docs/helm.md](docs/helm.md) |
-| [`ci-docker.yml`](.github/workflows/ci-docker.yml) | — (all opt-in) | [docs/ci-docker.md](docs/ci-docker.md) |
 | [`release.yml`](.github/workflows/release.yml) | — (all opt-in) | [docs/release.md](docs/release.md) |
-| [`claude-code.yml`](.github/workflows/claude-code.yml) | — (all opt-in) | [docs/claude-code.md](docs/claude-code.md) |
+
+What breaks a caller, and therefore cuts a major: [docs/contrat.md](docs/contrat.md).
 
 ## Quick start
 
@@ -58,15 +53,15 @@ jobs:
 
 - **Security core** (`security.yml`): `enable_gitleaks`, `enable_kics` → `true` by default (opt-out); checkov, trivy, dependency-review → `false` (opt-in)
 - **Lint core** (`lint.yml`): `enable_actionlint` → `true` by default (opt-out); all others → `false` (opt-in)
-- **Domain-specific** (helm, HA, docker, python) → `false` by default (opt-in)
-- **Triggers** — Security/lint workflows should use `on: [pull_request]` only, not `push` to `main`. Use `push` triggers for post-merge workflows: `release.yml`, `ci-docker.yml` (publish), `release-helm.yml` (chart release)
+- **Triggers** — Security/lint workflows should use `on: [pull_request]` only, not `push` to `main`. Use `push` triggers for post-merge workflows: `release.yml`
 
 ## Security
 
 - All `uses:` are SHA-pinned — never tags (`@v4`) or branches (`@main`)
 - `ci.yml` enforces this with a `sha-check` job on every PR
-- **KICS**, **Trivy**, **Checkov**, and **actionlint** upload results in SARIF format to **Security > Code scanning** — inline annotations on PRs
+- **KICS**, **Trivy**, **Checkov**, **actionlint**, **shellcheck** and **shfmt** upload results in SARIF format to **Security > Code scanning** on public repositories
 - `enable_harden_runner` available on all workflows (default: `true`, egress `block`) — [StepSecurity harden-runner](https://github.com/step-security/harden-runner). Each job allows only the endpoints it downloads from; add yours with `harden_runner_allowed_endpoints`, or pass `audit` while you discover them
 - KICS in `security.yml` via `enable_kics` (default: `true`) — runs the `checkmarx/kics` image pinned by digest, not `kics-github-action`, whose image is built from a mutable tag (⚠ TeamPCP supply chain attack, 2026-03-23)
-- Trivy IaC scanning in `security.yml` via `enable_trivy` (default: `false`); container scanning in `ci-docker.yml`
-- Claude Code (`claude-code.yml`) — **requires access control on public repos**, filter on the `author_association` of the content author, not on `github.actor` (see [docs](docs/claude-code.md))
+- Checkov and the Renovate validator also run their image pinned by digest; ansible-lint installs from PyPI by hash
+- Trivy IaC scanning in `security.yml` via `enable_trivy` (default: `false`)
+- No job triggered by `pull_request` holds `contents: write`

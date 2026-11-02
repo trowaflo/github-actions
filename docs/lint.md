@@ -2,6 +2,8 @@
 
 Lint et qualité de code. actionlint est **activé par défaut** (opt-out). Les autres linters sont **désactivés par défaut** (opt-in).
 
+Un seul job `Lint`, une étape par linter activé. Une minute est facturée par job démarré et la mise en place d'un job (runner, harden-runner, checkout) coûte environ 13 s : huit jobs de 20 s étaient facturés huit minutes. Chaque étape porte `continue-on-error`, les autres linters tournent donc même si l'un échoue, et la dernière étape (`Fail if a linter failed`) rend le job rouge en nommant les étapes en échec.
+
 ## Usage
 
 ```yaml
@@ -10,7 +12,7 @@ jobs:
     uses: trowaflo/github-actions/.github/workflows/lint.yml@<sha> # vX.Y.Z
     permissions:
       contents: read
-      security-events: write   # SARIF uploads (actionlint)
+      security-events: write   # SARIF uploads (actionlint, shellcheck, shfmt), repos publics
     with:
       enable_markdown_lint: true
       enable_yamllint: true
@@ -30,17 +32,20 @@ jobs:
 | `enable_yamllint` | boolean | `false` | Lint YAML avec yamllint |
 | `enable_json_lint` | boolean | `false` | Validation syntaxe JSON et JSON5 |
 | `enable_ansible_lint` | boolean | `false` | Lint Ansible avec ansible-lint |
-| `enable_shellcheck` | boolean | `false` | Lint scripts shell (bash/sh/zsh) avec shellcheck via reviewdog (inline PR comments) |
-| `enable_shfmt` | boolean | `false` | Vérification du formatage des scripts shell avec shfmt via reviewdog (inline PR suggestions) |
+| `enable_shellcheck` | boolean | `false` | shellcheck sur les `*.sh` suivis par git, non bloquant |
+| `enable_shfmt` | boolean | `false` | Formatage `shfmt -i 2 -ci` des `*.sh` suivis par git, non bloquant |
 | `enable_terraform_validate` | boolean | `false` | `terraform fmt` + `tflint` |
 
 ## Permissions requises
 
-| Permission | Jobs qui l'utilisent |
+Le job appelant accorde exactement ces deux permissions, quels que soient les linters activés. GitHub contrôle l'appelant contre toutes les permissions déclarées par le workflow appelé avant d'évaluer le moindre `if:`.
+
+| Permission | Usage |
 | --- | --- |
-| `contents: read` | Tous les jobs (checkout) |
-| `security-events: write` | actionlint (upload SARIF) |
-| `pull-requests: write` | shellcheck, shfmt (reviewdog inline comments) |
+| `contents: read` | checkout |
+| `security-events: write` | upload SARIF (actionlint, shellcheck, shfmt), sur les repos publics seulement |
+
+`pull-requests: write` n'est plus demandé : un appelant qui l'accorde encore peut le retirer.
 
 ## Secrets
 
@@ -64,32 +69,60 @@ Créer un `.yamllint.yml` à la racine du repo pour surcharger la configuration 
 
 ### Paquets Python épinglés par hash
 
-yamllint, json5 (ici) et ruff (`ci-python.yml`) s'installent avec `pip install --require-hashes --only-binary=:all:`, depuis un fichier de requirements écrit dans le job : un workflow appelé ne voit que le checkout du caller, jamais un fichier de ce dépôt. Chaque paquet, dépendances transitives comprises, porte le hash des wheels que le runner peut choisir (manylinux x86_64 ou `py3-none-any`, CPython 3.12 à 3.14).
+yamllint, json5 et ansible-lint s'installent chacun dans leur venv avec `pip install --require-hashes --only-binary=:all:`, depuis un fichier de requirements écrit dans le job : un workflow appelé ne voit que le checkout du caller, jamais un fichier de ce dépôt. Chaque paquet, dépendances transitives comprises, porte le hash des wheels que le runner peut choisir (manylinux x86_64, `abi3` ou `py3-none-any`, CPython 3.12 à 3.14).
 
-Renovate bumpe la version via l'annotation `# renovate:` ; les hashes, eux, ne suivent pas et l'installation échoue fermée tant qu'ils ne sont pas régénérés :
+Renovate bumpe la version via l'annotation `# renovate:` ; les hashes, eux, ne suivent pas et l'installation échoue fermée tant qu'ils ne sont pas régénérés. Pour un paquet seul :
 
 ```bash
 curl -s https://pypi.org/pypi/<paquet>/<version>/json | jq -r '.urls[]
-  | select(.filename | test("py3-none-any|cp31[2-4]-cp31[2-4]-manylinux.*x86_64|py3-none-manylinux.*x86_64"))
+  | select(.filename | test("py3-none-any|cp31[2-4]-cp31[2-4]-manylinux.*x86_64|cp3[0-9]+-abi3-manylinux.*x86_64|py3-none-manylinux.*x86_64"))
   | "\(.digests.sha256) \(.filename)"'
 ```
 
-Les dépendances transitives se listent avec `uv pip compile` sur `<paquet>==<version>`.
+Pour ansible-lint, le jeu transitif change d'une version à l'autre : le régénérer en entier, puis appliquer la commande ci-dessus à chaque ligne.
 
-### shellcheck
+```bash
+echo "ansible-lint==<version>" > in.txt
+uv pip compile in.txt --universal --python-version 3.12 --only-binary :all: --no-header --no-annotate
+```
 
-Analyse statique des scripts shell (bash/sh/zsh) via [`reviewdog/action-shellcheck`](https://github.com/reviewdog/action-shellcheck). Détecte les erreurs courantes et les problèmes de sécurité (variables non quotées, injections via `eval`, etc.).
+Les marqueurs (`; python_full_version < '3.14'`) que rend `--universal` restent sur la ligne du paquet.
 
-Résultats postés en inline review comments sur la PR. Seuls les fichiers modifiés par la PR sont analysés (`filter_mode: added`).
+### ansible-lint
 
-Par défaut, scanne les fichiers `*.sh`. Pour inclure aussi les scripts sans extension mais avec un shebang, activer `check_all_files_with_shebangs` via `shellcheck_flags`.
+Installé depuis PyPI par hash, pas par l'action `ansible/ansible-lint` : cette action composite exécute `astral-sh/setup-uv@v7`, un tag que l'épinglage par SHA de l'action englobante ne fige pas.
 
-### shfmt
+### shellcheck, shfmt
 
-Vérification du formatage des scripts shell via [`reviewdog/action-shfmt`](https://github.com/reviewdog/action-shfmt). Poste des suggestions de correction directement dans la PR (inline suggestions applicables en un clic).
+shellcheck (préinstallé sur le runner ubuntu) et shfmt (binaire officiel vérifié par SHA-256) analysent les `*.sh` suivis par git, en entier.
 
-Par défaut : indentation 2 espaces, `case` indenté (`-i 2 -ci`). Configurable via l'input `shfmt_flags` si nécessaire.
+Ils ne bloquent pas : une trouvaille ne rend pas le job rouge, comme avec les actions reviewdog qu'ils remplacent (`fail_on_error: false`). Seule une erreur d'exécution compte comme échec.
+
+Les trouvailles vont :
+
+- dans le résumé du job, partout ;
+- en SARIF dans Security > Code scanning, sur les repos publics seulement. Code scanning n'est pas gratuit en privé.
+
+Plus aucun commentaire de PR : c'est ce qui exigeait `pull-requests: write` de tous les appelants.
+
+shfmt applique `-i 2 -ci` (indentation 2 espaces, `case` indenté). Sa version suit l'annotation Renovate de `SHFMT_VERSION` ; le SHA-256 `SHFMT_SHA256` se met à jour à la main, sinon l'étape échoue fermée :
+
+```bash
+gh release view v<version> -R mvdan/sh --json assets --jq '.assets[] | select(.name|endswith("linux_amd64")) | .digest'
+```
 
 ### harden-runner
 
-[StepSecurity harden-runner](https://github.com/step-security/harden-runner) sécurise le réseau de chaque job. Par défaut, la politique egress est `block` : chaque job n'autorise que les endpoints qu'il télécharge lui-même. Un hôte propre au consumer s'ajoute via `harden_runner_allowed_endpoints` ; `audit` sert seulement à découvrir ces hôtes, jamais comme réglage durable.
+[StepSecurity harden-runner](https://github.com/step-security/harden-runner) sécurise le réseau du job. Par défaut, la politique egress est `block`. Les linters partageant un job, l'allowlist intégrée est l'union de ce qu'ils téléchargent :
+
+| Hôte | Pour |
+| --- | --- |
+| `agent.api.stepsecurity.io` | agent harden-runner |
+| `api.github.com` | runtime, upload SARIF, setup-tflint |
+| `files.pythonhosted.org`, `pypi.org` | yamllint, json5, ansible-lint |
+| `github.com` | checkout, actionlint, shfmt, tflint |
+| `raw.githubusercontent.com` | gabarit SARIF d'actionlint |
+| `release-assets.githubusercontent.com` | assets de release (cible de redirection) |
+| `releases.hashicorp.com` | Terraform |
+
+Un hôte propre au consumer s'ajoute via `harden_runner_allowed_endpoints` ; `audit` sert seulement à découvrir ces hôtes, jamais comme réglage durable.

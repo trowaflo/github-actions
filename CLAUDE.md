@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Purpose
 
-This repository is the **source of truth** for all GitHub Actions workflows across ~27 sibling repos. It provides reusable workflows (`workflow_call`) that centralise action pinning, versioning, and security policies. All validation happens in CI via GitHub Actions — there is no local build system.
+This repository is the **source of truth** for the GitHub Actions workflows shared across the sibling repos. It provides four reusable workflows (`workflow_call`) that centralise action pinning, versioning, and security policies. All validation happens in CI via GitHub Actions — there is no local build system.
+
+A workflow belongs here only if several repositories call it. A workflow serving a single consumer lives in that consumer: here, every change to it would cut a release of the shared core and a Renovate PR in every caller. Helm, Home Assistant, Python and Docker workflows left in v5.0.0 for that reason.
 
 ## Repository structure
 
@@ -12,32 +14,22 @@ This repository is the **source of truth** for all GitHub Actions workflows acro
 .github/workflows/
   # ─── Reusable workflows (call from other repos) ──────────────
   security.yml         # Security: gitleaks (on), kics (on), dependency-review (off), checkov (off), trivy (off)
-  lint.yml             # Lint/quality: actionlint (on), markdownlint, yamllint, json-lint, ansible-lint, terraform-validate (all off)
+  lint.yml             # Lint: one job, actionlint (on), markdownlint, yamllint, json-lint, ansible-lint, terraform-validate, shellcheck, shfmt (off)
   lint-renovate.yml    # Renovate: config file validation
-  ci-ha.yml            # Home Assistant CI: hacs, hassfest, config-check
-  ci-python.yml        # Python CI: pytest+ruff+codecov (generic — HA uses extra_packages)
-  ci-helm.yml          # Helm CI: lint, unittest, bump, docs, docs-check, pr-charts (pull_request)
-  ci-helm-cleanup.yml  # Helm Cleanup: remove pr-charts on PR close
-  ci-docker.yml        # Docker: build/push, trivy scan
   release.yml          # Release: release-please
-  release-helm.yml     # Helm Release: chart-releaser (push to main)
-  claude-code.yml      # Claude Code: @claude mentions + /review command
 
   # ─── Self-CI (this repo only) ────────────────────────────────
-  ci.yml               # Calls security.yml + lint.yml + lint-renovate.yml + sha-check
-  claude.yml           # Claude Code — content author must be OWNER/MEMBER/COLLABORATOR
+  ci.yml               # Calls security.yml + lint.yml + lint-renovate.yml, sha-check, contract check
   release-please.yml   # Creates tags and CHANGELOG on main push
 
-  # ─── Test workflows (validate each reusable workflow) ────────
+  # ─── Test workflows ──────────────────────────────────────────
   # security.yml + lint.yml are fully tested by ci.yml (self-CI)
-  test-ha.yml          # Tests ci-ha.yml: hacs, hassfest, config-check
-  test-python.yml      # Tests ci-python.yml: pytest, ruff
-  test-helm.yml        # Tests ci-helm.yml + release-helm.yml + ci-helm-cleanup.yml
-  test-docker.yml      # Tests ci-docker.yml: build, trivy (container)
   test-validate-renovate.yml  # Tests lint-renovate.yml
   test-security-barring.yml   # Non-regression: asserts KICS bars and full sees beyond the event range
-  test-release.yml     # Tests release.yml (dry-run mode)
+  test-release.yml     # Tests release.yml, workflow_dispatch only (needs a write token)
 
+.github/scripts/
+  contract-check.sh    # Contract diff against the last tag, run by ci.yml
 ```
 
 Test fixtures are in `tests/`:
@@ -45,12 +37,12 @@ Test fixtures are in `tests/`:
 ```
 tests/
   ansible/         # playbook.yml — ansible-lint fixture
-  charts/          # hello-world chart — helm test fixture
-  docker/          # Dockerfile — ci-docker fixture
-  ha/              # configuration.yaml — ci-ha fixture
-  python/          # calculator + tests — ci-python fixture
   terraform/       # main.tf — checkov + terraform-validate fixture
 ```
+
+### No write token on pull_request
+
+No job triggered by `pull_request` holds a `write` permission other than `security-events` (SARIF) and `pull-requests` (comments). Every pull request, Renovate's included, runs code nobody has reviewed yet; with `contents: write` it could create a tag that callers then pin. A test that needs a write token runs on `workflow_dispatch` or `push` to `main`, never on `pull_request`.
 
 ## Key conventions
 
@@ -64,7 +56,45 @@ uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
 Never use tags (`@v4`) or branch names (`@main`). Renovate handles SHA updates automatically.
 A container step is pinned by digest instead: `uses: docker://image:tag@sha256:<64 hex>`.
-The `ci.yml` sha-check job enforces this on every PR — it will fail if any unpinned `uses:` is found.
+The `ci.yml` sha-check job enforces this on every PR — it will fail if any unpinned `uses:` is found. Its regex reads the `uses:` value only, so a SHA written in the trailing comment (`@v1 # <sha>`) does not pass.
+
+A SHA pin fixes the action, not what the action fetches. An action that declares `image: docker://…:<tag>` or calls another action by tag runs mutable code under a fixed SHA. Such an action is replaced by its image run by digest (KICS, Checkov, Renovate) or by a hash-pinned install (ansible-lint), never adopted as is.
+
+## Version contract
+
+`docs/contrat.md` lists what is breaking: a removed workflow, input, secret or output, a changed type or default, a newly required input or secret, a new or widened permission. A breaking change ships under a `type!:` pull request title, so release-please cuts a major and Renovate proposes it as such.
+
+The `Contract Check` job of `ci.yml` runs `.github/scripts/contract-check.sh`: it diffs `on.workflow_call` and the union of job permissions of every reusable workflow between the pull request and the last `v*` tag, names each breaking change, and fails if the title carries no `!`. `ci.yml` also runs on `edited`, so fixing the title re-runs the check without a new commit.
+
+## Preview on a real caller
+
+Self-CI calls the workflows through `./`, with this repository's own permissions and files: it cannot see what a caller sees. Every pull request that touches a contract (see above) is also tried on a real caller before merge:
+
+1. open a pull request on `trowaflo/testing-renovate` that pins the touched workflows on the head SHA of this pull request, `@<head-sha> # preview`;
+2. put its link in the description of this pull request;
+3. merge here only once that caller run is green, then close the caller pull request without merging.
+
+GitHub Actions has to be enabled on the caller for the run to happen. When it is not, the description says so and names the public caller used instead, or the preview stays owed.
+
+## Emergency stop (K0)
+
+To stop every workflow of every repository at once, for example while an action used everywhere is known to be compromised, the owner runs from a workstation authenticated as `trowaflo`:
+
+```bash
+# Stop: disables GitHub Actions on every non-archived repository.
+gh repo list trowaflo --no-archived --limit 200 --json name --jq '.[].name' \
+  | while read -r repo; do
+      gh api -X PUT "repos/trowaflo/$repo/actions/permissions" -F enabled=false \
+        && echo "stopped $repo" || echo "FAILED $repo"
+    done
+
+# Restore: the same loop with enabled=true.
+```
+
+- It needs the owner's own `gh` session (admin on each repository), never a token stored anywhere.
+- A `FAILED` line is a repository still running: read it, never ignore it.
+- **An apply of `terraform-github` that declares `enabled = true` undoes the stop.** No apply runs while the stop holds.
+- Check the result with `gh api repos/trowaflo/<repo>/actions/permissions --jq .enabled` on a sample, and time the loop when it is run: the duration is the measure of this procedure, kept with the incident, not here.
 
 ### Measuring billed minutes
 
@@ -90,14 +120,14 @@ Dependency updates are managed by Renovate using the shared config at `github>tr
 ### Defaults philosophy
 
 - **Security core** (`security.yml`): gitleaks, kics → `true` by default (opt-out); checkov, trivy, dependency-review → `false` (opt-in)
-- **Lint core** (`lint.yml`): actionlint → `true`; markdownlint, yamllint, json-lint, ansible-lint, terraform-validate → `false` (opt-in)
-- **Domain-specific** (helm, HA, docker, python) → `false` by default (opt-in)
+- **Lint core** (`lint.yml`): actionlint → `true`; markdownlint, yamllint, json-lint, ansible-lint, terraform-validate, shellcheck, shfmt → `false` (opt-in)
+- An opt-in feature never raises the permissions of a workflow: GitHub checks the caller against every permission the called workflow declares before evaluating any `if:`, so a disabled job still imposes its scopes on every caller.
 
 ### Harden Runner
 
 All reusable workflows enable [StepSecurity harden-runner](https://github.com/step-security/harden-runner) by default (`enable_harden_runner: true`). The default egress policy is `block` in every reusable workflow: outbound traffic outside the allowlist is cut, which is what stops a compromised action from exfiltrating the job token.
 
-Each job ships with a **built-in list of allowed endpoints** covering only what that job downloads (pip, npm, Docker registries, etc.). A host listed in a job is a host a compromised step of that job can reach, so do not copy a list from one job to another. These built-in defaults are **always applied**. Consumers can pass extra endpoints via `harden_runner_allowed_endpoints` — they are **merged** (union) with the built-in defaults, not replaced.
+Each job ships with a **built-in list of allowed endpoints** covering only what that job downloads (pip, npm, Docker registries, etc.). A host listed in a job is a host a compromised step of that job can reach, so do not copy a list from one job to another. `lint.yml` is the one exception: its linters share a single job, so its list is the union of what they download. `github.com` stays open in every job for checkout: the `block` policy is defence in depth, not a guarantee that nothing leaves. These built-in defaults are **always applied**. Consumers can pass extra endpoints via `harden_runner_allowed_endpoints` — they are **merged** (union) with the built-in defaults, not replaced.
 
 To observe endpoints on a caller whose extra hosts are not known yet, pass `audit` temporarily:
 
@@ -116,7 +146,7 @@ with:
 
 ### Timeouts and concurrency
 
-Every job carries `timeout-minutes: 15`: the 6-hour default lets a hung job burn minutes for nothing. Top-level workflows set `concurrency` per `${{ github.workflow }}-${{ github.ref }}`. Reusable workflows set it per job, never at workflow level: there it would apply to the caller's run. Each job group appends `<file>-<job>` (and the matrix value where there is one) so it never equals the caller's group, which would deadlock. Jobs that push, publish or release use `cancel-in-progress: false`; `claude-code.yml` groups per issue or pull request, since every comment runs on the default branch.
+Every job carries `timeout-minutes: 15`: the 6-hour default lets a hung job burn minutes for nothing. Top-level workflows set `concurrency` per `${{ github.workflow }}-${{ github.ref }}`. Reusable workflows set it per job, never at workflow level: there it would apply to the caller's run. Each job group appends `<file>-<job>` (and the matrix value where there is one) so it never equals the caller's group, which would deadlock. Jobs that push, publish or release use `cancel-in-progress: false`.
 
 ### KICS
 
@@ -132,11 +162,7 @@ A guard proven once by hand is not held. `test-security-barring.yml` asserts on 
 
 ### IaC scanning (Trivy)
 
-`security.yml` provides `enable_trivy` for IaC/filesystem scanning via `aquasecurity/trivy-action`. Severity is configurable via `trivy_severity` (default: all levels). This is independent from the container Trivy scan in `ci-docker.yml`.
-
-### Container scanning (Trivy)
-
-`ci-docker.yml` provides Trivy container scanning via `aquasecurity/trivy-action`. Trivy outputs a readable table in logs and uploads SARIF for Code Scanning integration. It is `false` by default — enable with `enable_trivy: true`.
+`security.yml` provides `enable_trivy` for IaC/filesystem scanning via `aquasecurity/trivy-action`. Severity is configurable via `trivy_severity` (default: all levels).
 
 ## Consumer usage example
 
@@ -170,15 +196,15 @@ jobs:
 
 ### Triggers — `pull_request` only
 
-Security/lint workflows should trigger on `pull_request` only — **not** on `push` to `main`. A push to `main` happens after a PR merge, so the same checks would run twice (once on the PR, once on the push). Use `push` triggers only for workflows that must run post-merge: `release.yml` (release-please), `ci-docker.yml` (build & publish), `release-helm.yml` (chart release).
+Security/lint workflows should trigger on `pull_request` only — **not** on `push` to `main`. A push to `main` happens after a PR merge, so the same checks would run twice (once on the PR, once on the push). Use `push` triggers only for workflows that must run post-merge: `release.yml` (release-please).
 
 ## Inputs reference
 
 All inputs (including secrets) are documented inline in each workflow file — read the file directly for the full list. Shared across all workflows: `enable_harden_runner` (default: `true`), `harden_runner_egress_policy` (default: `"block"`), `harden_runner_allowed_endpoints` (extra endpoints merged with built-in defaults).
 
-Key files: `security.yml`, `lint.yml`, `lint-renovate.yml`, `ci-ha.yml`, `ci-python.yml`, `ci-helm.yml`, `ci-helm-cleanup.yml`, `ci-docker.yml`, `release.yml`, `release-helm.yml`, `claude-code.yml`
+Key files: `security.yml`, `lint.yml`, `lint-renovate.yml`, `release.yml`
 
 ## Documentation
 
-Every reusable workflow has a matching doc file in `docs/` (e.g. `ci-docker.yml` → `docs/ci-docker.md`). **When modifying a workflow, always update the corresponding doc file** — inputs table, usage examples, and notes must stay in sync. Also update `CLAUDE.md` if the change affects architecture, conventions, or the repository structure section.
+Every reusable workflow has a matching doc file in `docs/` (e.g. `lint.yml` → `docs/lint.md`). **When modifying a workflow, always update the corresponding doc file** — inputs table, usage examples, and notes must stay in sync. Also update `CLAUDE.md` if the change affects architecture, conventions, or the repository structure section.
 

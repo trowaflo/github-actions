@@ -1,10 +1,6 @@
 ---
 extends: default
 
-ignore: |
-  tests/charts/**/templates/**
-  tests/charts/**/*.tpl
-
 rules:
   line-length:
     max: 200

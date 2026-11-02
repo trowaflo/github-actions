@@ -28,24 +28,14 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Liste identique à celle du job kics de security.yml, qui couvre aussi le
-  # téléchargement gitleaks.
+  # Union des listes des jobs kics et gitleaks de security.yml : les deux jobs de
+  # ce fichier exercent l'un ou l'autre scanner.
   _HARDEN_DEFAULTS: >-
     9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443
     agent.api.stepsecurity.io:443
     api.github.com:443
-    api0.prismacloud.io:443
-    apk.cgr.dev:443
-    files.pythonhosted.org:443
-    get.trivy.dev:443
-    ghcr.io:443
     github.com:443
     kics.io:443
-    mirror.gcr.io:443
-    pkg-containers.githubusercontent.com:443
-    pypi.org:443
-    raw.githubusercontent.com:443
-    registry.npmjs.org:443
     release-assets.githubusercontent.com:443
 
 jobs:
