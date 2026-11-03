@@ -327,8 +327,8 @@ jobs:
           set -euo pipefail
           cat > "$RUNNER_TEMP/json5-requirements.txt" <<'EOF'
           # renovate: datasource=pypi depName=json5
-          json5==0.14.0 \
-              --hash=sha256:56cf861bab076b1178eb8c92e1311d273a9b9acea2ccc82c276abf839ebaef3a
+          json5==0.15.0 \
+              --hash=sha256:56636a30c0e8a4665fe2179c0212f32eae3796dea89ea6f649b9436ecdb39618
           EOF
           python3 -m venv "$RUNNER_TEMP/venv-json5"
           PY="$RUNNER_TEMP/venv-json5/bin/python"
