@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.1.1](https://github.com/trowaflo/github-actions/compare/v5.1.0...v5.1.1) (2026-11-07)
+
+
+### Bug Fixes
+
+* harden-runner en v2.22.4 ([#90](https://github.com/trowaflo/github-actions/issues/90)) ([55767d4](https://github.com/trowaflo/github-actions/commit/55767d4549cc0cb6c4484abefa4ea9d5ec83f273))
+* MD060 réactivée, configuration markdownlint propre à chaque appelant ([#92](https://github.com/trowaflo/github-actions/issues/92)) ([2b9f001](https://github.com/trowaflo/github-actions/commit/2b9f001d2576c9d55d5ddfe440909baf701d2c11))
+
 ## [5.1.0](https://github.com/trowaflo/github-actions/compare/v5.0.0...v5.1.0) (2026-11-07)
 
 
