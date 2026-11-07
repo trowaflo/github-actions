@@ -39,7 +39,7 @@ jobs:
 | Permission | Jobs qui l'utilisent |
 | --- | --- |
 | `contents: read` | Tous les jobs (checkout) |
-| `pull-requests: write` | gitleaks (annotations), dependency-review |
+| `pull-requests: write` | gitleaks (annotations), KICS (commentaire de PR), dependency-review |
 | `security-events: write` | KICS, checkov, trivy (upload SARIF) |
 
 ## Secrets
@@ -54,7 +54,9 @@ KICS est disponible via `enable_kics: true` (défaut).
 
 **Le job barre.** `kics_fail_on` liste les sévérités qui font sortir KICS en code non nul, et le job passe au rouge. Le défaut est `high,medium,low`. `info` reste remonté dans les logs, le job summary et le SARIF, sans bloquer.
 
-**L'image tourne épinglée par digest.** Le job lance `docker://checkmarx/kics:v2.1.20@sha256:3e5a268e…` et non plus `checkmarx/kics-github-action` : cette action construit son image au démarrage du job depuis `FROM checkmarx/kics:v2.1.20`, un tag mutable déjà repointé une fois (2026-04-22), donc son pin SHA ne figeait jamais ce qui s'exécute. Le digest est celui de l'index du tag, lu sur le registre ; son manifeste `linux/amd64` (`sha256:643071cf…`) a été construit le 2026-03-03 depuis `Checkmarx/kics@e1f23cad`, le commit du tag v2.1.20. Contrepartie : plus de commentaire de PR ni d'annotations produites par l'action. Restent les logs, un job summary par sévérité et, sur un repo public, le SARIF dans Code Scanning.
+**L'image tourne épinglée par digest.** Le job lance `docker://checkmarx/kics:v2.1.20@sha256:3e5a268e…` et non plus `checkmarx/kics-github-action` : cette action construit son image au démarrage du job depuis `FROM checkmarx/kics:v2.1.20`, un tag mutable déjà repointé une fois (2026-04-22), donc son pin SHA ne figeait jamais ce qui s'exécute. Le digest est celui de l'index du tag, lu sur le registre ; son manifeste `linux/amd64` (`sha256:643071cf…`) a été construit le 2026-03-03 depuis `Checkmarx/kics@e1f23cad`, le commit du tag v2.1.20. Contrepartie : plus d'annotations produites par l'action. Restent les logs, le job summary et, sur un repo public, le SARIF dans Code Scanning.
+
+**Le rapport arrive sur la PR, au format de l'ancienne action.** Le job rend le commentaire de `kics-github-action` v2.1.20 (`enable_comments` et `comments_with_queries`) : compte par sévérité, métriques du scan, puis un finding par ligne avec lien vers la doc de la requête, valeur attendue et valeur constatée. Le même rapport va au job summary. Le commentaire est unique par PR, réécrit à chaque run, et un rapport laissé par l'ancienne action est repris. Un token sans droit d'écriture (fork, Dependabot) saute le commentaire sans faire tomber le scan. Un rapport au-delà de 65536 caractères est refusé par GitHub, comme avant.
 
 Le partage se fait sur un critère, pas sur un volume. Les findings `low` mesurés sur les appelants sont des points de durcissement : `Image Without Digest`, `Secrets As Environment Variables`, `No Drop Capabilities for Containers`, `Root Container Not Mounted Read-only`, `Missing AppArmor Profile`. Les findings `info` sont de l'hygiène d'exploitation : `Liveness Probe Is Not Defined`, `Pod or Container Without LimitRange`, `Ensure Administrative Boundaries Between Resources`. Une sonde de vie manquante n'a pas sa place dans une barrière de sécurité.
 
