@@ -151,13 +151,14 @@ jobs:
       cancel-in-progress: true
     permissions:
       contents: read
+      pull-requests: write
       security-events: write
     env:
       # Built-in endpoints, this job only (see gitleaks). The image is pulled during
       # job setup, before harden-runner starts, so no registry host is listed.
       #   9236a389bd48b984df91adc1bc924620.r2.cloudflarestorage.com:443 — KICS query descriptions (Checkmarx R2)
       #   agent.api.stepsecurity.io:443 — harden-runner agent
-      #   api.github.com:443 — SARIF upload
+      #   api.github.com:443 — SARIF upload, PR comment
       #   github.com:443 — checkout
       #   kics.io:443 — KICS version check and telemetry
       _HARDEN_DEFAULTS: >-
@@ -200,7 +201,36 @@ jobs:
             echo "| Severity | Findings |"
             echo "| --- | --- |"
             jq -r '.severity_counters | to_entries[] | "| \(.key) | \(.value) |"' results/results.json
-          } >> "$GITHUB_STEP_SUMMARY"
+            echo
+            echo "| Severity | Query | Location |"
+            echo "| --- | --- | --- |"
+            # 50 rows keep the PR comment far below GitHub's 65536-character limit.
+            jq -r '[.queries[] | .severity as $s | .query_name as $q | .files[]
+                    | "| \($s) | \($q) | `\(.file_name):\(.line)` |"] | .[:50][]' results/results.json
+          } > kics-report.md
+          cat kics-report.md >> "$GITHUB_STEP_SUMMARY"
+      # Nobody opens the job summary, so the report goes to the PR as one comment,
+      # edited in place on each run. A token without write access (fork, Dependabot)
+      # must not fail the scan.
+      - name: KICS PR comment
+        if: ${{ always() && github.event_name == 'pull_request' && hashFiles('kics-report.md') != '' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          marker='<!-- kics-report -->'
+          printf '%s\n%s\n' "$marker" "$(cat kics-report.md)" > kics-comment.md
+          id=$(gh api --paginate "repos/$REPO/issues/$PR/comments" \
+            --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)
+          total=$(jq '[.severity_counters[]] | add' results/results.json)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@kics-comment.md > /dev/null
+          elif [ "$total" -gt 0 ]; then
+            gh api "repos/$REPO/issues/$PR/comments" -F body=@kics-comment.md > /dev/null
+          fi
       - name: Upload KICS SARIF
         if: ${{ always() && github.event.repository.visibility == 'public' }}
         uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
