@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.1.0](https://github.com/trowaflo/github-actions/compare/v5.0.0...v5.1.0) (2026-11-07)
+
+
+### Features
+
+* **security:** rapport KICS en commentaire de PR, format d'origine ([#87](https://github.com/trowaflo/github-actions/issues/87)) ([40eec5c](https://github.com/trowaflo/github-actions/commit/40eec5cd1bf84854c8243a95c2702ab2b6f58d77))
+
 ## [5.0.0](https://github.com/trowaflo/github-actions/compare/v4.0.1...v5.0.0) (2026-11-02)
 
 
