@@ -59,6 +59,10 @@ Version gérée via Renovate (`datasource=github-releases depName=rhysd/actionli
 
 Les résultats sont uploadés au format SARIF — annotations inline sur les PRs.
 
+### markdown_lint
+
+La configuration est celle de l'appelant : son `.markdownlint.yml`, `.markdownlint.yaml` ou `.markdownlint-cli2.yaml` à la racine, sinon les règles par défaut de markdownlint. Le `.markdownlint.yml` de ce dépôt ne vaut que pour lui : un workflow appelé ne voit que le checkout de l'appelant. Aucune configuration ne fait donc référence pour la flotte, chaque dépôt tranche ses règles et écrit leur motif.
+
 ### json_lint
 
 Valide la syntaxe de tous les fichiers `*.json` (via `json.load`) et `*.json5` (via `json5.load`). Les fichiers dans `.git/` et `node_modules/` sont exclus.
