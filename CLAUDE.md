@@ -146,7 +146,7 @@ with:
 
 ### Timeouts and concurrency
 
-Every job carries `timeout-minutes: 15`: the 6-hour default lets a hung job burn minutes for nothing. Top-level workflows set `concurrency` per `${{ github.workflow }}-${{ github.ref }}`. Reusable workflows set it per job, never at workflow level: there it would apply to the caller's run. Each job group appends `<file>-<job>` (and the matrix value where there is one) so it never equals the caller's group, which would deadlock. Jobs that push, publish or release use `cancel-in-progress: false`.
+Every job carries a `timeout-minutes` sized on its measured duration: 1 for a job whose p95 stays under 30 s, otherwise the p95 plus 20 %, rounded up to the minute. A hung job is billed up to its timeout, and a private repository pays it from the account quota. A run killed by a too-short timeout costs one rerun; a hang under a 15-minute timeout costs 15 minutes. Measure the durations with `gh api repos/<owner>/<repo>/actions/runs/<id>/jobs` before changing a value. Top-level workflows set `concurrency` per `${{ github.workflow }}-${{ github.ref }}`. Reusable workflows set it per job, never at workflow level: there it would apply to the caller's run. Each job group appends `<file>-<job>` (and the matrix value where there is one) so it never equals the caller's group, which would deadlock. Jobs that push, publish or release use `cancel-in-progress: false`.
 
 ### KICS
 

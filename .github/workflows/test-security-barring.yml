@@ -42,7 +42,7 @@ jobs:
   kics-contract:
     name: KICS barre sur HIGH, et reste vert si kics_fail_on est vide
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 2
     permissions:
       contents: read
     steps:
@@ -160,7 +160,7 @@ jobs:
   gitleaks-scope-contract:
     name: La passe full voit au-delà de la plage de l'event
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 1
     permissions:
       contents: read
     steps:

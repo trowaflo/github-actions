@@ -42,7 +42,7 @@ jobs:
     if: ${{ inputs.enable_release_please }}
     name: Release Please
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 1
     # Job-level, not workflow-level: in a called workflow, workflow-level concurrency
     # applies to the caller's run. Never cancelled: a release cut in the middle can
     # leave a tag without its GitHub release.

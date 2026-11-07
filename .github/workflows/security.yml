@@ -69,7 +69,7 @@ jobs:
     if: ${{ inputs.enable_gitleaks }}
     name: Secret Scanning
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 1
     # Job-level, not workflow-level: in a called workflow, workflow-level concurrency
     # applies to the caller's run. The file-job suffix keeps each group distinct from
     # the caller's own `<workflow>-<ref>` group, so the two cannot deadlock.
@@ -145,7 +145,7 @@ jobs:
     if: ${{ inputs.enable_kics }}
     name: IaC Scan (KICS)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 2
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-security-kics
       cancel-in-progress: true
@@ -271,7 +271,7 @@ jobs:
     if: ${{ inputs.enable_dependency_review && github.event_name == 'pull_request' }}
     name: Dependency Review
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 1
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-security-dependency-review
       cancel-in-progress: true
@@ -301,7 +301,7 @@ jobs:
     if: ${{ inputs.enable_checkov }}
     name: IaC Scan (Checkov)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 2
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-security-checkov
       cancel-in-progress: true
@@ -353,7 +353,7 @@ jobs:
     if: ${{ inputs.enable_trivy }}
     name: IaC Scan (Trivy)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 2
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-security-trivy
       cancel-in-progress: true
