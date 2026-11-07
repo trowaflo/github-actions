@@ -192,26 +192,58 @@ jobs:
           args: >-
             scan --no-progress -p . -o results --report-formats json,sarif
             ${{ inputs.kics_fail_on == '' && '--ignore-on-exit results' || format('--fail-on {0}', inputs.kics_fail_on) }}
-      - name: KICS summary
+      # Port of createComment() from kics-github-action v2.1.20 (src/commenter.js), with
+      # enable_comments, comments_with_queries and its default excluded columns: the
+      # report reads as it did before the image was pinned by digest.
+      - name: KICS report
         if: ${{ always() && hashFiles('results/results.json') != '' }}
         run: |
-          {
-            echo "### KICS"
-            echo
-            echo "| Severity | Findings |"
-            echo "| --- | --- |"
-            jq -r '.severity_counters | to_entries[] | "| \(.key) | \(.value) |"' results/results.json
-            echo
-            echo "| Severity | Query | Location |"
-            echo "| --- | --- | --- |"
-            # 50 rows keep the PR comment far below GitHub's 65536-character limit.
-            jq -r '[.queries[] | .severity as $s | .query_name as $q | .files[]
-                    | "| \($s) | \($q) | `\(.file_name):\(.line)` |"] | .[:50][]' results/results.json
-          } > kics-report.md
+          jq -r '
+            def icon: {
+              CRITICAL: "https://raw.githubusercontent.com/Checkmarx/kics-github-action/88fa5c6bfb020c2ad298af00c4cd5b8dfbced92d/images/Critical.png",
+              HIGH: "https://user-images.githubusercontent.com/23239410/92157087-97285600-ee32-11ea-988f-0aca12c4c126.png",
+              MEDIUM: "https://user-images.githubusercontent.com/23239410/92157093-98598300-ee32-11ea-83d7-af52251a011b.png",
+              LOW: "https://user-images.githubusercontent.com/23239410/92157091-98598300-ee32-11ea-8498-19bd7d62019b.png",
+              INFO: "https://user-images.githubusercontent.com/75368139/137872145-b13b5200-6919-43c2-a49b-d3fdbbc20f63.png",
+              TRACE: "https://user-images.githubusercontent.com/23239410/92157090-97c0ec80-ee32-11ea-9b2e-aa6b32b03d54.png"
+            }[.];
+            def blank: "https://user-images.githubusercontent.com/75368139/137874724-5118ebc4-9769-4eb2-923d-e4ca479f747f.png";
+            def title: [scan("[^\\W_]+") | (.[0:1] | ascii_upcase) + (.[1:] | ascii_downcase)] | join(" ");
+            def epoch: sub("\\.[0-9]+"; "") | fromdate;
+            . as $r
+            | [.queries[] | del(.files) as $q | .files[] | $q + .] as $rows
+            | (reduce ($rows[] | keys_unsorted[]) as $k ([]; if any(.[]; . == $k) then . else . + [$k] end)
+               | map(select(IN("query_url", "description_id", "similarity_id", "search_line", "search_value") | not))) as $h
+            | "![kics-logo](https://user-images.githubusercontent.com/111127232/203838108-ad537fea-4573-495a-9619-18500ee81dd9.png)\n"
+            + "\n**KICS version: \(.kics_version)**\n"
+            + "<table>\n<tr></tr>\n<tr><td>\n\n"
+            + "| | Category | Results |\n| --- |--- | --- |\n"
+            + ([("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO", "TRACE") as $s
+                | select($r.severity_counters | has($s))
+                | "| ![\($s)](\($s | icon)) | \($s) | \($r.severity_counters[$s]) |\n"] | join(""))
+            + "| ![TOTAL](\(blank)) | TOTAL | \(.total_counter) |"
+            + "\n\n</td><td>\n\n"
+            + "| Metric | Values |\n| --- | --- |\n"
+            + "| Files scanned ![placeholder](\(blank)) | \(.files_scanned)\n"
+            + "| Files parsed ![placeholder](\(blank)) | \(.files_parsed)\n"
+            + "| Files failed to scan ![placeholder](\(blank)) | \(.files_failed_to_scan)\n"
+            + "| Total executed queries ![placeholder](\(blank)) | \(.queries_total)\n"
+            + "| Queries failed to execute ![placeholder](\(blank)) | \(.queries_failed_to_execute)\n"
+            + "| Execution time ![placeholder](\(blank)) | \((.end | epoch) - (.start | epoch))\n"
+            + "\n</td></tr>\n</table>\n\n"
+            + "### Queries Results\n<table>\n<tr></tr>\n<tr><td>\n\n"
+            + ($h | map("| " + title) | join("")) + "|\n"
+            + ($h | map("|:---") | join("")) + "|\n"
+            + ([$rows[] as $q
+                | ($h | map(if $q[.] == null then "| "
+                            elif . == "query_name" then "| [\($q.query_name)](\($q.query_url))"
+                            else "| " + ($q[.] | tostring | sub("\n"; " ")) end) | join("")) + "|\n"] | join(""))
+            + "\n</td></tr>\n</table>\n"
+          ' results/results.json > kics-report.md
           cat kics-report.md >> "$GITHUB_STEP_SUMMARY"
-      # Nobody opens the job summary, so the report goes to the PR as one comment,
-      # edited in place on each run. A token without write access (fork, Dependabot)
-      # must not fail the scan.
+      # One comment per PR, edited in place, found as the action found it, so a report
+      # it left on an open PR is updated rather than duplicated. A token without write
+      # access (fork, Dependabot) must not fail the scan.
       - name: KICS PR comment
         if: ${{ always() && github.event_name == 'pull_request' && hashFiles('kics-report.md') != '' }}
         continue-on-error: true
@@ -221,15 +253,12 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          marker='<!-- kics-report -->'
-          printf '%s\n%s\n' "$marker" "$(cat kics-report.md)" > kics-comment.md
           id=$(gh api --paginate "repos/$REPO/issues/$PR/comments" \
-            --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)
-          total=$(jq '[.severity_counters[]] | add' results/results.json)
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("![kics-logo]("))) | .id' | head -n 1)
           if [ -n "$id" ]; then
-            gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@kics-comment.md > /dev/null
-          elif [ "$total" -gt 0 ]; then
-            gh api "repos/$REPO/issues/$PR/comments" -F body=@kics-comment.md > /dev/null
+            gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@kics-report.md > /dev/null
+          else
+            gh api "repos/$REPO/issues/$PR/comments" -F body=@kics-report.md > /dev/null
           fi
       - name: Upload KICS SARIF
         if: ${{ always() && github.event.repository.visibility == 'public' }}
